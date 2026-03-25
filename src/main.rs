@@ -4,8 +4,12 @@ use aberredengine::resources::input::InputState;
 use aberredengine::resources::worldsignals::WorldSignals;
 use aberredengine::systems::GameCtx;
 use aberredengine::systems::scene_dispatch::{GuiCallback, SceneDescriptor};
-use bevy_ecs::prelude::ResMut;
+use aberredengine::bevy_ecs::prelude::ResMut;
+use aberredengine::imgui;
 use log::info;
+use std::sync::Mutex;
+
+static SHOW_IMGUI_DEMO: Mutex<bool> = Mutex::new(false);
 
 fn main() {
     env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info")).init();
@@ -45,10 +49,26 @@ fn editor_update(ctx: &mut GameCtx, _dt: f32, _input: &InputState) {
 }
 
 fn editor_gui(ui: &imgui::Ui, signals: &mut WorldSignals) {
-    if let Some(_mb) = ui.begin_main_menu_bar()
-        && let Some(_file) = ui.begin_menu("File")
-        && ui.menu_item("Save")
-    {
-        signals.set_flag("gui:action:file:save");
+    if let Some(_mb) = ui.begin_main_menu_bar() {
+        if let Some(_file) = ui.begin_menu("File")
+            && ui.menu_item("Save")
+        {
+            signals.set_flag("gui:action:file:save");
+        }
+
+        if let Some(_view) = ui.begin_menu("View") {
+            let mut show_demo = SHOW_IMGUI_DEMO
+                .lock()
+                .expect("SHOW_IMGUI_DEMO mutex poisoned");
+            ui.menu_item_config("ImGui Demo")
+                .build_with_ref(&mut show_demo);
+        }
+    }
+
+    let mut show_demo = SHOW_IMGUI_DEMO
+        .lock()
+        .expect("SHOW_IMGUI_DEMO mutex poisoned");
+    if *show_demo {
+        ui.show_demo_window(&mut show_demo);
     }
 }
