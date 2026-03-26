@@ -15,6 +15,15 @@ fn main() {
         // .title("Map Editor")
         .on_setup(load_assets)
         .add_scene(
+            "intro",
+            SceneDescriptor {
+                on_enter: scenes::intro::intro_enter,
+                on_update: Some(scenes::intro::intro_update),
+                on_exit: None,
+                gui_callback: None,
+            },
+        )
+        .add_scene(
             "editor",
             SceneDescriptor {
                 on_enter: scenes::editor::editor_enter,
@@ -23,7 +32,7 @@ fn main() {
                 gui_callback: Some(scenes::editor::editor_gui as GuiCallback),
             },
         )
-        .initial_scene("editor")
+        .initial_scene("intro")
         .run();
 }
 
