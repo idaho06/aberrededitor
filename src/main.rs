@@ -1,13 +1,13 @@
 mod scenes;
 
-use aberredengine::bevy_ecs::prelude::ResMut;
+use aberredengine::bevy_ecs::prelude::{Commands, ResMut};
 use aberredengine::engine_app::EngineBuilder;
 use aberredengine::raylib::prelude::Color;
 use aberredengine::resources::gameconfig::GameConfig;
 use aberredengine::resources::gamestate::{GameStates, NextGameState};
 use aberredengine::resources::texturestore::TextureStore;
+use aberredengine::systems::RaylibAccess;
 use aberredengine::systems::scene_dispatch::{GuiCallback, SceneDescriptor};
-use aberredengine::systems::{GameCtx, RaylibAccess};
 use log::info;
 
 fn main() {
@@ -40,7 +40,7 @@ fn main() {
 }
 
 fn load_assets(
-    mut ctx: GameCtx,
+    mut commands: Commands,
     mut config: ResMut<GameConfig>,
     mut raylib: RaylibAccess,
     mut next_state: ResMut<NextGameState>,
@@ -55,7 +55,7 @@ fn load_assets(
         .load_texture(th, "./assets/textures/aberred_engine_isometric_alpha.png")
         .expect("Failed to load texture");
     texture_store.insert("aberred_engine_isometric_alpha", texture);
-    ctx.commands.insert_resource(texture_store);
+    commands.insert_resource(texture_store);
 
     next_state.set(GameStates::Playing);
 }

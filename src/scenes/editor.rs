@@ -1,14 +1,23 @@
+use aberredengine::imgui;
+use aberredengine::raylib::camera::Camera2D;
+use aberredengine::resources::camera2d::Camera2DRes;
 use aberredengine::resources::input::InputState;
 use aberredengine::resources::worldsignals::WorldSignals;
 use aberredengine::systems::GameCtx;
-use aberredengine::imgui;
 use log::info;
 use std::sync::Mutex;
 
 static SHOW_IMGUI_DEMO: Mutex<bool> = Mutex::new(false);
 
-pub fn editor_enter(_ctx: &mut GameCtx) {
+pub fn editor_enter(ctx: &mut GameCtx) {
     info!("editor_enter: entering editor scene");
+
+    ctx.commands.insert_resource(Camera2DRes(Camera2D {
+        offset: (0.0, 0.0).into(),
+        target: (0.0, 0.0).into(),
+        rotation: 0.0,
+        zoom: 1.0,
+    }));
 }
 
 pub fn editor_update(ctx: &mut GameCtx, _dt: f32, _input: &InputState) {
