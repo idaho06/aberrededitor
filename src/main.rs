@@ -1,10 +1,11 @@
 mod scenes;
 
-use aberredengine::bevy_ecs::prelude::{Commands, ResMut};
+use aberredengine::bevy_ecs::prelude::{Commands, NonSendMut, ResMut};
 use aberredengine::engine_app::EngineBuilder;
 use aberredengine::raylib::prelude::Color;
 use aberredengine::resources::gameconfig::GameConfig;
 use aberredengine::resources::gamestate::{GameStates, NextGameState};
+use aberredengine::resources::shaderstore::ShaderStore;
 use aberredengine::resources::texturestore::TextureStore;
 use aberredengine::systems::RaylibAccess;
 use aberredengine::systems::scene_dispatch::{GuiCallback, SceneDescriptor};
@@ -22,7 +23,7 @@ fn main() {
             SceneDescriptor {
                 on_enter: scenes::intro::intro_enter,
                 on_update: Some(scenes::intro::intro_update),
-                on_exit: None,
+                on_exit: Some(scenes::intro::intro_exit),
                 gui_callback: None,
             },
         )
@@ -39,16 +40,33 @@ fn main() {
         .run();
 }
 
+// This functions is called as a bevy_ecs system during the setup stage of the engine.
+// It's called asynchronously. We use the RaylibAccess resource to load textures, animations, shaders, etc. and we insert them into our custom store resources for later use in our scenes.
+// The first scene does not start until the next game state is set to Playing, so we set that at the end of this function.
 fn load_assets(
     mut commands: Commands,
     mut config: ResMut<GameConfig>,
     mut raylib: RaylibAccess,
     mut next_state: ResMut<NextGameState>,
+    mut shaders: NonSendMut<ShaderStore>,
 ) {
     info!("load_assets: loading editor assets");
     config.background_color = Color::BLACK;
 
     let (rl, th) = (&mut *raylib.rl, &*raylib.th);
+
+    let shader = rl.load_shader(th, None, Some("./assets/shaders/glitch.fs"));
+    if shader.is_shader_valid() {
+        shaders.add("glitch", shader);
+    } else {
+        log::warn!("load_assets: glitch shader failed validation");
+    }
+    let shader = rl.load_shader(th, None, Some("./assets/shaders/fade.fs"));
+    if shader.is_shader_valid() {
+        shaders.add("fade", shader);
+    } else {
+        log::warn!("load_assets: fade shader failed validation");
+    }
 
     let mut texture_store = TextureStore::new();
     let texture = rl
