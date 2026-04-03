@@ -7,6 +7,7 @@ use aberredengine::resources::gameconfig::GameConfig;
 use aberredengine::resources::gamestate::{GameStates, NextGameState};
 use aberredengine::resources::shaderstore::ShaderStore;
 use aberredengine::resources::texturestore::TextureStore;
+use aberredengine::resources::tilemapstore::TilemapStore;
 use aberredengine::systems::RaylibAccess;
 use aberredengine::systems::scene_dispatch::{GuiCallback, SceneDescriptor};
 use log::info;
@@ -18,6 +19,7 @@ fn main() {
         .config("config.ini")
         // .title("Map Editor")
         .on_setup(load_assets)
+        .on_update(scenes::editor::tilemap_load_system)
         .add_scene(
             "intro",
             SceneDescriptor {
@@ -74,6 +76,7 @@ fn load_assets(
         .expect("Failed to load texture");
     texture_store.insert("aberred_engine_isometric_alpha", texture);
     commands.insert_resource(texture_store);
+    commands.insert_resource(TilemapStore::new());
 
     next_state.set(GameStates::Playing);
 }
