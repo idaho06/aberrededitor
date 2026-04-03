@@ -8,9 +8,6 @@ use aberredengine::resources::input::InputState;
 use aberredengine::resources::worldsignals::WorldSignals;
 use aberredengine::systems::GameCtx;
 use log::info;
-use std::sync::Mutex;
-
-static SHOW_IMGUI_DEMO: Mutex<bool> = Mutex::new(false);
 
 pub fn editor_enter(ctx: &mut GameCtx) {
     info!("editor_enter: entering editor scene");
@@ -85,6 +82,8 @@ pub fn editor_update(ctx: &mut GameCtx, dt: f32, input: &InputState) {
 }
 
 pub fn editor_gui(ui: &imgui::Ui, signals: &mut WorldSignals) {
+    let mut open_about = false;
+
     if let Some(_mb) = ui.begin_main_menu_bar() {
         if let Some(_file) = ui.begin_menu("File")
             && ui.menu_item("Save")
@@ -92,19 +91,31 @@ pub fn editor_gui(ui: &imgui::Ui, signals: &mut WorldSignals) {
             signals.set_flag("gui:action:file:save");
         }
 
-        if let Some(_view) = ui.begin_menu("View") {
-            let mut show_demo = SHOW_IMGUI_DEMO
-                .lock()
-                .expect("SHOW_IMGUI_DEMO mutex poisoned");
-            ui.menu_item_config("ImGui Demo")
-                .build_with_ref(&mut show_demo);
+        if let Some(_help) = ui.begin_menu("Help")
+            && ui.menu_item("About")
+        {
+            open_about = true;
         }
     }
 
-    let mut show_demo = SHOW_IMGUI_DEMO
-        .lock()
-        .expect("SHOW_IMGUI_DEMO mutex poisoned");
-    if *show_demo {
-        ui.show_demo_window(&mut show_demo);
+    if open_about {
+        ui.open_popup("About");
     }
+
+    ui.modal_popup_config("About")
+        .always_auto_resize(true)
+        .resizable(false)
+        .movable(false)
+        .build(|| {
+            ui.text(format!(
+                "Aberred Map Editor version {}",
+                env!("CARGO_PKG_VERSION")
+            ));
+            ui.text("By Idaho06 from AkinoSoft!");
+            ui.text("(c) 2026");
+            ui.separator();
+            if ui.button("OK") {
+                ui.close_current_popup();
+            }
+        });
 }
