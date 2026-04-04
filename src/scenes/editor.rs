@@ -7,6 +7,7 @@ use aberredengine::resources::camerafollowconfig::FollowMode;
 use aberredengine::resources::input::InputState;
 use aberredengine::resources::worldsignals::WorldSignals;
 use aberredengine::systems::GameCtx;
+use crate::systems::tilemap_load::LoadTilemapRequested;
 use log::info;
 
 pub fn editor_enter(ctx: &mut GameCtx) {
@@ -46,10 +47,9 @@ pub fn editor_update(ctx: &mut GameCtx, dt: f32, input: &InputState) {
             .add_filter("Tilesetter JSON", &["txt", "json"])
             .pick_file()
         {
-            ctx.world_signals.set_string(
-                "gui:pending:load_tilemap_path",
-                path.display().to_string(),
-            );
+            ctx.commands.trigger(LoadTilemapRequested {
+                path: path.display().to_string(),
+            });
         }
     }
 

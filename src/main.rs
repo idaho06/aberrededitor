@@ -11,7 +11,7 @@ fn main() {
         .config("config.ini")
         // .title("Map Editor")
         .on_setup(systems::load_assets::load_assets)
-        .add_system(systems::tilemap_load::tilemap_load_system)
+        .add_observer(systems::tilemap_load::tilemap_load_observer)
         .add_scene(
             "intro",
             SceneDescriptor {

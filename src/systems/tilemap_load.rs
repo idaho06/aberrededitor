@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
-use aberredengine::bevy_ecs::prelude::{Commands, ResMut};
+use aberredengine::bevy_ecs;
+use aberredengine::bevy_ecs::prelude::{Commands, Event, On, ResMut};
 use aberredengine::components::group::Group;
 use aberredengine::components::mapposition::MapPosition;
 use aberredengine::components::sprite::Sprite;
@@ -8,20 +9,22 @@ use aberredengine::components::zindex::ZIndex;
 use aberredengine::raylib::prelude::Vector2;
 use aberredengine::resources::texturestore::TextureStore;
 use aberredengine::resources::tilemapstore::{Tilemap, TilemapStore};
-use aberredengine::resources::worldsignals::WorldSignals;
 use aberredengine::systems::RaylibAccess;
 use log::{error, info};
 
-pub fn tilemap_load_system(
+#[derive(Event)]
+pub struct LoadTilemapRequested {
+    pub path: String,
+}
+
+pub fn tilemap_load_observer(
+    trigger: On<LoadTilemapRequested>,
     mut commands: Commands,
     mut raylib: RaylibAccess,
-    mut world_signals: ResMut<WorldSignals>,
     mut texture_store: ResMut<TextureStore>,
     mut tilemap_store: ResMut<TilemapStore>,
 ) {
-    let Some(json_path) = world_signals.remove_string("gui:pending:load_tilemap_path") else {
-        return;
-    };
+    let json_path = &trigger.event().path;
 
     let path = std::path::Path::new(&json_path);
     let id = path
@@ -35,14 +38,14 @@ pub fn tilemap_load_system(
     let json_string = match std::fs::read_to_string(path) {
         Ok(s) => s,
         Err(e) => {
-            error!("tilemap_load_system: failed to read '{}': {}", json_path, e);
+            error!("tilemap_load_observer: failed to read '{}': {}", json_path, e);
             return;
         }
     };
     let tilemap: Tilemap = match serde_json::from_str(&json_string) {
         Ok(t) => t,
         Err(e) => {
-            error!("tilemap_load_system: failed to parse tilemap JSON: {}", e);
+            error!("tilemap_load_observer: failed to parse tilemap JSON: {}", e);
             return;
         }
     };
@@ -53,7 +56,7 @@ pub fn tilemap_load_system(
         Ok(t) => t,
         Err(_) => {
             error!(
-                "tilemap_load_system: tileset texture not found at '{}' — skipping load",
+                "tilemap_load_observer: tileset texture not found at '{}' - skipping load",
                 png_path_str
             );
             return;
@@ -97,7 +100,7 @@ pub fn tilemap_load_system(
     }
 
     info!(
-        "tilemap_load_system: loaded tilemap '{}' from '{}'",
+        "tilemap_load_observer: loaded tilemap '{}' from '{}'",
         id, json_path
     );
 }
