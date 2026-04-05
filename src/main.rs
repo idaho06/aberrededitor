@@ -12,6 +12,7 @@ fn main() {
         // .title("Map Editor")
         .on_setup(systems::load_assets::load_assets)
         .add_observer(systems::tilemap_load::tilemap_load_observer)
+        .add_observer(systems::debug_mirror::debug_mode_mirror_observer)
         .add_scene(
             "intro",
             SceneDescriptor {

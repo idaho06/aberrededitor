@@ -7,6 +7,7 @@ use aberredengine::resources::camerafollowconfig::FollowMode;
 use aberredengine::resources::input::InputState;
 use aberredengine::resources::worldsignals::WorldSignals;
 use aberredengine::systems::GameCtx;
+use aberredengine::events::switchdebug::SwitchDebugEvent;
 use crate::systems::tilemap_load::LoadTilemapRequested;
 use log::info;
 
@@ -43,9 +44,7 @@ pub fn editor_update(ctx: &mut GameCtx, dt: f32, input: &InputState) {
 
     if ctx.world_signals.has_flag("gui:action:file:load_tilemap") {
         ctx.world_signals.clear_flag("gui:action:file:load_tilemap");
-        if let Some(path) = rfd::FileDialog::new()
-            .add_filter("Tilesetter JSON", &["txt", "json"])
-            .pick_file()
+        if let Some(path) = rfd::FileDialog::new().pick_folder()
         {
             ctx.commands.trigger(LoadTilemapRequested {
                 path: path.display().to_string(),
@@ -53,9 +52,21 @@ pub fn editor_update(ctx: &mut GameCtx, dt: f32, input: &InputState) {
         }
     }
 
+    if ctx.world_signals.has_flag("gui:action:view:toggle_debug") {
+        ctx.world_signals.clear_flag("gui:action:view:toggle_debug");
+        ctx.commands.trigger(SwitchDebugEvent {});
+    }
+
     let Some(entity) = ctx.world_signals.get_entity("editor:camera").copied() else {
         return;
     };
+
+    if ctx.world_signals.has_flag("gui:action:view:reset_zoom") {
+        ctx.world_signals.clear_flag("gui:action:view:reset_zoom");
+        if let Ok(mut ct) = ctx.camera_targets.get_mut(entity) {
+            ct.zoom = 1.0;
+        }
+    }
 
     // Pan: WASD + arrow keys move the camera target entity
     let mut dx = 0.0_f32;
@@ -104,6 +115,19 @@ pub fn editor_gui(ui: &imgui::Ui, signals: &mut WorldSignals) {
             }
             if ui.menu_item("Save") {
                 signals.set_flag("gui:action:file:save");
+            }
+        }
+
+        if let Some(_view) = ui.begin_menu("View") {
+            if ui.menu_item("Reset Zoom") {
+                signals.set_flag("gui:action:view:reset_zoom");
+            }
+            if ui.menu_item_config("Toggle Debug Mode")
+                .shortcut("F11")
+                .selected(signals.has_flag("ui:debug_active"))
+                .build()
+            {
+                signals.set_flag("gui:action:view:toggle_debug");
             }
         }
 
