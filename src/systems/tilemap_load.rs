@@ -1,5 +1,6 @@
 use aberredengine::bevy_ecs;
 use aberredengine::bevy_ecs::prelude::{Commands, Event, On, ResMut};
+use aberredengine::resources::mapdata::{MapData, TextureEntry, TilemapEntry};
 use aberredengine::resources::texturestore::TextureStore;
 use aberredengine::resources::tilemapstore::TilemapStore;
 use aberredengine::systems::tilemap::{load_tilemap, spawn_tiles};
@@ -17,6 +18,7 @@ pub fn tilemap_load_observer(
     mut raylib: RaylibAccess,
     mut texture_store: ResMut<TextureStore>,
     mut tilemap_store: ResMut<TilemapStore>,
+    mut map_data: ResMut<MapData>,
 ) {
     let dir_path = &trigger.event().path;
     let id = std::path::Path::new(dir_path)
@@ -33,6 +35,19 @@ pub fn tilemap_load_observer(
     texture_store.insert(&id, texture);
     spawn_tiles(&mut commands, &id, tex_width, tex_height, &tilemap);
     tilemap_store.insert(&id, tilemap);
+
+    if !map_data.textures.iter().any(|e| e.key == id) {
+        map_data.textures.push(TextureEntry {
+            key: id.clone(),
+            path: format!("{}/{}.png", dir_path, id),
+        });
+    }
+    if !map_data.tilemaps.iter().any(|e| e.key == id) {
+        map_data.tilemaps.push(TilemapEntry {
+            key: id.clone(),
+            path: dir_path.clone(),
+        });
+    }
 
     info!("tilemap_load_observer: loaded tilemap '{}' from '{}'", id, dir_path);
 }

@@ -2,6 +2,7 @@ use aberredengine::bevy_ecs::prelude::{Commands, NonSendMut, ResMut};
 use aberredengine::raylib::prelude::Color;
 use aberredengine::resources::gameconfig::GameConfig;
 use aberredengine::resources::gamestate::{GameStates, NextGameState};
+use aberredengine::resources::mapdata::MapData;
 use aberredengine::resources::shaderstore::ShaderStore;
 use aberredengine::resources::texturestore::TextureStore;
 use aberredengine::resources::tilemapstore::TilemapStore;
@@ -43,6 +44,7 @@ pub fn load_assets(
     texture_store.insert("aberred_engine_isometric_alpha", texture);
     commands.insert_resource(texture_store);
     commands.insert_resource(TilemapStore::new());
+    commands.insert_resource(MapData::default());
 
     next_state.set(GameStates::Playing);
 }

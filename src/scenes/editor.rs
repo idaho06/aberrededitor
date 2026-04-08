@@ -1,5 +1,6 @@
 use aberredengine::components::cameratarget::CameraTarget;
 use aberredengine::components::mapposition::MapPosition;
+use aberredengine::events::switchdebug::SwitchDebugEvent;
 use aberredengine::imgui;
 use aberredengine::raylib::camera::Camera2D;
 use aberredengine::resources::camera2d::Camera2DRes;
@@ -7,7 +8,7 @@ use aberredengine::resources::camerafollowconfig::FollowMode;
 use aberredengine::resources::input::InputState;
 use aberredengine::resources::worldsignals::WorldSignals;
 use aberredengine::systems::GameCtx;
-use aberredengine::events::switchdebug::SwitchDebugEvent;
+use crate::systems::map_ops::{LoadMapRequested, NewMapRequested, SaveMapRequested};
 use crate::systems::tilemap_load::LoadTilemapRequested;
 use log::info;
 
@@ -36,24 +37,49 @@ pub fn editor_enter(ctx: &mut GameCtx) {
 }
 
 pub fn editor_update(ctx: &mut GameCtx, dt: f32, input: &InputState) {
-    if ctx.world_signals.has_flag("gui:action:file:save") {
-        ctx.world_signals.clear_flag("gui:action:file:save");
-        info!("editor_update: save requested");
-        // handle save
+    if ctx.world_signals.take_flag("gui:action:file:new_map") {
+        ctx.commands.trigger(NewMapRequested);
     }
 
-    if ctx.world_signals.has_flag("gui:action:file:load_tilemap") {
-        ctx.world_signals.clear_flag("gui:action:file:load_tilemap");
-        if let Some(path) = rfd::FileDialog::new().pick_folder()
+    if ctx.world_signals.take_flag("gui:action:file:open_map")
+        && let Some(path) = rfd::FileDialog::new().add_filter("Map", &["json"]).pick_file()
+    {
+        let path = path.display().to_string();
+        ctx.world_signals.set_string("map:current_path", path.clone());
+        ctx.commands.trigger(LoadMapRequested { path });
+    }
+
+    if ctx.world_signals.take_flag("gui:action:file:save") {
+        if let Some(path) = ctx
+            .world_signals
+            .get_string("map:current_path")
+            .map(|s| s.to_owned())
         {
-            ctx.commands.trigger(LoadTilemapRequested {
-                path: path.display().to_string(),
-            });
+            ctx.commands.trigger(SaveMapRequested { path });
+        } else {
+            ctx.world_signals.set_flag("gui:action:file:save_as");
         }
     }
 
-    if ctx.world_signals.has_flag("gui:action:view:toggle_debug") {
-        ctx.world_signals.clear_flag("gui:action:view:toggle_debug");
+    if ctx.world_signals.take_flag("gui:action:file:save_as")
+        && let Some(path) = rfd::FileDialog::new()
+            .add_filter("Map", &["json"])
+            .save_file()
+    {
+        let path = path.display().to_string();
+        ctx.world_signals.set_string("map:current_path", path.clone());
+        ctx.commands.trigger(SaveMapRequested { path });
+    }
+
+    if ctx.world_signals.take_flag("gui:action:file:load_tilemap")
+        && let Some(path) = rfd::FileDialog::new().pick_folder()
+    {
+        ctx.commands.trigger(LoadTilemapRequested {
+            path: path.display().to_string(),
+        });
+    }
+
+    if ctx.world_signals.take_flag("gui:action:view:toggle_debug") {
         ctx.commands.trigger(SwitchDebugEvent {});
     }
 
@@ -61,11 +87,10 @@ pub fn editor_update(ctx: &mut GameCtx, dt: f32, input: &InputState) {
         return;
     };
 
-    if ctx.world_signals.has_flag("gui:action:view:reset_zoom") {
-        ctx.world_signals.clear_flag("gui:action:view:reset_zoom");
-        if let Ok(mut ct) = ctx.camera_targets.get_mut(entity) {
-            ct.zoom = 1.0;
-        }
+    if ctx.world_signals.take_flag("gui:action:view:reset_zoom")
+        && let Ok(mut ct) = ctx.camera_targets.get_mut(entity)
+    {
+        ct.zoom = 1.0;
     }
 
     // Pan: WASD + arrow keys move the camera target entity
@@ -110,11 +135,22 @@ pub fn editor_gui(ui: &imgui::Ui, signals: &mut WorldSignals) {
 
     if let Some(_mb) = ui.begin_main_menu_bar() {
         if let Some(_file) = ui.begin_menu("File") {
-            if ui.menu_item("Load Tilesetter map...") {
+            if ui.menu_item("New Map") {
+                signals.set_flag("gui:action:file:new_map");
+            }
+            if ui.menu_item("Open Map...") {
+                signals.set_flag("gui:action:file:open_map");
+            }
+            ui.separator();
+            if ui.menu_item("Add Tilemap...") {
                 signals.set_flag("gui:action:file:load_tilemap");
             }
-            if ui.menu_item("Save") {
+            ui.separator();
+            if ui.menu_item("Save Map") {
                 signals.set_flag("gui:action:file:save");
+            }
+            if ui.menu_item("Save Map As...") {
+                signals.set_flag("gui:action:file:save_as");
             }
         }
 
