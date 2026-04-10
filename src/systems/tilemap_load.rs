@@ -7,6 +7,8 @@ use aberredengine::systems::tilemap::{load_tilemap, spawn_tiles};
 use aberredengine::systems::RaylibAccess;
 use log::info;
 
+use crate::systems::utils::to_relative;
+
 #[derive(Event)]
 pub struct LoadTilemapRequested {
     pub path: String,
@@ -33,13 +35,15 @@ pub fn tilemap_load_observer(
     let tex_width = texture.width;
     let tex_height = texture.height;
     texture_store.insert(&id, texture);
+    let tex_path = to_relative(&format!("{}/{}.png", dir_path, id));
+    texture_store.paths.insert(id.clone(), tex_path.clone());
     spawn_tiles(&mut commands, &id, tex_width, tex_height, &tilemap);
     tilemap_store.insert(&id, tilemap);
 
     if !map_data.textures.iter().any(|e| e.key == id) {
         map_data.textures.push(TextureEntry {
             key: id.clone(),
-            path: format!("{}/{}.png", dir_path, id),
+            path: tex_path,
         });
     }
     if !map_data.tilemaps.iter().any(|e| e.key == id) {
