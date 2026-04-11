@@ -5,6 +5,7 @@ use aberredengine::events::spawnmap::SpawnMapRequested;
 use aberredengine::resources::mapdata::{load_map, save_map, MapData, TextureEntry};
 use aberredengine::resources::texturestore::TextureStore;
 use aberredengine::resources::tilemapstore::TilemapStore;
+use aberredengine::resources::worldsignals::WorldSignals;
 use aberredengine::systems::RaylibAccess;
 use log::{info, warn};
 
@@ -172,4 +173,27 @@ pub fn remove_texture_observer(
     texture_store.paths.remove(key.as_str());
     map_data.textures.retain(|e| e.key != *key);
     info!("remove_texture_observer: removed '{}'", key);
+}
+
+// ---------------------------------------------------------------------------
+// Map data preview
+// ---------------------------------------------------------------------------
+
+#[derive(Event)]
+pub struct PreviewMapDataRequested;
+
+pub fn preview_mapdata_observer(
+    _trigger: On<PreviewMapDataRequested>,
+    map_data: Res<MapData>,
+    mut world_signals: ResMut<WorldSignals>,
+) {
+    match serde_json::to_string_pretty(&*map_data) {
+        Ok(json) => {
+            world_signals.set_string("gui:mapdata_preview_json", json.as_str());
+            world_signals.set_flag("gui:view:preview_mapdata_open");
+        }
+        Err(e) => {
+            warn!("preview_mapdata_observer: serialization failed: {}", e);
+        }
+    }
 }

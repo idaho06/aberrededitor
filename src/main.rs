@@ -18,6 +18,7 @@ fn main() {
         .add_observer(systems::map_ops::add_texture_observer)
         .add_observer(systems::map_ops::rename_texture_key_observer)
         .add_observer(systems::map_ops::remove_texture_observer)
+        .add_observer(systems::map_ops::preview_mapdata_observer)
         .add_observer(systems::debug_mirror::debug_mode_mirror_observer)
         .add_scene(
             "intro",

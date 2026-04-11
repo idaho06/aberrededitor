@@ -10,8 +10,8 @@ use aberredengine::resources::texturestore::TextureStore;
 use aberredengine::resources::worldsignals::WorldSignals;
 use aberredengine::systems::GameCtx;
 use crate::systems::map_ops::{
-    AddTextureRequested, LoadMapRequested, NewMapRequested, RemoveTextureRequested,
-    RenameTextureKeyRequested, SaveMapRequested,
+    AddTextureRequested, LoadMapRequested, NewMapRequested, PreviewMapDataRequested,
+    RemoveTextureRequested, RenameTextureKeyRequested, SaveMapRequested,
 };
 use crate::systems::tilemap_load::LoadTilemapRequested;
 use log::info;
@@ -129,6 +129,10 @@ pub fn editor_update(ctx: &mut GameCtx, dt: f32, input: &InputState) {
         ctx.commands.trigger(SwitchDebugEvent {});
     }
 
+    if ctx.world_signals.take_flag("gui:action:view:preview_mapdata") {
+        ctx.commands.trigger(PreviewMapDataRequested);
+    }
+
     let Some(entity) = ctx.world_signals.get_entity("editor:camera").copied() else {
         return;
     };
@@ -222,6 +226,17 @@ pub fn editor_gui(ui: &imgui::Ui, signals: &mut WorldSignals, textures: &Texture
                     signals.take_flag("ui:texture_editor:open");
                 } else {
                     signals.set_flag("ui:texture_editor:open");
+                }
+            }
+            let preview_open = signals.has_flag("gui:view:preview_mapdata_open");
+            if ui.menu_item_config("Preview Map Data")
+                .selected(preview_open)
+                .build()
+            {
+                if preview_open {
+                    signals.take_flag("gui:view:preview_mapdata_open");
+                } else {
+                    signals.set_flag("gui:action:view:preview_mapdata");
                 }
             }
         }
@@ -325,6 +340,31 @@ pub fn editor_gui(ui: &imgui::Ui, signals: &mut WorldSignals, textures: &Texture
 
         if !window_open {
             signals.take_flag("ui:texture_editor:open");
+        }
+    }
+
+    // ---- Map Data Preview window ----
+
+    if signals.has_flag("gui:view:preview_mapdata_open") {
+        let mut window_open = true;
+        ui.window("Map Data Preview")
+            .size([600.0, 500.0], imgui::Condition::FirstUseEver)
+            .opened(&mut window_open)
+            .build(|| {
+                if ui.button("Refresh") {
+                    signals.set_flag("gui:action:view:preview_mapdata");
+                }
+                ui.separator();
+                let mut json = signals
+                    .get_string("gui:mapdata_preview_json")
+                    .cloned()
+                    .unwrap_or_default();
+                ui.input_text_multiline("##mapdata_json", &mut json, [-1.0, -1.0])
+                    .read_only(true)
+                    .build();
+            });
+        if !window_open {
+            signals.take_flag("gui:view:preview_mapdata_open");
         }
     }
 
