@@ -163,10 +163,18 @@ pub fn entity_pick_observer(
     world_signals.set_string(sig::ES_PAYLOAD, payload_str.as_str());
     world_signals.set_flag(sig::UI_ENTITY_SELECTOR_OPEN);
 
-    // Empty click — clear active selection and outline
+    // Empty click — clear active selection and outline; otherwise auto-select topmost
     if cache.hits.is_empty() {
         world_signals.remove_entity(sig::ES_SELECTED_ENTITY);
         world_signals.remove_string(sig::ES_SELECTION_CORNERS);
+        world_signals.remove_string(sig::ES_SELECTED_LABEL);
+    } else {
+        // Auto-select the topmost entity (index 0, sorted by ZIndex desc)
+        world_signals.set_entity(sig::ES_SELECTED_ENTITY, cache.hits[0]);
+        world_signals.set_string(sig::ES_SELECTED_LABEL, &cache.labels[0]);
+        if let Ok(json) = serde_json::to_string(&cache.corner_sets[0]) {
+            world_signals.set_string(sig::ES_SELECTION_CORNERS, &json);
+        }
     }
 }
 
