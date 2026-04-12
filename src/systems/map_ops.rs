@@ -1,3 +1,4 @@
+use crate::signals as sig;
 use aberredengine::bevy_ecs;
 use aberredengine::bevy_ecs::prelude::{Commands, Entity, Event, On, Query, Res, ResMut};
 use aberredengine::components::group::Group;
@@ -10,6 +11,14 @@ use aberredengine::systems::RaylibAccess;
 use log::{info, warn};
 
 use crate::systems::entity_selector::{clear_selector_state, EntitySelectorCache};
+use crate::systems::utils::to_relative;
+
+const GROUP_TILES: &str = "tiles";
+const GROUP_TILES_TEMPLATES: &str = "tiles-templates";
+
+// ---------------------------------------------------------------------------
+// Map lifecycle events
+// ---------------------------------------------------------------------------
 
 #[derive(Event)]
 pub struct NewMapRequested;
@@ -32,10 +41,14 @@ pub fn new_map_observer(
     mut world_signals: ResMut<WorldSignals>,
     mut selector_cache: ResMut<EntitySelectorCache>,
 ) {
-    clear_map_entities(&mut commands, &groups);
-    tilemap_store.clear();
-    commands.insert_resource(MapData::default());
-    clear_selector_state(&mut world_signals, &mut selector_cache);
+    reset_editor_map(
+        &mut commands,
+        &groups,
+        &mut tilemap_store,
+        &mut world_signals,
+        &mut selector_cache,
+        MapData::default(),
+    );
     info!("new_map_observer: cleared map");
 }
 
@@ -55,18 +68,19 @@ pub fn load_map_observer(
             return;
         }
     };
-    clear_map_entities(&mut commands, &groups);
-    tilemap_store.clear();
-    commands.insert_resource(map.clone());
+    reset_editor_map(
+        &mut commands,
+        &groups,
+        &mut tilemap_store,
+        &mut world_signals,
+        &mut selector_cache,
+        map.clone(),
+    );
     commands.trigger(SpawnMapRequested { map });
-    clear_selector_state(&mut world_signals, &mut selector_cache);
     info!("load_map_observer: loaded map from '{}'", path);
 }
 
-pub fn save_map_observer(
-    trigger: On<SaveMapRequested>,
-    map_data: Res<MapData>,
-) {
+pub fn save_map_observer(trigger: On<SaveMapRequested>, map_data: Res<MapData>) {
     let path = &trigger.event().path;
     if let Err(e) = save_map(path, &map_data) {
         warn!("save_map_observer: failed to save '{}': {}", path, e);
@@ -75,9 +89,25 @@ pub fn save_map_observer(
     }
 }
 
+/// Clears tile entities, resets tilemap store, inserts fresh map data, and
+/// clears entity selector state. Called by both new-map and load-map paths.
+fn reset_editor_map(
+    commands: &mut Commands,
+    groups: &Query<(Entity, &Group)>,
+    tilemap_store: &mut TilemapStore,
+    world_signals: &mut WorldSignals,
+    selector_cache: &mut EntitySelectorCache,
+    map_data: MapData,
+) {
+    clear_map_entities(commands, groups);
+    tilemap_store.clear();
+    commands.insert_resource(map_data);
+    clear_selector_state(world_signals, selector_cache);
+}
+
 fn clear_map_entities(commands: &mut Commands, groups: &Query<(Entity, &Group)>) {
     for (entity, group) in groups.iter() {
-        if group.name() == "tiles" || group.name() == "tiles-templates" {
+        if group.name() == GROUP_TILES || group.name() == GROUP_TILES_TEMPLATES {
             commands.entity(entity).despawn();
         }
     }
@@ -104,24 +134,22 @@ pub struct RemoveTextureRequested {
     pub key: String,
 }
 
-use crate::systems::utils::to_relative;
-
 pub fn add_texture_observer(
     trigger: On<AddTextureRequested>,
     mut raylib: RaylibAccess,
     mut texture_store: ResMut<TextureStore>,
     mut map_data: ResMut<MapData>,
 ) {
-    let key = trigger.event().key.clone();
-    let path = trigger.event().path.clone();
+    let key = &trigger.event().key;
+    let path = &trigger.event().path;
     let (rl, th) = (&mut *raylib.rl, &*raylib.th);
-    match rl.load_texture(th, &path) {
+    match rl.load_texture(th, path) {
         Ok(texture) => {
-            let rel_path = to_relative(&path);
+            let rel_path = to_relative(path);
             info!("add_texture_observer: added '{}' from '{}'", key, rel_path);
-            texture_store.insert(&key, texture);
+            texture_store.insert(key, texture);
             texture_store.paths.insert(key.clone(), rel_path.clone());
-            if !map_data.textures.iter().any(|e| e.key == key) {
+            if !map_data.textures.iter().any(|e| e.key == *key) {
                 map_data.textures.push(TextureEntry { key: key.clone(), path: rel_path });
             }
         }
@@ -197,8 +225,8 @@ pub fn preview_mapdata_observer(
 ) {
     match serde_json::to_string_pretty(&*map_data) {
         Ok(json) => {
-            world_signals.set_string("gui:mapdata_preview_json", json.as_str());
-            world_signals.set_flag("gui:view:preview_mapdata_open");
+            world_signals.set_string(sig::MAPDATA_PREVIEW_JSON, json.as_str());
+            world_signals.set_flag(sig::UI_PREVIEW_MAPDATA_OPEN);
         }
         Err(e) => {
             warn!("preview_mapdata_observer: serialization failed: {}", e);

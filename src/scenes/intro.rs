@@ -13,6 +13,11 @@ use aberredengine::systems::GameCtx;
 use log::info;
 use rustc_hash::FxHashMap;
 
+const PHASE_DURATION: f32 = 1.5;
+const GLITCH_RATE: f32 = 0.1; // uglitch units per second during "medium" phase
+const FADE_RATE: f32 = 0.7;   // fade alpha units per second during "fadeout" phase
+const FADE_THRESHOLD: f32 = 1.1; // alpha at which we switch to the editor
+
 fn shader_control_phases() -> FxHashMap<String, PhaseCallbackFns> {
     let mut phases = FxHashMap::default();
     phases.insert(
@@ -99,7 +104,7 @@ pub fn shader_control_start(
     let uglitch = entity_signals.get_scalar("uglitch").unwrap_or(0.0);
     ctx.post_process
         .set_uniform("uGlitch", UniformValue::Float(uglitch));
-    if phase_time > 1.5 {
+    if phase_time > PHASE_DURATION {
         entity_signals.set_scalar("phase_time", 0.0);
         entity_signals.set_scalar("uglitch", uglitch);
         return Some("medium".into());
@@ -116,11 +121,11 @@ pub fn shader_control_medium(
     let mut entity_signals = ctx.signals.get_mut(entity).ok()?;
     let phase_time = entity_signals.get_scalar("phase_time").unwrap_or(0.0) + dt;
     entity_signals.set_scalar("phase_time", phase_time);
-    let uglitch = entity_signals.get_scalar("uglitch").unwrap_or(0.0) + dt * 0.1; // increase uglitch over time
+    let uglitch = entity_signals.get_scalar("uglitch").unwrap_or(0.0) + dt * GLITCH_RATE;
     entity_signals.set_scalar("uglitch", uglitch);
     ctx.post_process
         .set_uniform("uGlitch", UniformValue::Float(uglitch));
-    if phase_time > 1.5 {
+    if phase_time > PHASE_DURATION {
         entity_signals.set_scalar("phase_time", 0.0);
         entity_signals.set_scalar("uglitch", uglitch);
         return Some("fadeout".into());
@@ -137,7 +142,7 @@ pub fn shader_control_fadeout(
     let mut entity_signals = ctx.signals.get_mut(entity).ok()?;
     let phase_time = entity_signals.get_scalar("phase_time").unwrap_or(0.0) + dt;
     entity_signals.set_scalar("phase_time", phase_time);
-    let fade = entity_signals.get_scalar("fade").unwrap_or(0.0) + dt * 0.7; // increase fade over time
+    let fade = entity_signals.get_scalar("fade").unwrap_or(0.0) + dt * FADE_RATE;
     entity_signals.set_scalar("fade", fade);
     ctx.post_process.set_uniform(
         "fadeColor",
@@ -148,7 +153,7 @@ pub fn shader_control_fadeout(
             w: fade,
         },
     );
-    if fade > 1.1 {
+    if fade > FADE_THRESHOLD {
         // switch to editor scene after fadeout
         ctx.world_signals.set_string("scene", "editor");
         ctx.world_signals.set_flag("switch_scene");
@@ -157,9 +162,6 @@ pub fn shader_control_fadeout(
 }
 
 pub fn intro_update(ctx: &mut GameCtx, _dt: f32, input: &InputState) {
-    // ctx.post_process
-    //     .set_uniform("uGlitch", UniformValue::Float(0.0));
-
     // if the user presses any action button, switch to the editor scene
     if input.action_1.active
         || input.action_2.active

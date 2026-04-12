@@ -1,3 +1,4 @@
+use crate::signals as sig;
 use aberredengine::bevy_ecs::observer::On;
 use aberredengine::bevy_ecs::prelude::*;
 use aberredengine::events::switchdebug::SwitchDebugEvent;
@@ -16,8 +17,8 @@ pub fn debug_mode_mirror_observer(
     mut world_signals: ResMut<WorldSignals>,
 ) {
     if debug_mode.is_some() {
-        world_signals.clear_flag("ui:debug_active");
+        world_signals.clear_flag(sig::UI_DEBUG_ACTIVE);
     } else {
-        world_signals.set_flag("ui:debug_active");
+        world_signals.set_flag(sig::UI_DEBUG_ACTIVE);
     }
 }

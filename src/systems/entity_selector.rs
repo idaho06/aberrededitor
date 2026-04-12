@@ -1,3 +1,4 @@
+use crate::signals as sig;
 use aberredengine::bevy_ecs;
 use aberredengine::bevy_ecs::prelude::{Entity, Event, On, Query, Res, ResMut, Resource};
 use aberredengine::components::boxcollider::BoxCollider;
@@ -48,6 +49,32 @@ pub struct EntitySelectorCache {
 }
 
 // ---------------------------------------------------------------------------
+// Pick observer — internal types
+// ---------------------------------------------------------------------------
+
+struct HitEntry {
+    entity: Entity,
+    label: String,
+    zindex: f32,
+    corners: [[f32; 2]; 4],
+}
+
+/// Serialized form of a single pick hit sent to the GUI via WorldSignals.
+#[derive(serde::Serialize)]
+struct HitPayloadEntry {
+    entity_bits: u64,
+    label: String,
+    zindex: f32,
+}
+
+/// Top-level JSON payload written to `ES_PAYLOAD` after each pick.
+#[derive(serde::Serialize)]
+struct HitPayload {
+    click: [f32; 2],
+    hits: Vec<HitPayloadEntry>,
+}
+
+// ---------------------------------------------------------------------------
 // Pick observer
 // ---------------------------------------------------------------------------
 
@@ -70,21 +97,13 @@ pub fn entity_pick_observer(
 ) {
     let click_x = trigger.event().x;
     let click_y = trigger.event().y;
-    let click = Vector2 {
-        x: click_x,
-        y: click_y,
-    };
-
-    struct HitEntry {
-        entity: Entity,
-        label: String,
-        zindex: f32,
-        corners: [[f32; 2]; 4],
-    }
+    let click = Vector2 { x: click_x, y: click_y };
 
     let mut hits: Vec<HitEntry> = Vec::new();
 
-    for (entity, pos, maybe_collider, maybe_sprite, maybe_rot, maybe_scale, maybe_zindex, maybe_gt, maybe_group) in query.iter() {
+    for (entity, pos, maybe_collider, maybe_sprite, maybe_rot, maybe_scale, maybe_zindex, maybe_gt, maybe_group)
+        in query.iter()
+    {
         let (resolved_pos, resolved_scale, resolved_rot) =
             resolve_world_transform(*pos, maybe_scale.copied(), maybe_rot.copied(), maybe_gt.copied());
 
@@ -128,33 +147,26 @@ pub fn entity_pick_observer(
     cache.corner_sets = hits.iter().map(|h| h.corners).collect();
     cache.click_pos = (click_x, click_y);
 
-    // Build JSON payload
-    let hits_json: Vec<String> = hits
-        .iter()
-        .map(|h| {
-            format!(
-                r#"{{"entity_bits":{},"label":{},"zindex":{}}}"#,
-                h.entity.to_bits(),
-                serde_json::to_string(&h.label).unwrap_or_else(|_| "\"?\"".into()),
-                h.zindex
-            )
-        })
-        .collect();
-
-    let payload = format!(
-        r#"{{"click":[{},{}],"hits":[{}]}}"#,
-        click_x,
-        click_y,
-        hits_json.join(",")
-    );
-
-    world_signals.set_string("gui:entity_selector:payload", payload.as_str());
-    world_signals.set_flag("ui:entity_selector:open");
+    // Build and publish JSON payload
+    let payload = HitPayload {
+        click: [click_x, click_y],
+        hits: hits
+            .iter()
+            .map(|h| HitPayloadEntry {
+                entity_bits: h.entity.to_bits(),
+                label: h.label.clone(),
+                zindex: h.zindex,
+            })
+            .collect(),
+    };
+    let payload_str = serde_json::to_string(&payload).unwrap_or_default();
+    world_signals.set_string(sig::ES_PAYLOAD, payload_str.as_str());
+    world_signals.set_flag(sig::UI_ENTITY_SELECTOR_OPEN);
 
     // Empty click — clear active selection and outline
     if cache.hits.is_empty() {
-        world_signals.remove_entity("editor:selected_entity");
-        world_signals.remove_string("gui:entity_selector:selection_corners");
+        world_signals.remove_entity(sig::ES_SELECTED_ENTITY);
+        world_signals.remove_string(sig::ES_SELECTION_CORNERS);
     }
 }
 
@@ -169,14 +181,14 @@ pub fn select_entity_observer(
 ) {
     let index = trigger.event().index;
     if let Some(&entity) = cache.hits.get(index) {
-        world_signals.set_entity("editor:selected_entity", entity);
+        world_signals.set_entity(sig::ES_SELECTED_ENTITY, entity);
         if let Some(label) = cache.labels.get(index) {
-            world_signals.set_string("gui:entity_selector:selected_label", label.as_str());
+            world_signals.set_string(sig::ES_SELECTED_LABEL, label.as_str());
         }
         if let Some(corners) = cache.corner_sets.get(index)
             && let Ok(json) = serde_json::to_string(corners)
         {
-            world_signals.set_string("gui:entity_selector:selection_corners", &json);
+            world_signals.set_string(sig::ES_SELECTION_CORNERS, &json);
         }
     } else {
         warn!(
@@ -285,16 +297,16 @@ fn point_in_sprite(
 }
 
 // ---------------------------------------------------------------------------
-// Lifecycle cleanup helper
+// Lifecycle cleanup helpers
 // ---------------------------------------------------------------------------
 
 /// Clear the WorldSignals keys owned by the entity selector.
 /// Use this when only the signals need clearing but the cache is not accessible.
 pub fn clear_selector_signals(world_signals: &mut WorldSignals) {
-    world_signals.remove_string("gui:entity_selector:payload");
-    world_signals.remove_string("gui:entity_selector:selected_label");
-    world_signals.remove_string("gui:entity_selector:selection_corners");
-    world_signals.remove_entity("editor:selected_entity");
+    world_signals.remove_string(sig::ES_PAYLOAD);
+    world_signals.remove_string(sig::ES_SELECTED_LABEL);
+    world_signals.remove_string(sig::ES_SELECTION_CORNERS);
+    world_signals.remove_entity(sig::ES_SELECTED_ENTITY);
 }
 
 /// Clear all entity selector state from WorldSignals and the cache resource.

@@ -1,4 +1,5 @@
 mod scenes;
+mod signals;
 mod systems;
 
 use aberredengine::engine_app::EngineBuilder;
