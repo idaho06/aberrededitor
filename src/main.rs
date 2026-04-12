@@ -20,6 +20,9 @@ fn main() {
         .add_observer(systems::map_ops::remove_texture_observer)
         .add_observer(systems::map_ops::preview_mapdata_observer)
         .add_observer(systems::debug_mirror::debug_mode_mirror_observer)
+        .add_observer(systems::entity_selector::entity_pick_observer)
+        .add_observer(systems::entity_selector::select_entity_observer)
+        .add_system(systems::camera_sync::editor_camera_sync_system)
         .add_scene(
             "intro",
             SceneDescriptor {
@@ -34,7 +37,7 @@ fn main() {
             SceneDescriptor {
                 on_enter: scenes::editor::editor_enter,
                 on_update: Some(scenes::editor::editor_update),
-                on_exit: None,
+                on_exit: Some(scenes::editor::editor_exit),
                 gui_callback: Some(scenes::editor::editor_gui as GuiCallback),
             },
         )

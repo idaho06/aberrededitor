@@ -9,6 +9,8 @@ use aberredengine::resources::worldsignals::WorldSignals;
 use aberredengine::systems::RaylibAccess;
 use log::{info, warn};
 
+use crate::systems::entity_selector::{clear_selector_state, EntitySelectorCache};
+
 #[derive(Event)]
 pub struct NewMapRequested;
 
@@ -27,10 +29,13 @@ pub fn new_map_observer(
     mut commands: Commands,
     groups: Query<(Entity, &Group)>,
     mut tilemap_store: ResMut<TilemapStore>,
+    mut world_signals: ResMut<WorldSignals>,
+    mut selector_cache: ResMut<EntitySelectorCache>,
 ) {
     clear_map_entities(&mut commands, &groups);
     tilemap_store.clear();
     commands.insert_resource(MapData::default());
+    clear_selector_state(&mut world_signals, &mut selector_cache);
     info!("new_map_observer: cleared map");
 }
 
@@ -39,6 +44,8 @@ pub fn load_map_observer(
     mut commands: Commands,
     groups: Query<(Entity, &Group)>,
     mut tilemap_store: ResMut<TilemapStore>,
+    mut world_signals: ResMut<WorldSignals>,
+    mut selector_cache: ResMut<EntitySelectorCache>,
 ) {
     let path = &trigger.event().path;
     let map = match load_map(path) {
@@ -52,6 +59,7 @@ pub fn load_map_observer(
     tilemap_store.clear();
     commands.insert_resource(map.clone());
     commands.trigger(SpawnMapRequested { map });
+    clear_selector_state(&mut world_signals, &mut selector_cache);
     info!("load_map_observer: loaded map from '{}'", path);
 }
 

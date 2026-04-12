@@ -1,4 +1,5 @@
 use aberredengine::bevy_ecs::prelude::{Commands, NonSendMut, ResMut};
+use crate::systems::entity_selector::EntitySelectorCache;
 use aberredengine::raylib::prelude::Color;
 use aberredengine::resources::gameconfig::GameConfig;
 use aberredengine::resources::gamestate::{GameStates, NextGameState};
@@ -45,6 +46,7 @@ pub fn load_assets(
     commands.insert_resource(texture_store);
     commands.insert_resource(TilemapStore::new());
     commands.insert_resource(MapData::default());
+    commands.insert_resource(EntitySelectorCache::default());
 
     next_state.set(GameStates::Playing);
 }

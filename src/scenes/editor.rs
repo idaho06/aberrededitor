@@ -1,14 +1,18 @@
 use aberredengine::components::cameratarget::CameraTarget;
 use aberredengine::components::mapposition::MapPosition;
+use aberredengine::events::input::InputAction;
 use aberredengine::events::switchdebug::SwitchDebugEvent;
 use aberredengine::imgui;
 use aberredengine::raylib::camera::Camera2D;
+use aberredengine::raylib::ffi::{KeyboardKey, MouseButton};
 use aberredengine::resources::camera2d::Camera2DRes;
 use aberredengine::resources::camerafollowconfig::FollowMode;
 use aberredengine::resources::input::InputState;
+use aberredengine::resources::input_bindings::InputBinding;
 use aberredengine::resources::texturestore::TextureStore;
 use aberredengine::resources::worldsignals::WorldSignals;
 use aberredengine::systems::GameCtx;
+use crate::systems::entity_selector::{clear_selector_signals, PickEntitiesAtPointRequested, SelectEntityRequested};
 use crate::systems::map_ops::{
     AddTextureRequested, LoadMapRequested, NewMapRequested, PreviewMapDataRequested,
     RemoveTextureRequested, RenameTextureKeyRequested, SaveMapRequested,
@@ -38,9 +42,43 @@ pub fn editor_enter(ctx: &mut GameCtx) {
     ctx.camera_follow.enabled = true;
     ctx.camera_follow.mode = FollowMode::Instant;
     ctx.camera_follow.zoom_lerp_speed = 10.0;
+
+    // Rebind Action1 to mouse-left only so Space doesn't trigger entity picking
+    ctx.input_bindings.rebind(
+        InputAction::Action1,
+        InputBinding::MouseButton(MouseButton::MOUSE_BUTTON_LEFT),
+    );
+}
+
+pub fn editor_exit(ctx: &mut GameCtx) {
+    info!("editor_exit: leaving editor scene");
+
+    // Restore default Action1 bindings (Space + MouseLeft)
+    ctx.input_bindings
+        .rebind(InputAction::Action1, InputBinding::Keyboard(KeyboardKey::KEY_SPACE));
+    ctx.input_bindings
+        .add_binding(InputAction::Action1, InputBinding::MouseButton(MouseButton::MOUSE_BUTTON_LEFT));
+
+    clear_selector_signals(&mut ctx.world_signals);
+    ctx.world_signals.clear_flag("imgui:wants_mouse");
 }
 
 pub fn editor_update(ctx: &mut GameCtx, dt: f32, input: &InputState) {
+    // Entity picking — left mouse click (Action1 rebound to mouse-only in editor_enter).
+    // Suppressed when ImGui captured the mouse last frame to prevent clicks on UI widgets
+    // from triggering world picks.
+    if input.action_1.just_pressed && !ctx.world_signals.has_flag("imgui:wants_mouse") {
+        ctx.commands.trigger(PickEntitiesAtPointRequested {
+            x: input.mouse_world_x,
+            y: input.mouse_world_y,
+        });
+    }
+
+    // Resolve entity selection from GUI row click
+    if let Some(row) = ctx.world_signals.clear_integer("gui:entity_selector:selected_row") {
+        ctx.commands.trigger(SelectEntityRequested { index: row as usize });
+    }
+
     if ctx.world_signals.take_flag("gui:action:file:new_map") {
         ctx.commands.trigger(NewMapRequested);
     }
@@ -181,6 +219,13 @@ pub fn editor_update(ctx: &mut GameCtx, dt: f32, input: &InputState) {
 }
 
 pub fn editor_gui(ui: &imgui::Ui, signals: &mut WorldSignals, textures: &TextureStore) {
+    // Publish ImGui mouse-capture state so editor_update can suppress world picks next frame.
+    if ui.io().want_capture_mouse {
+        signals.set_flag("imgui:wants_mouse");
+    } else {
+        signals.clear_flag("imgui:wants_mouse");
+    }
+
     let mut open_about = false;
     let mut open_rename_popup = false;
     let mut open_remove_popup = false;
@@ -222,11 +267,13 @@ pub fn editor_gui(ui: &imgui::Ui, signals: &mut WorldSignals, textures: &Texture
                 .selected(signals.has_flag("ui:texture_editor:open"))
                 .build()
             {
-                if signals.has_flag("ui:texture_editor:open") {
-                    signals.take_flag("ui:texture_editor:open");
-                } else {
-                    signals.set_flag("ui:texture_editor:open");
-                }
+                signals.toggle_flag("ui:texture_editor:open");
+            }
+            if ui.menu_item_config("Entity Selector")
+                .selected(signals.has_flag("ui:entity_selector:open"))
+                .build()
+            {
+                signals.toggle_flag("ui:entity_selector:open");
             }
             let preview_open = signals.has_flag("gui:view:preview_mapdata_open");
             if ui.menu_item_config("Preview Map Data")
@@ -368,6 +415,73 @@ pub fn editor_gui(ui: &imgui::Ui, signals: &mut WorldSignals, textures: &Texture
         }
     }
 
+    // ---- Entity Selector window ----
+
+    if signals.has_flag("ui:entity_selector:open") {
+        let mut window_open = true;
+        ui.window("Entity Selector")
+            .size([320.0, 400.0], imgui::Condition::FirstUseEver)
+            .opened(&mut window_open)
+            .build(|| {
+                let payload_str = signals
+                    .get_string("gui:entity_selector:payload")
+                    .cloned();
+
+                match payload_str
+                    .as_deref()
+                    .and_then(|s| serde_json::from_str::<serde_json::Value>(s).ok())
+                {
+                    None => {
+                        ui.text_disabled("Left-click in the scene to pick entities.");
+                    }
+                    Some(payload) => {
+                        // Click position header
+                        if let (Some(cx), Some(cy)) = (
+                            payload["click"][0].as_f64(),
+                            payload["click"][1].as_f64(),
+                        ) {
+                            ui.text_disabled(format!("Click: ({:.1}, {:.1})", cx, cy));
+                        }
+                        ui.separator();
+
+                        // Hit list
+                        if let Some(hits) = payload["hits"].as_array() {
+                            if hits.is_empty() {
+                                ui.text_disabled("No entities at click position.");
+                            } else {
+                                for (i, hit) in hits.iter().enumerate() {
+                                    let label = hit["label"].as_str().unwrap_or("?");
+                                    let zindex = hit["zindex"].as_f64().unwrap_or(0.0);
+                                    let row_text = format!("{} (z={:.1})", label, zindex);
+                                    let _id = ui.push_id_usize(i);
+                                    if ui.selectable_config(&row_text).build() {
+                                        signals.set_integer(
+                                            "gui:entity_selector:selected_row",
+                                            i as i32,
+                                        );
+                                    }
+                                }
+                            }
+                        }
+
+                        // Active selection footer
+                        ui.separator();
+                        if let Some(label) = signals
+                            .get_string("gui:entity_selector:selected_label")
+                            .cloned()
+                        {
+                            ui.text(format!("Selected: {}", label));
+                        } else {
+                            ui.text_disabled("No entity selected.");
+                        }
+                    }
+                }
+            });
+        if !window_open {
+            signals.take_flag("ui:entity_selector:open");
+        }
+    }
+
     // ---- Popup triggers (must come after window content, same frame) ----
 
     if open_rename_popup {
@@ -453,5 +567,40 @@ pub fn editor_gui(ui: &imgui::Ui, signals: &mut WorldSignals, textures: &Texture
                 ui.close_current_popup();
             }
         });
+
+    // ---- Selection outline (ImGui background draw list) ----
+
+    if let Some(corners_str) = signals.get_string("gui:entity_selector:selection_corners").cloned()
+        && let Ok(corners) = serde_json::from_str::<Vec<[f32; 2]>>(&corners_str)
+        && corners.len() == 4
+    {
+        let target_x = signals.get_scalar("editor:cam:target_x").unwrap_or(0.0);
+        let target_y = signals.get_scalar("editor:cam:target_y").unwrap_or(0.0);
+        let zoom     = signals.get_scalar("editor:cam:zoom").unwrap_or(1.0);
+        let offset_x = signals.get_scalar("editor:cam:offset_x").unwrap_or(0.0);
+        let offset_y = signals.get_scalar("editor:cam:offset_y").unwrap_or(0.0);
+        let lb_scale = signals.get_scalar("editor:win:scale").unwrap_or(1.0);
+        let lb_x     = signals.get_scalar("editor:win:offset_x").unwrap_or(0.0);
+        let lb_y     = signals.get_scalar("editor:win:offset_y").unwrap_or(0.0);
+
+        let to_screen = |wx: f32, wy: f32| -> [f32; 2] {
+            let rx = (wx - target_x) * zoom + offset_x;
+            let ry = (wy - target_y) * zoom + offset_y;
+            [rx * lb_scale + lb_x, ry * lb_scale + lb_y]
+        };
+
+        let pts: Vec<[f32; 2]> = corners
+            .iter()
+            .map(|&[wx, wy]| to_screen(wx, wy))
+            .collect();
+
+        let color = [1.0_f32, 0.85, 0.0, 1.0]; // gold
+        let dl = ui.get_background_draw_list();
+        for i in 0..4 {
+            dl.add_line(pts[i], pts[(i + 1) % 4], color)
+                .thickness(2.0)
+                .build();
+        }
+    }
 }
 
