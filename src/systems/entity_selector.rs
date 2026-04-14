@@ -1,6 +1,7 @@
 use crate::signals as sig;
 use aberredengine::bevy_ecs;
-use aberredengine::bevy_ecs::prelude::{Entity, Event, On, Query, Res, ResMut, Resource};
+use aberredengine::bevy_ecs::prelude::{Commands, Entity, Event, On, Query, Res, ResMut, Resource};
+use super::entity_inspector::InspectEntityRequested;
 use aberredengine::components::boxcollider::BoxCollider;
 use aberredengine::components::globaltransform2d::GlobalTransform2D;
 use aberredengine::components::group::Group;
@@ -94,6 +95,7 @@ pub fn entity_pick_observer(
     )>,
     mut cache: ResMut<EntitySelectorCache>,
     mut world_signals: ResMut<WorldSignals>,
+    mut commands: Commands,
 ) {
     let click_x = trigger.event().x;
     let click_y = trigger.event().y;
@@ -168,13 +170,17 @@ pub fn entity_pick_observer(
         world_signals.remove_entity(sig::ES_SELECTED_ENTITY);
         world_signals.remove_string(sig::ES_SELECTION_CORNERS);
         world_signals.remove_string(sig::ES_SELECTED_LABEL);
+        world_signals.remove_string(sig::EE_COMPONENT_SNAPSHOT);
+        world_signals.clear_flag(sig::UI_ENTITY_EDITOR_OPEN);
     } else {
         // Auto-select the topmost entity (index 0, sorted by ZIndex desc)
-        world_signals.set_entity(sig::ES_SELECTED_ENTITY, cache.hits[0]);
+        let top = cache.hits[0];
+        world_signals.set_entity(sig::ES_SELECTED_ENTITY, top);
         world_signals.set_string(sig::ES_SELECTED_LABEL, &cache.labels[0]);
         if let Ok(json) = serde_json::to_string(&cache.corner_sets[0]) {
             world_signals.set_string(sig::ES_SELECTION_CORNERS, &json);
         }
+        commands.trigger(InspectEntityRequested { entity: top });
     }
 }
 
@@ -186,6 +192,7 @@ pub fn select_entity_observer(
     trigger: On<SelectEntityRequested>,
     cache: Res<EntitySelectorCache>,
     mut world_signals: ResMut<WorldSignals>,
+    mut commands: Commands,
 ) {
     let index = trigger.event().index;
     if let Some(&entity) = cache.hits.get(index) {
@@ -198,6 +205,7 @@ pub fn select_entity_observer(
         {
             world_signals.set_string(sig::ES_SELECTION_CORNERS, &json);
         }
+        commands.trigger(InspectEntityRequested { entity });
     } else {
         warn!(
             "select_entity_observer: index {} out of range (cache has {} hits)",
@@ -315,6 +323,8 @@ pub fn clear_selector_signals(world_signals: &mut WorldSignals) {
     world_signals.remove_string(sig::ES_SELECTED_LABEL);
     world_signals.remove_string(sig::ES_SELECTION_CORNERS);
     world_signals.remove_entity(sig::ES_SELECTED_ENTITY);
+    world_signals.remove_string(sig::EE_COMPONENT_SNAPSHOT);
+    world_signals.clear_flag(sig::UI_ENTITY_EDITOR_OPEN);
 }
 
 /// Clear all entity selector state from WorldSignals and the cache resource.

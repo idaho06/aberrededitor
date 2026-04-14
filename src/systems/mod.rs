@@ -1,5 +1,7 @@
 pub mod camera_sync;
 pub mod debug_mirror;
+pub mod editor_camera;
+pub mod entity_inspector;
 pub mod entity_selector;
 pub mod load_assets;
 pub mod map_ops;

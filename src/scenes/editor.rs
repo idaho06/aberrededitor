@@ -13,6 +13,7 @@ use aberredengine::resources::input_bindings::InputBinding;
 use aberredengine::resources::texturestore::TextureStore;
 use aberredengine::resources::worldsignals::WorldSignals;
 use aberredengine::systems::GameCtx;
+use crate::systems::entity_inspector::ComponentSnapshot;
 use crate::systems::entity_selector::{clear_selector_signals, PickEntitiesAtPointRequested, SelectEntityRequested};
 use crate::systems::map_ops::{
     AddTextureRequested, LoadMapRequested, NewMapRequested, PreviewMapDataRequested,
@@ -64,7 +65,7 @@ pub fn editor_exit(ctx: &mut GameCtx) {
     ctx.world_signals.clear_flag(sig::IMGUI_WANTS_MOUSE);
 }
 
-pub fn editor_update(ctx: &mut GameCtx, dt: f32, input: &InputState) {
+pub fn editor_update(ctx: &mut GameCtx, _dt: f32, input: &InputState) {
     // Entity picking — left mouse click (Action1 rebound to mouse-only in editor_enter).
     // Suppressed when ImGui captured the mouse last frame to prevent clicks on UI widgets
     // from triggering world picks.
@@ -171,52 +172,6 @@ pub fn editor_update(ctx: &mut GameCtx, dt: f32, input: &InputState) {
     if ctx.world_signals.take_flag(sig::ACTION_VIEW_PREVIEW_MAPDATA) {
         ctx.commands.trigger(PreviewMapDataRequested);
     }
-
-    let Some(entity) = ctx.world_signals.get_entity(sig::EDITOR_CAMERA).copied() else {
-        return;
-    };
-
-    if ctx.world_signals.take_flag(sig::ACTION_VIEW_RESET_ZOOM)
-        && let Ok(mut ct) = ctx.camera_targets.get_mut(entity)
-    {
-        ct.zoom = 1.0;
-    }
-
-    // Pan: WASD + arrow keys move the camera target entity
-    let mut dx = 0.0_f32;
-    let mut dy = 0.0_f32;
-    if input.maindirection_left.active || input.secondarydirection_left.active {
-        dx -= 1.0;
-    }
-    if input.maindirection_right.active || input.secondarydirection_right.active {
-        dx += 1.0;
-    }
-    if input.maindirection_up.active || input.secondarydirection_up.active {
-        dy -= 1.0;
-    }
-    if input.maindirection_down.active || input.secondarydirection_down.active {
-        dy += 1.0;
-    }
-    if dx != 0.0 || dy != 0.0 {
-        let pan_speed = 300.0_f32; // pixels/sec at zoom 1.0
-        let zoom = ctx
-            .camera_targets
-            .get(entity)
-            .map(|ct| ct.zoom)
-            .unwrap_or(1.0);
-        let speed = pan_speed * dt / zoom;
-        if let Ok(mut pos) = ctx.positions.get_mut(entity) {
-            pos.translate(dx * speed, dy * speed);
-        }
-    }
-
-    // Zoom: scroll wheel scales CameraTarget.zoom multiplicatively
-    if input.scroll_y.abs() > 0.0
-        && let Ok(mut ct) = ctx.camera_targets.get_mut(entity)
-    {
-        let factor = 1.1_f32.powf(input.scroll_y);
-        ct.zoom = (ct.zoom * factor).clamp(0.1, 10.0);
-    }
 }
 
 // ---------------------------------------------------------------------------
@@ -235,6 +190,7 @@ pub fn editor_gui(ui: &imgui::Ui, signals: &mut WorldSignals, textures: &Texture
     let (open_rename_popup, open_remove_popup) = draw_texture_editor(ui, signals, textures);
     draw_map_preview(ui, signals);
     draw_entity_selector(ui, signals);
+    draw_entity_editor(ui, signals);
 
     // Popup triggers must come after window content in the same frame
     if open_rename_popup { ui.open_popup("Rename Key##texture_editor"); }
@@ -502,6 +458,75 @@ fn draw_entity_selector(ui: &imgui::Ui, signals: &mut WorldSignals) {
         });
     if !window_open {
         signals.take_flag(sig::UI_ENTITY_SELECTOR_OPEN);
+    }
+}
+
+fn draw_entity_editor(ui: &imgui::Ui, signals: &mut WorldSignals) {
+    if !signals.has_flag(sig::UI_ENTITY_EDITOR_OPEN) {
+        return;
+    }
+    let mut window_open = true;
+    ui.window("Entity Inspector")
+        .size([380.0, 420.0], imgui::Condition::FirstUseEver)
+        .opened(&mut window_open)
+        .build(|| {
+            let Some(json) = signals.get_string(sig::EE_COMPONENT_SNAPSHOT).cloned() else {
+                ui.text_disabled("No entity selected.");
+                return;
+            };
+            let Ok(snap) = serde_json::from_str::<ComponentSnapshot>(&json) else {
+                ui.text_disabled("(invalid snapshot)");
+                return;
+            };
+
+            let section = |label: &str, body: &dyn Fn()| {
+                ui.separator();
+                ui.text(label);
+                body();
+            };
+
+            ui.text(format!("Entity #{}", snap.entity_bits & 0xFFFF_FFFF));
+            if snap.world_signal_keys.is_empty() {
+                ui.text_disabled("  Not in WorldSignals");
+            } else {
+                ui.text_disabled(format!("  Keys: {}", snap.world_signal_keys.join(", ")));
+            }
+            ui.separator();
+
+            ui.text("MapPosition");
+            ui.text_disabled(format!("  x: {:.2}  y: {:.2}", snap.map_position[0], snap.map_position[1]));
+
+            if let Some(z) = snap.z_index {
+                section("ZIndex", &|| ui.text_disabled(format!("  {:.1}", z)));
+            }
+            if let Some(ref g) = snap.group {
+                section("Group", &|| ui.text_disabled(format!("  \"{}\"", g)));
+            }
+            if let Some(ref s) = snap.sprite {
+                section("Sprite", &|| {
+                    ui.text_disabled(format!("  tex_key: {}", s.tex_key));
+                    ui.text_disabled(format!("  size: {:.1} x {:.1}", s.width, s.height));
+                    ui.text_disabled(format!("  offset: ({:.1}, {:.1})", s.offset[0], s.offset[1]));
+                    ui.text_disabled(format!("  origin: ({:.1}, {:.1})", s.origin[0], s.origin[1]));
+                    ui.text_disabled(format!("  flip: h={}  v={}", s.flip_h, s.flip_v));
+                });
+            }
+            if let Some(ref c) = snap.box_collider {
+                section("BoxCollider", &|| {
+                    ui.text_disabled(format!("  size: {:.1} x {:.1}", c.size[0], c.size[1]));
+                    ui.text_disabled(format!("  offset: ({:.1}, {:.1})", c.offset[0], c.offset[1]));
+                });
+            }
+            if let Some(deg) = snap.rotation_deg {
+                section("Rotation", &|| ui.text_disabled(format!("  {:.2}\u{b0}", deg)));
+            }
+            if let Some([sx, sy]) = snap.scale {
+                section("Scale", &|| ui.text_disabled(format!("  x: {:.3}  y: {:.3}", sx, sy)));
+            }
+        });
+
+    if !window_open {
+        signals.take_flag(sig::UI_ENTITY_EDITOR_OPEN);
     }
 }
 

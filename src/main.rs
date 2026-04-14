@@ -23,7 +23,9 @@ fn main() {
         .add_observer(systems::debug_mirror::debug_mode_mirror_observer)
         .add_observer(systems::entity_selector::entity_pick_observer)
         .add_observer(systems::entity_selector::select_entity_observer)
+        .add_observer(systems::entity_inspector::entity_inspect_observer)
         .add_system(systems::camera_sync::editor_camera_sync_system)
+        .add_system(systems::editor_camera::editor_camera_system)
         .add_scene(
             "intro",
             SceneDescriptor {
