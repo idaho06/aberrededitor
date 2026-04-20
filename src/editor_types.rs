@@ -1,0 +1,84 @@
+// Shared payload types for cross-module communication between ECS systems and GUI panels.
+
+// ---------------------------------------------------------------------------
+// Entity selector payloads
+// ---------------------------------------------------------------------------
+
+#[derive(Debug, Clone)]
+pub struct HitEntry {
+    pub label: String,
+    pub zindex: f32,
+}
+
+#[derive(Debug, Clone)]
+pub struct HitPayload {
+    pub click: [f32; 2],
+    pub hits: Vec<HitEntry>,
+}
+
+// ---------------------------------------------------------------------------
+// Entity inspector payloads
+// ---------------------------------------------------------------------------
+
+#[derive(serde::Serialize, serde::Deserialize, Clone)]
+pub struct SpriteSnapshot {
+    pub tex_key: String,
+    pub width: f32,
+    pub height: f32,
+    pub offset: [f32; 2],
+    pub origin: [f32; 2],
+    pub flip_h: bool,
+    pub flip_v: bool,
+}
+
+#[derive(serde::Serialize, serde::Deserialize, Clone)]
+pub struct ColliderSnapshot {
+    pub size: [f32; 2],
+    pub offset: [f32; 2],
+    pub origin: [f32; 2],
+}
+
+#[derive(serde::Serialize, serde::Deserialize, Clone)]
+pub struct AnimationSnapshot {
+    pub animation_key: String,
+    pub frame_index: usize,
+    pub elapsed_time: f32,
+}
+
+#[derive(serde::Serialize, serde::Deserialize, Clone)]
+pub struct TtlSnapshot {
+    pub remaining: f32,
+}
+
+#[derive(serde::Serialize, serde::Deserialize, Clone)]
+pub struct TimerSnapshot {
+    pub duration: f32,
+    pub elapsed: f32,
+}
+
+#[derive(serde::Serialize, serde::Deserialize, Clone)]
+pub struct PhaseSnapshot {
+    pub current: String,
+    pub previous: Option<String>,
+    pub next: Option<String>,
+    pub time_in_phase: f32,
+    pub phase_names: Vec<String>,
+}
+
+#[derive(serde::Serialize, serde::Deserialize, Clone)]
+pub struct ComponentSnapshot {
+    pub entity_bits: u64,
+    /// WorldSignals entity keys whose value matches this entity.
+    pub world_signal_keys: Vec<String>,
+    pub map_position: [f32; 2],
+    pub z_index: Option<f32>,
+    pub group: Option<String>,
+    pub sprite: Option<SpriteSnapshot>,
+    pub box_collider: Option<ColliderSnapshot>,
+    pub rotation_deg: Option<f32>,
+    pub scale: Option<[f32; 2]>,
+    pub animation: Option<AnimationSnapshot>,
+    pub ttl: Option<TtlSnapshot>,
+    pub timer: Option<TimerSnapshot>,
+    pub phase: Option<PhaseSnapshot>,
+}

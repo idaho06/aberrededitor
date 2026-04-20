@@ -1,3 +1,7 @@
+use crate::editor_types::{
+    AnimationSnapshot, ColliderSnapshot, ComponentSnapshot, PhaseSnapshot, SpriteSnapshot,
+    TimerSnapshot, TtlSnapshot,
+};
 use crate::signals as sig;
 use aberredengine::bevy_ecs;
 use aberredengine::bevy_ecs::prelude::{Entity, Event, On, Query, ResMut};
@@ -21,73 +25,6 @@ use aberredengine::resources::worldsignals::WorldSignals;
 #[derive(Event)]
 pub struct InspectEntityRequested {
     pub entity: Entity,
-}
-
-// ---------------------------------------------------------------------------
-// Snapshot structs
-// ---------------------------------------------------------------------------
-
-#[derive(serde::Serialize, serde::Deserialize)]
-pub(crate) struct SpriteSnapshot {
-    pub(crate) tex_key: String,
-    pub(crate) width: f32,
-    pub(crate) height: f32,
-    pub(crate) offset: [f32; 2],
-    pub(crate) origin: [f32; 2],
-    pub(crate) flip_h: bool,
-    pub(crate) flip_v: bool,
-}
-
-#[derive(serde::Serialize, serde::Deserialize)]
-pub(crate) struct ColliderSnapshot {
-    pub(crate) size: [f32; 2],
-    pub(crate) offset: [f32; 2],
-    pub(crate) origin: [f32; 2],
-}
-
-#[derive(serde::Serialize, serde::Deserialize)]
-pub(crate) struct AnimationSnapshot {
-    pub(crate) animation_key: String,
-    pub(crate) frame_index: usize,
-    pub(crate) elapsed_time: f32,
-}
-
-#[derive(serde::Serialize, serde::Deserialize)]
-pub(crate) struct TtlSnapshot {
-    pub(crate) remaining: f32,
-}
-
-#[derive(serde::Serialize, serde::Deserialize)]
-pub(crate) struct TimerSnapshot {
-    pub(crate) duration: f32,
-    pub(crate) elapsed: f32,
-}
-
-#[derive(serde::Serialize, serde::Deserialize)]
-pub(crate) struct PhaseSnapshot {
-    pub(crate) current: String,
-    pub(crate) previous: Option<String>,
-    pub(crate) next: Option<String>,
-    pub(crate) time_in_phase: f32,
-    pub(crate) phase_names: Vec<String>,
-}
-
-#[derive(serde::Serialize, serde::Deserialize)]
-pub(crate) struct ComponentSnapshot {
-    pub(crate) entity_bits: u64,
-    /// WorldSignals entity keys whose value matches this entity.
-    pub(crate) world_signal_keys: Vec<String>,
-    pub(crate) map_position: [f32; 2],
-    pub(crate) z_index: Option<f32>,
-    pub(crate) group: Option<String>,
-    pub(crate) sprite: Option<SpriteSnapshot>,
-    pub(crate) box_collider: Option<ColliderSnapshot>,
-    pub(crate) rotation_deg: Option<f32>,
-    pub(crate) scale: Option<[f32; 2]>,
-    pub(crate) animation: Option<AnimationSnapshot>,
-    pub(crate) ttl: Option<TtlSnapshot>,
-    pub(crate) timer: Option<TimerSnapshot>,
-    pub(crate) phase: Option<PhaseSnapshot>,
 }
 
 // ---------------------------------------------------------------------------
@@ -173,8 +110,6 @@ pub fn entity_inspect_observer(
         }),
     };
 
-    if let Ok(json) = serde_json::to_string(&snapshot) {
-        signals.set_string(sig::EE_COMPONENT_SNAPSHOT, &json);
-        signals.set_flag(sig::UI_ENTITY_EDITOR_OPEN);
-    }
+    signals.set_payload(sig::EE_COMPONENT_SNAPSHOT, snapshot);
+    signals.set_flag(sig::UI_ENTITY_EDITOR_OPEN);
 }

@@ -1,3 +1,4 @@
+mod editor_types;
 mod scenes;
 mod signals;
 mod systems;

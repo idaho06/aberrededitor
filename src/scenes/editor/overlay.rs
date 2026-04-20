@@ -3,15 +3,9 @@ use aberredengine::imgui;
 use aberredengine::resources::worldsignals::WorldSignals;
 
 pub(super) fn draw_selection_outline(ui: &imgui::Ui, signals: &WorldSignals) {
-    let Some(corners_str) = signals.get_string(sig::ES_SELECTION_CORNERS).cloned() else {
+    let Some(corners) = signals.get_payload::<[[f32; 2]; 4]>(sig::ES_SELECTION_CORNERS) else {
         return;
     };
-    let Ok(corners) = serde_json::from_str::<Vec<[f32; 2]>>(&corners_str) else {
-        return;
-    };
-    if corners.len() != 4 {
-        return;
-    }
 
     let target_x = signals.get_scalar(sig::CAM_TARGET_X).unwrap_or(0.0);
     let target_y = signals.get_scalar(sig::CAM_TARGET_Y).unwrap_or(0.0);

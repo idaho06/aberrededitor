@@ -1,3 +1,4 @@
+use crate::editor_types::HitPayload;
 use crate::signals as sig;
 use aberredengine::imgui;
 use aberredengine::resources::worldsignals::WorldSignals;
@@ -8,39 +9,31 @@ pub(super) fn draw_entity_selector(ui: &imgui::Ui, signals: &mut WorldSignals) {
     }
 
     let mut window_open = true;
+    let mut row_to_select: Option<i32> = None;
+
     ui.window("Entity Selector")
         .size([320.0, 400.0], imgui::Condition::FirstUseEver)
         .opened(&mut window_open)
         .build(|| {
-            let payload_str = signals.get_string(sig::ES_PAYLOAD).cloned();
-
-            match payload_str
-                .as_deref()
-                .and_then(|payload| serde_json::from_str::<serde_json::Value>(payload).ok())
-            {
+            match signals.get_payload::<HitPayload>(sig::ES_PAYLOAD) {
                 None => {
                     ui.text_disabled("Left-click in the scene to pick entities.");
                 }
                 Some(payload) => {
-                    if let (Some(cx), Some(cy)) =
-                        (payload["click"][0].as_f64(), payload["click"][1].as_f64())
-                    {
-                        ui.text_disabled(format!("Click: ({:.1}, {:.1})", cx, cy));
-                    }
+                    ui.text_disabled(format!(
+                        "Click: ({:.1}, {:.1})",
+                        payload.click[0], payload.click[1]
+                    ));
                     ui.separator();
 
-                    if let Some(hits) = payload["hits"].as_array() {
-                        if hits.is_empty() {
-                            ui.text_disabled("No entities at click position.");
-                        } else {
-                            for (index, hit) in hits.iter().enumerate() {
-                                let label = hit["label"].as_str().unwrap_or("?");
-                                let zindex = hit["zindex"].as_f64().unwrap_or(0.0);
-                                let row_text = format!("{} (z={:.1})", label, zindex);
-                                let _id = ui.push_id_usize(index);
-                                if ui.selectable_config(&row_text).build() {
-                                    signals.set_integer(sig::ES_SELECTED_ROW, index as i32);
-                                }
+                    if payload.hits.is_empty() {
+                        ui.text_disabled("No entities at click position.");
+                    } else {
+                        for (index, hit) in payload.hits.iter().enumerate() {
+                            let row_text = format!("{} (z={:.1})", hit.label, hit.zindex);
+                            let _id = ui.push_id_usize(index);
+                            if ui.selectable_config(&row_text).build() {
+                                row_to_select = Some(index as i32);
                             }
                         }
                     }
@@ -55,6 +48,9 @@ pub(super) fn draw_entity_selector(ui: &imgui::Ui, signals: &mut WorldSignals) {
             }
         });
 
+    if let Some(row) = row_to_select {
+        signals.set_integer(sig::ES_SELECTED_ROW, row);
+    }
     if !window_open {
         signals.take_flag(sig::UI_ENTITY_SELECTOR_OPEN);
     }

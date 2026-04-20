@@ -1,4 +1,5 @@
 use super::entity_inspector::InspectEntityRequested;
+use crate::editor_types::{HitEntry, HitPayload};
 use crate::signals as sig;
 use aberredengine::bevy_ecs;
 use aberredengine::bevy_ecs::prelude::{Commands, Entity, Event, On, Query, Res, ResMut, Resource};
@@ -36,8 +37,8 @@ pub struct SelectEntityRequested {
 
 /// Transient editor resource that holds the real `Entity` handles from the last pick.
 ///
-/// The GUI-facing payload lives in `WorldSignals` as a JSON string and contains only
-/// serializable data (entity bits, labels, z-values). This cache keeps the actual
+/// The GUI-facing payload lives in `WorldSignals.payloads` as a typed [`HitPayload`] and
+/// contains display data (labels, z-values). This cache keeps the actual
 /// `Entity` values, labels, and world-space corner quads so the selection resolve
 /// observer can look them up by row index.
 #[derive(Resource, Default)]
@@ -53,26 +54,11 @@ pub struct EntitySelectorCache {
 // Pick observer — internal types
 // ---------------------------------------------------------------------------
 
-struct HitEntry {
+struct PickResult {
     entity: Entity,
     label: String,
     zindex: f32,
     corners: [[f32; 2]; 4],
-}
-
-/// Serialized form of a single pick hit sent to the GUI via WorldSignals.
-#[derive(serde::Serialize)]
-struct HitPayloadEntry {
-    entity_bits: u64,
-    label: String,
-    zindex: f32,
-}
-
-/// Top-level JSON payload written to `ES_PAYLOAD` after each pick.
-#[derive(serde::Serialize)]
-struct HitPayload {
-    click: [f32; 2],
-    hits: Vec<HitPayloadEntry>,
 }
 
 // ---------------------------------------------------------------------------
@@ -104,7 +90,7 @@ pub fn entity_pick_observer(
         y: click_y,
     };
 
-    let mut hits: Vec<HitEntry> = Vec::new();
+    let mut hits: Vec<PickResult> = Vec::new();
 
     for (
         entity,
@@ -155,7 +141,7 @@ pub fn entity_pick_observer(
                 resolved_scale.as_ref(),
                 resolved_rot.as_ref(),
             );
-            hits.push(HitEntry {
+            hits.push(PickResult {
                 entity,
                 label,
                 zindex,
@@ -178,37 +164,33 @@ pub fn entity_pick_observer(
     cache.corner_sets = hits.iter().map(|h| h.corners).collect();
     cache.click_pos = (click_x, click_y);
 
-    // Build and publish JSON payload
+    // Build and publish typed payload
     let payload = HitPayload {
         click: [click_x, click_y],
         hits: hits
             .iter()
-            .map(|h| HitPayloadEntry {
-                entity_bits: h.entity.to_bits(),
+            .map(|h| HitEntry {
                 label: h.label.clone(),
                 zindex: h.zindex,
             })
             .collect(),
     };
-    let payload_str = serde_json::to_string(&payload).unwrap_or_default();
-    world_signals.set_string(sig::ES_PAYLOAD, payload_str.as_str());
+    world_signals.set_payload(sig::ES_PAYLOAD, payload);
     world_signals.set_flag(sig::UI_ENTITY_SELECTOR_OPEN);
 
     // Empty click — clear active selection and outline; otherwise auto-select topmost
     if cache.hits.is_empty() {
         world_signals.remove_entity(sig::ES_SELECTED_ENTITY);
-        world_signals.remove_string(sig::ES_SELECTION_CORNERS);
+        world_signals.remove_payload(sig::ES_SELECTION_CORNERS);
         world_signals.remove_string(sig::ES_SELECTED_LABEL);
-        world_signals.remove_string(sig::EE_COMPONENT_SNAPSHOT);
+        world_signals.remove_payload(sig::EE_COMPONENT_SNAPSHOT);
         world_signals.clear_flag(sig::UI_ENTITY_EDITOR_OPEN);
     } else {
         // Auto-select the topmost entity (index 0, sorted by ZIndex desc)
         let top = cache.hits[0];
         world_signals.set_entity(sig::ES_SELECTED_ENTITY, top);
         world_signals.set_string(sig::ES_SELECTED_LABEL, &cache.labels[0]);
-        if let Ok(json) = serde_json::to_string(&cache.corner_sets[0]) {
-            world_signals.set_string(sig::ES_SELECTION_CORNERS, &json);
-        }
+        world_signals.set_payload(sig::ES_SELECTION_CORNERS, cache.corner_sets[0]);
         commands.trigger(InspectEntityRequested { entity: top });
     }
 }
@@ -229,10 +211,8 @@ pub fn select_entity_observer(
         if let Some(label) = cache.labels.get(index) {
             world_signals.set_string(sig::ES_SELECTED_LABEL, label.as_str());
         }
-        if let Some(corners) = cache.corner_sets.get(index)
-            && let Ok(json) = serde_json::to_string(corners)
-        {
-            world_signals.set_string(sig::ES_SELECTION_CORNERS, &json);
+        if let Some(&corners) = cache.corner_sets.get(index) {
+            world_signals.set_payload(sig::ES_SELECTION_CORNERS, corners);
         }
         commands.trigger(InspectEntityRequested { entity });
     } else {
@@ -340,11 +320,11 @@ fn point_in_sprite(
 /// Clear the WorldSignals keys owned by the entity selector.
 /// Use this when only the signals need clearing but the cache is not accessible.
 pub fn clear_selector_signals(world_signals: &mut WorldSignals) {
-    world_signals.remove_string(sig::ES_PAYLOAD);
+    world_signals.remove_payload(sig::ES_PAYLOAD);
     world_signals.remove_string(sig::ES_SELECTED_LABEL);
-    world_signals.remove_string(sig::ES_SELECTION_CORNERS);
+    world_signals.remove_payload(sig::ES_SELECTION_CORNERS);
     world_signals.remove_entity(sig::ES_SELECTED_ENTITY);
-    world_signals.remove_string(sig::EE_COMPONENT_SNAPSHOT);
+    world_signals.remove_payload(sig::EE_COMPONENT_SNAPSHOT);
     world_signals.clear_flag(sig::UI_ENTITY_EDITOR_OPEN);
 }
 

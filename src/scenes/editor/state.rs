@@ -4,7 +4,7 @@ use crate::systems::entity_edit::{
     UpdateMapPositionRequested, UpdateRotationRequested, UpdateScaleRequested,
     UpdateSpriteRequested, UpdateZIndexRequested,
 };
-use crate::systems::entity_inspector::ComponentSnapshot;
+use crate::editor_types::ComponentSnapshot;
 use aberredengine::bevy_ecs::prelude::Entity;
 use aberredengine::imgui;
 use aberredengine::resources::worldsignals::WorldSignals;
@@ -477,8 +477,7 @@ fn consume_animation_commit(ctx: &mut GameCtx, entity: Entity, snapshot: &Compon
 
 fn selected_entity_and_snapshot(signals: &WorldSignals) -> Option<(Entity, ComponentSnapshot)> {
     let entity = signals.get_entity(sig::ES_SELECTED_ENTITY).copied()?;
-    let snapshot_json = signals.get_string(sig::EE_COMPONENT_SNAPSHOT)?;
-    let snapshot = serde_json::from_str::<ComponentSnapshot>(snapshot_json).ok()?;
+    let snapshot = signals.get_payload::<ComponentSnapshot>(sig::EE_COMPONENT_SNAPSHOT).cloned()?;
     (snapshot.entity_bits == entity.to_bits()).then_some((entity, snapshot))
 }
 

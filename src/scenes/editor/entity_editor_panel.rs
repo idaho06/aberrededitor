@@ -2,8 +2,8 @@ use super::state::{
     commit_bool_flag, commit_scalar_signal, draw_float_input, draw_int_input,
     draw_text_buffer_input, seed_text_buffer,
 };
+use crate::editor_types::ComponentSnapshot;
 use crate::signals as sig;
-use crate::systems::entity_inspector::ComponentSnapshot;
 use aberredengine::imgui;
 use aberredengine::resources::texturestore::TextureStore;
 use aberredengine::resources::worldsignals::WorldSignals;
@@ -22,12 +22,8 @@ pub(super) fn draw_entity_editor(
         .size([380.0, 420.0], imgui::Condition::FirstUseEver)
         .opened(&mut window_open)
         .build(|| {
-            let Some(json) = signals.get_string(sig::EE_COMPONENT_SNAPSHOT).cloned() else {
+            let Some(snap) = signals.get_payload::<ComponentSnapshot>(sig::EE_COMPONENT_SNAPSHOT).cloned() else {
                 ui.text_disabled("No entity selected.");
-                return;
-            };
-            let Ok(snap) = serde_json::from_str::<ComponentSnapshot>(&json) else {
-                ui.text_disabled("(invalid snapshot)");
                 return;
             };
 
