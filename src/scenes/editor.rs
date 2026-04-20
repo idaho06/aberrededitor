@@ -205,7 +205,7 @@ pub fn editor_gui(ui: &imgui::Ui, signals: &mut WorldSignals, textures: &Texture
     let (open_rename_popup, open_remove_popup) = draw_texture_editor(ui, signals, textures);
     draw_map_preview(ui, signals);
     draw_entity_selector(ui, signals);
-    draw_entity_editor(ui, signals);
+    draw_entity_editor(ui, signals, textures);
 
     // Popup triggers must come after window content in the same frame
     if open_rename_popup {
@@ -485,7 +485,7 @@ fn draw_entity_selector(ui: &imgui::Ui, signals: &mut WorldSignals) {
     }
 }
 
-fn draw_entity_editor(ui: &imgui::Ui, signals: &mut WorldSignals) {
+fn draw_entity_editor(ui: &imgui::Ui, signals: &mut WorldSignals, textures: &TextureStore) {
     if !signals.has_flag(sig::UI_ENTITY_EDITOR_OPEN) {
         return;
     }
@@ -503,12 +503,6 @@ fn draw_entity_editor(ui: &imgui::Ui, signals: &mut WorldSignals) {
                 return;
             };
 
-            let section = |label: &str, body: &dyn Fn()| {
-                ui.separator();
-                ui.text(label);
-                body();
-            };
-
             ui.text(format!("Entity #{}", snap.entity_bits & 0xFFFF_FFFF));
             if snap.world_signal_keys.is_empty() {
                 ui.text_disabled("  Not in WorldSignals");
@@ -518,71 +512,292 @@ fn draw_entity_editor(ui: &imgui::Ui, signals: &mut WorldSignals) {
             ui.separator();
 
             ui.text("MapPosition");
-            ui.text_disabled(format!(
-                "  x: {:.2}  y: {:.2}",
-                snap.map_position[0], snap.map_position[1]
-            ));
+            let mut pos_x = snap.map_position[0];
+            imgui::Drag::new("x##map_position")
+                .speed(0.1)
+                .display_format("%.2f")
+                .build(ui, &mut pos_x);
+            if ui.is_item_deactivated_after_edit() {
+                commit_scalar_signal(
+                    signals,
+                    sig::GUI_EE_PENDING_POS_X,
+                    pos_x,
+                    sig::ACTION_EE_COMMIT_POSITION,
+                );
+            }
+            ui.same_line();
+            let mut pos_y = snap.map_position[1];
+            imgui::Drag::new("y##map_position")
+                .speed(0.1)
+                .display_format("%.2f")
+                .build(ui, &mut pos_y);
+            if ui.is_item_deactivated_after_edit() {
+                commit_scalar_signal(
+                    signals,
+                    sig::GUI_EE_PENDING_POS_Y,
+                    pos_y,
+                    sig::ACTION_EE_COMMIT_POSITION,
+                );
+            }
 
             if let Some(z) = snap.z_index {
-                section("ZIndex", &|| ui.text_disabled(format!("  {:.1}", z)));
+                ui.separator();
+                ui.text("ZIndex");
+                draw_float_input(
+                    ui,
+                    signals,
+                    "value##zindex",
+                    z,
+                    sig::GUI_EE_PENDING_Z_INDEX,
+                    sig::ACTION_EE_COMMIT_Z,
+                );
             }
             if let Some(ref g) = snap.group {
-                section("Group", &|| ui.text_disabled(format!("  \"{}\"", g)));
+                ui.separator();
+                ui.text("Group");
+                ui.set_next_item_width(-1.0);
+                draw_text_buffer_input(
+                    ui,
+                    signals,
+                    "name##group",
+                    g,
+                    sig::GUI_EE_PENDING_GROUP,
+                    sig::GUI_EE_PENDING_GROUP_DIRTY,
+                    sig::ACTION_EE_COMMIT_GROUP,
+                );
             }
             if let Some(ref s) = snap.sprite {
-                section("Sprite", &|| {
-                    ui.text_disabled(format!("  tex_key: {}", s.tex_key));
-                    ui.text_disabled(format!("  size: {:.1} x {:.1}", s.width, s.height));
-                    ui.text_disabled(format!(
-                        "  offset: ({:.1}, {:.1})",
-                        s.offset[0], s.offset[1]
-                    ));
-                    ui.text_disabled(format!(
-                        "  origin: ({:.1}, {:.1})",
-                        s.origin[0], s.origin[1]
-                    ));
-                    ui.text_disabled(format!("  flip: h={}  v={}", s.flip_h, s.flip_v));
-                });
+                ui.separator();
+                ui.text("Sprite");
+
+                let sprite_tex_key = seed_text_buffer(
+                    signals,
+                    sig::GUI_EE_PENDING_SPRITE_TEX_KEY,
+                    sig::GUI_EE_PENDING_SPRITE_TEX_KEY_DIRTY,
+                    s.tex_key.as_str(),
+                );
+                let mut texture_keys: Vec<&str> =
+                    textures.map.keys().map(|key| key.as_str()).collect();
+                texture_keys.sort_unstable();
+                if texture_keys.is_empty() {
+                    ui.text_disabled("No textures loaded.");
+                } else {
+                    let mut current_tex = texture_keys
+                        .iter()
+                        .position(|key| *key == sprite_tex_key)
+                        .or_else(|| {
+                            texture_keys
+                                .iter()
+                                .position(|key| *key == s.tex_key.as_str())
+                        })
+                        .unwrap_or(0);
+                    if ui.combo_simple_string("tex_key##sprite", &mut current_tex, &texture_keys) {
+                        let selected = texture_keys[current_tex];
+                        signals.set_string(sig::GUI_EE_PENDING_SPRITE_TEX_KEY, selected);
+                        signals.set_flag(sig::GUI_EE_PENDING_SPRITE_TEX_KEY_DIRTY);
+                        signals.set_flag(sig::ACTION_EE_COMMIT_SPRITE);
+                    }
+                }
+
+                draw_float_input(
+                    ui,
+                    signals,
+                    "width##sprite",
+                    s.width,
+                    sig::GUI_EE_PENDING_SPRITE_WIDTH,
+                    sig::ACTION_EE_COMMIT_SPRITE,
+                );
+                draw_float_input(
+                    ui,
+                    signals,
+                    "height##sprite",
+                    s.height,
+                    sig::GUI_EE_PENDING_SPRITE_HEIGHT,
+                    sig::ACTION_EE_COMMIT_SPRITE,
+                );
+                draw_float_input(
+                    ui,
+                    signals,
+                    "offset x##sprite",
+                    s.offset[0],
+                    sig::GUI_EE_PENDING_SPRITE_OFFX,
+                    sig::ACTION_EE_COMMIT_SPRITE,
+                );
+                draw_float_input(
+                    ui,
+                    signals,
+                    "offset y##sprite",
+                    s.offset[1],
+                    sig::GUI_EE_PENDING_SPRITE_OFFY,
+                    sig::ACTION_EE_COMMIT_SPRITE,
+                );
+                draw_float_input(
+                    ui,
+                    signals,
+                    "origin x##sprite",
+                    s.origin[0],
+                    sig::GUI_EE_PENDING_SPRITE_ORGX,
+                    sig::ACTION_EE_COMMIT_SPRITE,
+                );
+                draw_float_input(
+                    ui,
+                    signals,
+                    "origin y##sprite",
+                    s.origin[1],
+                    sig::GUI_EE_PENDING_SPRITE_ORGY,
+                    sig::ACTION_EE_COMMIT_SPRITE,
+                );
+
+                let mut flip_h = s.flip_h;
+                if ui.checkbox("flip_h##sprite", &mut flip_h) {
+                    commit_bool_flag(
+                        signals,
+                        sig::GUI_EE_PENDING_SPRITE_FLIP_H,
+                        flip_h,
+                        sig::ACTION_EE_COMMIT_SPRITE,
+                    );
+                }
+                let mut flip_v = s.flip_v;
+                if ui.checkbox("flip_v##sprite", &mut flip_v) {
+                    commit_bool_flag(
+                        signals,
+                        sig::GUI_EE_PENDING_SPRITE_FLIP_V,
+                        flip_v,
+                        sig::ACTION_EE_COMMIT_SPRITE,
+                    );
+                }
             }
             if let Some(ref c) = snap.box_collider {
-                section("BoxCollider", &|| {
-                    ui.text_disabled(format!("  size: {:.1} x {:.1}", c.size[0], c.size[1]));
-                    ui.text_disabled(format!(
-                        "  offset: ({:.1}, {:.1})",
-                        c.offset[0], c.offset[1]
-                    ));
-                });
+                ui.separator();
+                ui.text("BoxCollider");
+                draw_float_input(
+                    ui,
+                    signals,
+                    "size x##collider",
+                    c.size[0],
+                    sig::GUI_EE_PENDING_BOX_SIZE_X,
+                    sig::ACTION_EE_COMMIT_COLLIDER,
+                );
+                draw_float_input(
+                    ui,
+                    signals,
+                    "size y##collider",
+                    c.size[1],
+                    sig::GUI_EE_PENDING_BOX_SIZE_Y,
+                    sig::ACTION_EE_COMMIT_COLLIDER,
+                );
+                draw_float_input(
+                    ui,
+                    signals,
+                    "offset x##collider",
+                    c.offset[0],
+                    sig::GUI_EE_PENDING_BOX_OFFX,
+                    sig::ACTION_EE_COMMIT_COLLIDER,
+                );
+                draw_float_input(
+                    ui,
+                    signals,
+                    "offset y##collider",
+                    c.offset[1],
+                    sig::GUI_EE_PENDING_BOX_OFFY,
+                    sig::ACTION_EE_COMMIT_COLLIDER,
+                );
+                draw_float_input(
+                    ui,
+                    signals,
+                    "origin x##collider",
+                    c.origin[0],
+                    sig::GUI_EE_PENDING_BOX_ORGX,
+                    sig::ACTION_EE_COMMIT_COLLIDER,
+                );
+                draw_float_input(
+                    ui,
+                    signals,
+                    "origin y##collider",
+                    c.origin[1],
+                    sig::GUI_EE_PENDING_BOX_ORGY,
+                    sig::ACTION_EE_COMMIT_COLLIDER,
+                );
             }
             if let Some(deg) = snap.rotation_deg {
-                section("Rotation", &|| {
-                    ui.text_disabled(format!("  {:.2}\u{b0}", deg))
-                });
+                ui.separator();
+                ui.text("Rotation");
+                draw_float_input(
+                    ui,
+                    signals,
+                    "degrees##rotation",
+                    deg,
+                    sig::GUI_EE_PENDING_ROT_DEG,
+                    sig::ACTION_EE_COMMIT_ROTATION,
+                );
             }
             if let Some([sx, sy]) = snap.scale {
-                section("Scale", &|| {
-                    ui.text_disabled(format!("  x: {:.3}  y: {:.3}", sx, sy))
-                });
+                ui.separator();
+                ui.text("Scale");
+                draw_float_input(
+                    ui,
+                    signals,
+                    "x##scale",
+                    sx,
+                    sig::GUI_EE_PENDING_SCALE_X,
+                    sig::ACTION_EE_COMMIT_SCALE,
+                );
+                draw_float_input(
+                    ui,
+                    signals,
+                    "y##scale",
+                    sy,
+                    sig::GUI_EE_PENDING_SCALE_Y,
+                    sig::ACTION_EE_COMMIT_SCALE,
+                );
             }
             if let Some(ref animation) = snap.animation {
-                section("Animation", &|| {
-                    ui.text_disabled(format!("  key: {}", animation.animation_key));
-                    ui.text_disabled(format!("  frame_index: {}", animation.frame_index));
-                    ui.text_disabled(format!("  elapsed_time: {:.3}", animation.elapsed_time));
-                });
+                ui.separator();
+                ui.text("Animation");
+                ui.set_next_item_width(-1.0);
+                draw_text_buffer_input(
+                    ui,
+                    signals,
+                    "key##animation",
+                    animation.animation_key.as_str(),
+                    sig::GUI_EE_PENDING_ANIM_KEY,
+                    sig::GUI_EE_PENDING_ANIM_KEY_DIRTY,
+                    sig::ACTION_EE_COMMIT_ANIMATION,
+                );
+                draw_int_input(
+                    ui,
+                    signals,
+                    "frame_index##animation",
+                    i32::try_from(animation.frame_index).unwrap_or(i32::MAX),
+                    sig::GUI_EE_PENDING_ANIM_FRAME_INDEX,
+                    sig::ACTION_EE_COMMIT_ANIMATION,
+                );
+                draw_float_input(
+                    ui,
+                    signals,
+                    "elapsed_time##animation",
+                    animation.elapsed_time,
+                    sig::GUI_EE_PENDING_ANIM_ELAPSED,
+                    sig::ACTION_EE_COMMIT_ANIMATION,
+                );
             }
             if let Some(ref ttl) = snap.ttl {
-                section("Ttl", &|| {
-                    ui.text_disabled(format!("  remaining: {:.3}", ttl.remaining))
-                });
+                ui.separator();
+                ui.text("Ttl");
+                ui.group(|| ui.text_disabled(format!("  remaining: {:.3}", ttl.remaining)));
             }
             if let Some(ref timer) = snap.timer {
-                section("Timer", &|| {
+                ui.separator();
+                ui.text("Timer");
+                ui.group(|| {
                     ui.text_disabled(format!("  duration: {:.3}", timer.duration));
                     ui.text_disabled(format!("  elapsed: {:.3}", timer.elapsed));
                 });
             }
             if let Some(ref phase) = snap.phase {
-                section("Phase", &|| {
+                ui.separator();
+                ui.text("Phase");
+                ui.group(|| {
                     ui.text_disabled(format!("  current: {}", phase.current));
                     ui.text_disabled(format!(
                         "  previous: {}",
@@ -608,6 +823,105 @@ fn draw_entity_editor(ui: &imgui::Ui, signals: &mut WorldSignals) {
     if !window_open {
         signals.take_flag(sig::UI_ENTITY_EDITOR_OPEN);
     }
+}
+
+fn draw_float_input(
+    ui: &imgui::Ui,
+    signals: &mut WorldSignals,
+    label: &str,
+    snapshot_value: f32,
+    pending_key: &str,
+    action_key: &str,
+) {
+    let mut value = snapshot_value;
+    ui.input_float(label, &mut value)
+        .enter_returns_true(true)
+        .build();
+    if ui.is_item_deactivated_after_edit() {
+        commit_scalar_signal(signals, pending_key, value, action_key);
+    }
+}
+
+fn draw_int_input(
+    ui: &imgui::Ui,
+    signals: &mut WorldSignals,
+    label: &str,
+    snapshot_value: i32,
+    pending_key: &str,
+    action_key: &str,
+) {
+    let mut value = snapshot_value;
+    ui.input_int(label, &mut value)
+        .enter_returns_true(true)
+        .build();
+    if ui.is_item_deactivated_after_edit() {
+        commit_integer_signal(signals, pending_key, value, action_key);
+    }
+}
+
+fn draw_text_buffer_input(
+    ui: &imgui::Ui,
+    signals: &mut WorldSignals,
+    label: &str,
+    snapshot_value: &str,
+    buffer_key: &str,
+    dirty_key: &str,
+    action_key: &str,
+) {
+    let mut buffer = seed_text_buffer(signals, buffer_key, dirty_key, snapshot_value);
+    if ui.input_text(label, &mut buffer).build() {
+        signals.set_string(buffer_key, buffer.as_str());
+        signals.set_flag(dirty_key);
+    }
+    if ui.is_item_deactivated_after_edit() {
+        signals.set_string(buffer_key, buffer.as_str());
+        signals.set_flag(dirty_key);
+        signals.set_flag(action_key);
+    }
+}
+
+fn seed_text_buffer(
+    signals: &mut WorldSignals,
+    buffer_key: &str,
+    dirty_key: &str,
+    snapshot_value: &str,
+) -> String {
+    if !signals.has_flag(dirty_key) {
+        signals.set_string(buffer_key, snapshot_value);
+    }
+    signals
+        .get_string(buffer_key)
+        .cloned()
+        .unwrap_or_else(|| snapshot_value.to_owned())
+}
+
+fn commit_scalar_signal(
+    signals: &mut WorldSignals,
+    pending_key: &str,
+    value: f32,
+    action_key: &str,
+) {
+    signals.set_scalar(pending_key, value);
+    signals.set_flag(action_key);
+}
+
+fn commit_integer_signal(
+    signals: &mut WorldSignals,
+    pending_key: &str,
+    value: i32,
+    action_key: &str,
+) {
+    signals.set_integer(pending_key, value);
+    signals.set_flag(action_key);
+}
+
+fn commit_bool_flag(signals: &mut WorldSignals, pending_key: &str, value: bool, action_key: &str) {
+    if value {
+        signals.set_flag(pending_key);
+    } else {
+        signals.clear_flag(pending_key);
+    }
+    signals.set_flag(action_key);
 }
 
 /// Renders the Rename Key and Remove Texture modal popups.
