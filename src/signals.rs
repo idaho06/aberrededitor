@@ -64,6 +64,7 @@ pub const ES_SELECTED_ENTITY: &str = "editor:selected_entity";
 // ---- Entity editor / inspector ----
 pub const UI_ENTITY_EDITOR_OPEN: &str = "ui:entity_editor:open";
 pub const EE_COMPONENT_SNAPSHOT: &str = "editor:entity_editor:component_snapshot";
+pub const EE_LAST_SELECTED_BITS: &str = "editor:entity_editor:last_selected_bits";
 
 // ---- Entity editor: pending buffers ----
 pub const GUI_EE_PENDING_POS_X: &str = "gui:entity_editor:pending:pos_x";
@@ -97,6 +98,10 @@ pub const GUI_EE_PENDING_ANIM_KEY_DIRTY: &str = "gui:entity_editor:pending:anim_
 
 pub const GUI_EE_PENDING_SPRITE_FLIP_H: &str = "gui:entity_editor:pending:sprite_flip_h";
 pub const GUI_EE_PENDING_SPRITE_FLIP_V: &str = "gui:entity_editor:pending:sprite_flip_v";
+pub const GUI_EE_PENDING_SPRITE_FLIP_H_DIRTY: &str =
+    "gui:entity_editor:pending:sprite_flip_h_dirty";
+pub const GUI_EE_PENDING_SPRITE_FLIP_V_DIRTY: &str =
+    "gui:entity_editor:pending:sprite_flip_v_dirty";
 
 // ---- Entity editor actions ----
 pub const ACTION_EE_COMMIT_POSITION: &str = "gui:action:entity_editor:commit_position";
@@ -109,6 +114,7 @@ pub const ACTION_EE_COMMIT_COLLIDER: &str = "gui:action:entity_editor:commit_col
 pub const ACTION_EE_COMMIT_ANIMATION: &str = "gui:action:entity_editor:commit_animation";
 
 const _: &[&str] = &[
+    EE_LAST_SELECTED_BITS,
     GUI_EE_PENDING_POS_X,
     GUI_EE_PENDING_POS_Y,
     GUI_EE_PENDING_Z_INDEX,
@@ -137,6 +143,8 @@ const _: &[&str] = &[
     GUI_EE_PENDING_ANIM_KEY_DIRTY,
     GUI_EE_PENDING_SPRITE_FLIP_H,
     GUI_EE_PENDING_SPRITE_FLIP_V,
+    GUI_EE_PENDING_SPRITE_FLIP_H_DIRTY,
+    GUI_EE_PENDING_SPRITE_FLIP_V_DIRTY,
     ACTION_EE_COMMIT_POSITION,
     ACTION_EE_COMMIT_Z,
     ACTION_EE_COMMIT_GROUP,

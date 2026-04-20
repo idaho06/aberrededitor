@@ -1,4 +1,9 @@
 use crate::signals as sig;
+use crate::systems::entity_edit::{
+    UpdateAnimationRequested, UpdateBoxColliderRequested, UpdateGroupRequested,
+    UpdateMapPositionRequested, UpdateRotationRequested, UpdateScaleRequested,
+    UpdateSpriteRequested, UpdateZIndexRequested,
+};
 use crate::systems::entity_inspector::ComponentSnapshot;
 use crate::systems::entity_selector::{
     PickEntitiesAtPointRequested, SelectEntityRequested, clear_selector_signals,
@@ -8,6 +13,7 @@ use crate::systems::map_ops::{
     RemoveTextureRequested, RenameTextureKeyRequested, SaveMapRequested,
 };
 use crate::systems::tilemap_load::LoadTilemapRequested;
+use aberredengine::bevy_ecs::prelude::Entity;
 use aberredengine::components::cameratarget::CameraTarget;
 use aberredengine::components::mapposition::MapPosition;
 use aberredengine::events::input::InputAction;
@@ -22,7 +28,7 @@ use aberredengine::resources::input_bindings::InputBinding;
 use aberredengine::resources::texturestore::TextureStore;
 use aberredengine::resources::worldsignals::WorldSignals;
 use aberredengine::systems::GameCtx;
-use log::info;
+use log::{info, warn};
 
 pub fn editor_enter(ctx: &mut GameCtx) {
     info!("editor_enter: entering editor scene");
@@ -68,6 +74,8 @@ pub fn editor_exit(ctx: &mut GameCtx) {
     );
 
     clear_selector_signals(&mut ctx.world_signals);
+    clear_entity_editor_pending(&mut ctx.world_signals);
+    ctx.world_signals.remove_string(sig::EE_LAST_SELECTED_BITS);
     ctx.world_signals.clear_flag(sig::IMGUI_WANTS_MOUSE);
 }
 
@@ -88,6 +96,9 @@ pub fn editor_update(ctx: &mut GameCtx, _dt: f32, input: &InputState) {
             index: row as usize,
         });
     }
+
+    handle_entity_editor_selection_change(&mut ctx.world_signals);
+    consume_entity_editor_commits(ctx);
 
     if ctx.world_signals.take_flag(sig::ACTION_FILE_NEW_MAP) {
         ctx.commands.trigger(NewMapRequested);
@@ -653,6 +664,7 @@ fn draw_entity_editor(ui: &imgui::Ui, signals: &mut WorldSignals, textures: &Tex
                     commit_bool_flag(
                         signals,
                         sig::GUI_EE_PENDING_SPRITE_FLIP_H,
+                        sig::GUI_EE_PENDING_SPRITE_FLIP_H_DIRTY,
                         flip_h,
                         sig::ACTION_EE_COMMIT_SPRITE,
                     );
@@ -662,6 +674,7 @@ fn draw_entity_editor(ui: &imgui::Ui, signals: &mut WorldSignals, textures: &Tex
                     commit_bool_flag(
                         signals,
                         sig::GUI_EE_PENDING_SPRITE_FLIP_V,
+                        sig::GUI_EE_PENDING_SPRITE_FLIP_V_DIRTY,
                         flip_v,
                         sig::ACTION_EE_COMMIT_SPRITE,
                     );
@@ -825,6 +838,449 @@ fn draw_entity_editor(ui: &imgui::Ui, signals: &mut WorldSignals, textures: &Tex
     }
 }
 
+fn handle_entity_editor_selection_change(signals: &mut WorldSignals) {
+    let current_bits = signals
+        .get_entity(sig::ES_SELECTED_ENTITY)
+        .map(|entity| entity.to_bits());
+    let previous_bits = signals
+        .get_string(sig::EE_LAST_SELECTED_BITS)
+        .and_then(|bits| bits.parse::<u64>().ok());
+
+    if current_bits != previous_bits {
+        clear_entity_editor_pending(signals);
+        if let Some(bits) = current_bits {
+            signals.set_string(sig::EE_LAST_SELECTED_BITS, bits.to_string());
+        } else {
+            signals.remove_string(sig::EE_LAST_SELECTED_BITS);
+        }
+    }
+}
+
+fn consume_entity_editor_commits(ctx: &mut GameCtx) {
+    consume_position_commit(ctx);
+    consume_z_commit(ctx);
+    consume_group_commit(ctx);
+    consume_rotation_commit(ctx);
+    consume_scale_commit(ctx);
+    consume_sprite_commit(ctx);
+    consume_collider_commit(ctx);
+    consume_animation_commit(ctx);
+}
+
+fn consume_position_commit(ctx: &mut GameCtx) {
+    if !ctx.world_signals.take_flag(sig::ACTION_EE_COMMIT_POSITION) {
+        return;
+    }
+    let Some((entity, snapshot)) =
+        selected_entity_and_snapshot(&ctx.world_signals, "consume_position_commit")
+    else {
+        return;
+    };
+    ctx.commands.trigger(UpdateMapPositionRequested {
+        entity,
+        x: pending_scalar_or(
+            &ctx.world_signals,
+            sig::GUI_EE_PENDING_POS_X,
+            snapshot.map_position[0],
+        ),
+        y: pending_scalar_or(
+            &ctx.world_signals,
+            sig::GUI_EE_PENDING_POS_Y,
+            snapshot.map_position[1],
+        ),
+    });
+}
+
+fn consume_z_commit(ctx: &mut GameCtx) {
+    if !ctx.world_signals.take_flag(sig::ACTION_EE_COMMIT_Z) {
+        return;
+    }
+    let Some((entity, snapshot)) =
+        selected_entity_and_snapshot(&ctx.world_signals, "consume_z_commit")
+    else {
+        return;
+    };
+    let Some(z_index) = snapshot.z_index else {
+        warn!(
+            "consume_z_commit: snapshot missing ZIndex for entity {}",
+            entity.to_bits()
+        );
+        return;
+    };
+    ctx.commands.trigger(UpdateZIndexRequested {
+        entity,
+        z_index: pending_scalar_or(&ctx.world_signals, sig::GUI_EE_PENDING_Z_INDEX, z_index),
+    });
+}
+
+fn consume_group_commit(ctx: &mut GameCtx) {
+    if !ctx.world_signals.take_flag(sig::ACTION_EE_COMMIT_GROUP) {
+        return;
+    }
+    let Some((entity, snapshot)) =
+        selected_entity_and_snapshot(&ctx.world_signals, "consume_group_commit")
+    else {
+        return;
+    };
+    let Some(group) = snapshot.group else {
+        warn!(
+            "consume_group_commit: snapshot missing Group for entity {}",
+            entity.to_bits()
+        );
+        return;
+    };
+    ctx.commands.trigger(UpdateGroupRequested {
+        entity,
+        group: pending_string_or(
+            &ctx.world_signals,
+            sig::GUI_EE_PENDING_GROUP,
+            sig::GUI_EE_PENDING_GROUP_DIRTY,
+            &group,
+        ),
+    });
+    ctx.world_signals
+        .clear_flag(sig::GUI_EE_PENDING_GROUP_DIRTY);
+}
+
+fn consume_rotation_commit(ctx: &mut GameCtx) {
+    if !ctx.world_signals.take_flag(sig::ACTION_EE_COMMIT_ROTATION) {
+        return;
+    }
+    let Some((entity, snapshot)) =
+        selected_entity_and_snapshot(&ctx.world_signals, "consume_rotation_commit")
+    else {
+        return;
+    };
+    let Some(rotation_deg) = snapshot.rotation_deg else {
+        warn!(
+            "consume_rotation_commit: snapshot missing Rotation for entity {}",
+            entity.to_bits()
+        );
+        return;
+    };
+    ctx.commands.trigger(UpdateRotationRequested {
+        entity,
+        rotation_deg: pending_scalar_or(
+            &ctx.world_signals,
+            sig::GUI_EE_PENDING_ROT_DEG,
+            rotation_deg,
+        ),
+    });
+}
+
+fn consume_scale_commit(ctx: &mut GameCtx) {
+    if !ctx.world_signals.take_flag(sig::ACTION_EE_COMMIT_SCALE) {
+        return;
+    }
+    let Some((entity, snapshot)) =
+        selected_entity_and_snapshot(&ctx.world_signals, "consume_scale_commit")
+    else {
+        return;
+    };
+    let Some([x, y]) = snapshot.scale else {
+        warn!(
+            "consume_scale_commit: snapshot missing Scale for entity {}",
+            entity.to_bits()
+        );
+        return;
+    };
+    ctx.commands.trigger(UpdateScaleRequested {
+        entity,
+        x: pending_scalar_or(&ctx.world_signals, sig::GUI_EE_PENDING_SCALE_X, x),
+        y: pending_scalar_or(&ctx.world_signals, sig::GUI_EE_PENDING_SCALE_Y, y),
+    });
+}
+
+fn consume_sprite_commit(ctx: &mut GameCtx) {
+    if !ctx.world_signals.take_flag(sig::ACTION_EE_COMMIT_SPRITE) {
+        return;
+    }
+    let Some((entity, snapshot)) =
+        selected_entity_and_snapshot(&ctx.world_signals, "consume_sprite_commit")
+    else {
+        return;
+    };
+    let Some(sprite) = snapshot.sprite else {
+        warn!(
+            "consume_sprite_commit: snapshot missing Sprite for entity {}",
+            entity.to_bits()
+        );
+        return;
+    };
+    ctx.commands.trigger(UpdateSpriteRequested {
+        entity,
+        tex_key: pending_string_or(
+            &ctx.world_signals,
+            sig::GUI_EE_PENDING_SPRITE_TEX_KEY,
+            sig::GUI_EE_PENDING_SPRITE_TEX_KEY_DIRTY,
+            &sprite.tex_key,
+        ),
+        width: pending_scalar_or(
+            &ctx.world_signals,
+            sig::GUI_EE_PENDING_SPRITE_WIDTH,
+            sprite.width,
+        ),
+        height: pending_scalar_or(
+            &ctx.world_signals,
+            sig::GUI_EE_PENDING_SPRITE_HEIGHT,
+            sprite.height,
+        ),
+        offset: [
+            pending_scalar_or(
+                &ctx.world_signals,
+                sig::GUI_EE_PENDING_SPRITE_OFFX,
+                sprite.offset[0],
+            ),
+            pending_scalar_or(
+                &ctx.world_signals,
+                sig::GUI_EE_PENDING_SPRITE_OFFY,
+                sprite.offset[1],
+            ),
+        ],
+        origin: [
+            pending_scalar_or(
+                &ctx.world_signals,
+                sig::GUI_EE_PENDING_SPRITE_ORGX,
+                sprite.origin[0],
+            ),
+            pending_scalar_or(
+                &ctx.world_signals,
+                sig::GUI_EE_PENDING_SPRITE_ORGY,
+                sprite.origin[1],
+            ),
+        ],
+        flip_h: pending_bool_or(
+            &ctx.world_signals,
+            sig::GUI_EE_PENDING_SPRITE_FLIP_H,
+            sig::GUI_EE_PENDING_SPRITE_FLIP_H_DIRTY,
+            sprite.flip_h,
+        ),
+        flip_v: pending_bool_or(
+            &ctx.world_signals,
+            sig::GUI_EE_PENDING_SPRITE_FLIP_V,
+            sig::GUI_EE_PENDING_SPRITE_FLIP_V_DIRTY,
+            sprite.flip_v,
+        ),
+    });
+    ctx.world_signals
+        .clear_flag(sig::GUI_EE_PENDING_SPRITE_TEX_KEY_DIRTY);
+    ctx.world_signals
+        .clear_flag(sig::GUI_EE_PENDING_SPRITE_FLIP_H_DIRTY);
+    ctx.world_signals
+        .clear_flag(sig::GUI_EE_PENDING_SPRITE_FLIP_V_DIRTY);
+}
+
+fn consume_collider_commit(ctx: &mut GameCtx) {
+    if !ctx.world_signals.take_flag(sig::ACTION_EE_COMMIT_COLLIDER) {
+        return;
+    }
+    let Some((entity, snapshot)) =
+        selected_entity_and_snapshot(&ctx.world_signals, "consume_collider_commit")
+    else {
+        return;
+    };
+    let Some(collider) = snapshot.box_collider else {
+        warn!(
+            "consume_collider_commit: snapshot missing BoxCollider for entity {}",
+            entity.to_bits()
+        );
+        return;
+    };
+    ctx.commands.trigger(UpdateBoxColliderRequested {
+        entity,
+        size: [
+            pending_scalar_or(
+                &ctx.world_signals,
+                sig::GUI_EE_PENDING_BOX_SIZE_X,
+                collider.size[0],
+            ),
+            pending_scalar_or(
+                &ctx.world_signals,
+                sig::GUI_EE_PENDING_BOX_SIZE_Y,
+                collider.size[1],
+            ),
+        ],
+        offset: [
+            pending_scalar_or(
+                &ctx.world_signals,
+                sig::GUI_EE_PENDING_BOX_OFFX,
+                collider.offset[0],
+            ),
+            pending_scalar_or(
+                &ctx.world_signals,
+                sig::GUI_EE_PENDING_BOX_OFFY,
+                collider.offset[1],
+            ),
+        ],
+        origin: [
+            pending_scalar_or(
+                &ctx.world_signals,
+                sig::GUI_EE_PENDING_BOX_ORGX,
+                collider.origin[0],
+            ),
+            pending_scalar_or(
+                &ctx.world_signals,
+                sig::GUI_EE_PENDING_BOX_ORGY,
+                collider.origin[1],
+            ),
+        ],
+    });
+}
+
+fn consume_animation_commit(ctx: &mut GameCtx) {
+    if !ctx.world_signals.take_flag(sig::ACTION_EE_COMMIT_ANIMATION) {
+        return;
+    }
+    let Some((entity, snapshot)) =
+        selected_entity_and_snapshot(&ctx.world_signals, "consume_animation_commit")
+    else {
+        return;
+    };
+    let Some(animation) = snapshot.animation else {
+        warn!(
+            "consume_animation_commit: snapshot missing Animation for entity {}",
+            entity.to_bits()
+        );
+        return;
+    };
+    let frame_index = pending_integer_or(
+        &ctx.world_signals,
+        sig::GUI_EE_PENDING_ANIM_FRAME_INDEX,
+        i32::try_from(animation.frame_index).unwrap_or(i32::MAX),
+    )
+    .max(0) as usize;
+    ctx.commands.trigger(UpdateAnimationRequested {
+        entity,
+        animation_key: pending_string_or(
+            &ctx.world_signals,
+            sig::GUI_EE_PENDING_ANIM_KEY,
+            sig::GUI_EE_PENDING_ANIM_KEY_DIRTY,
+            &animation.animation_key,
+        ),
+        frame_index,
+        elapsed_time: pending_scalar_or(
+            &ctx.world_signals,
+            sig::GUI_EE_PENDING_ANIM_ELAPSED,
+            animation.elapsed_time,
+        ),
+    });
+    ctx.world_signals
+        .clear_flag(sig::GUI_EE_PENDING_ANIM_KEY_DIRTY);
+}
+
+fn selected_entity_and_snapshot(
+    signals: &WorldSignals,
+    context: &str,
+) -> Option<(Entity, ComponentSnapshot)> {
+    let Some(entity) = signals.get_entity(sig::ES_SELECTED_ENTITY).copied() else {
+        warn!("{context}: no selected entity");
+        return None;
+    };
+    let Some(snapshot_json) = signals.get_string(sig::EE_COMPONENT_SNAPSHOT) else {
+        warn!(
+            "{context}: missing component snapshot for entity {}",
+            entity.to_bits()
+        );
+        return None;
+    };
+    let Ok(snapshot) = serde_json::from_str::<ComponentSnapshot>(snapshot_json) else {
+        warn!(
+            "{context}: invalid component snapshot for entity {}",
+            entity.to_bits()
+        );
+        return None;
+    };
+    if snapshot.entity_bits != entity.to_bits() {
+        warn!(
+            "{context}: snapshot entity {} does not match selected entity {}",
+            snapshot.entity_bits,
+            entity.to_bits()
+        );
+        return None;
+    }
+    Some((entity, snapshot))
+}
+
+fn pending_scalar_or(signals: &WorldSignals, key: &str, fallback: f32) -> f32 {
+    signals.get_scalar(key).unwrap_or(fallback)
+}
+
+fn pending_integer_or(signals: &WorldSignals, key: &str, fallback: i32) -> i32 {
+    signals.get_integer(key).unwrap_or(fallback)
+}
+
+fn pending_string_or(signals: &WorldSignals, key: &str, dirty_key: &str, fallback: &str) -> String {
+    if signals.has_flag(dirty_key) {
+        signals
+            .get_string(key)
+            .cloned()
+            .unwrap_or_else(|| fallback.to_owned())
+    } else {
+        fallback.to_owned()
+    }
+}
+
+fn pending_bool_or(signals: &WorldSignals, key: &str, dirty_key: &str, fallback: bool) -> bool {
+    if signals.has_flag(dirty_key) {
+        signals.has_flag(key)
+    } else {
+        fallback
+    }
+}
+
+fn clear_entity_editor_pending(signals: &mut WorldSignals) {
+    for key in [
+        sig::GUI_EE_PENDING_POS_X,
+        sig::GUI_EE_PENDING_POS_Y,
+        sig::GUI_EE_PENDING_Z_INDEX,
+        sig::GUI_EE_PENDING_ROT_DEG,
+        sig::GUI_EE_PENDING_SCALE_X,
+        sig::GUI_EE_PENDING_SCALE_Y,
+        sig::GUI_EE_PENDING_SPRITE_WIDTH,
+        sig::GUI_EE_PENDING_SPRITE_HEIGHT,
+        sig::GUI_EE_PENDING_SPRITE_OFFX,
+        sig::GUI_EE_PENDING_SPRITE_OFFY,
+        sig::GUI_EE_PENDING_SPRITE_ORGX,
+        sig::GUI_EE_PENDING_SPRITE_ORGY,
+        sig::GUI_EE_PENDING_BOX_SIZE_X,
+        sig::GUI_EE_PENDING_BOX_SIZE_Y,
+        sig::GUI_EE_PENDING_BOX_OFFX,
+        sig::GUI_EE_PENDING_BOX_OFFY,
+        sig::GUI_EE_PENDING_BOX_ORGX,
+        sig::GUI_EE_PENDING_BOX_ORGY,
+        sig::GUI_EE_PENDING_ANIM_ELAPSED,
+    ] {
+        signals.clear_scalar(key);
+    }
+    signals.clear_integer(sig::GUI_EE_PENDING_ANIM_FRAME_INDEX);
+    for key in [
+        sig::GUI_EE_PENDING_GROUP,
+        sig::GUI_EE_PENDING_SPRITE_TEX_KEY,
+        sig::GUI_EE_PENDING_ANIM_KEY,
+    ] {
+        signals.remove_string(key);
+    }
+    for key in [
+        sig::GUI_EE_PENDING_GROUP_DIRTY,
+        sig::GUI_EE_PENDING_SPRITE_TEX_KEY_DIRTY,
+        sig::GUI_EE_PENDING_ANIM_KEY_DIRTY,
+        sig::GUI_EE_PENDING_SPRITE_FLIP_H,
+        sig::GUI_EE_PENDING_SPRITE_FLIP_V,
+        sig::GUI_EE_PENDING_SPRITE_FLIP_H_DIRTY,
+        sig::GUI_EE_PENDING_SPRITE_FLIP_V_DIRTY,
+        sig::ACTION_EE_COMMIT_POSITION,
+        sig::ACTION_EE_COMMIT_Z,
+        sig::ACTION_EE_COMMIT_GROUP,
+        sig::ACTION_EE_COMMIT_ROTATION,
+        sig::ACTION_EE_COMMIT_SCALE,
+        sig::ACTION_EE_COMMIT_SPRITE,
+        sig::ACTION_EE_COMMIT_COLLIDER,
+        sig::ACTION_EE_COMMIT_ANIMATION,
+    ] {
+        signals.clear_flag(key);
+    }
+}
+
 fn draw_float_input(
     ui: &imgui::Ui,
     signals: &mut WorldSignals,
@@ -915,12 +1371,19 @@ fn commit_integer_signal(
     signals.set_flag(action_key);
 }
 
-fn commit_bool_flag(signals: &mut WorldSignals, pending_key: &str, value: bool, action_key: &str) {
+fn commit_bool_flag(
+    signals: &mut WorldSignals,
+    pending_key: &str,
+    dirty_key: &str,
+    value: bool,
+    action_key: &str,
+) {
     if value {
         signals.set_flag(pending_key);
     } else {
         signals.clear_flag(pending_key);
     }
+    signals.set_flag(dirty_key);
     signals.set_flag(action_key);
 }
 
