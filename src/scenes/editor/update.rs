@@ -1,0 +1,206 @@
+use super::entity_editor_panel::draw_entity_editor;
+use super::entity_selector_panel::draw_entity_selector;
+use super::menu::{draw_about_modal, draw_menu_bar};
+use super::overlay::draw_selection_outline;
+use super::state::{consume_entity_editor_commits, handle_entity_editor_selection_change};
+use super::texture_panel::{draw_texture_editor, draw_texture_modals};
+use crate::signals as sig;
+use crate::systems::entity_selector::{PickEntitiesAtPointRequested, SelectEntityRequested};
+use crate::systems::map_ops::{
+    AddTextureRequested, LoadMapRequested, NewMapRequested, PreviewMapDataRequested,
+    RemoveTextureRequested, RenameTextureKeyRequested, SaveMapRequested,
+};
+use crate::systems::tilemap_load::LoadTilemapRequested;
+use aberredengine::events::switchdebug::SwitchDebugEvent;
+use aberredengine::imgui;
+use aberredengine::resources::input::InputState;
+use aberredengine::resources::texturestore::TextureStore;
+use aberredengine::resources::worldsignals::WorldSignals;
+use aberredengine::systems::GameCtx;
+
+pub fn editor_update(ctx: &mut GameCtx, _dt: f32, input: &InputState) {
+    // Entity picking — left mouse click (Action1 rebound to mouse-only in editor_enter).
+    // Suppressed when ImGui captured the mouse last frame to prevent clicks on UI widgets
+    // from triggering world picks.
+    if input.action_1.just_pressed && !ctx.world_signals.has_flag(sig::IMGUI_WANTS_MOUSE) {
+        ctx.commands.trigger(PickEntitiesAtPointRequested {
+            x: input.mouse_world_x,
+            y: input.mouse_world_y,
+        });
+    }
+
+    if let Some(row) = ctx.world_signals.clear_integer(sig::ES_SELECTED_ROW) {
+        ctx.commands.trigger(SelectEntityRequested {
+            index: row as usize,
+        });
+    }
+
+    handle_entity_editor_selection_change(&mut ctx.world_signals);
+    consume_entity_editor_commits(ctx);
+    handle_file_actions(ctx);
+    handle_texture_actions(ctx);
+    handle_view_actions(ctx);
+}
+
+pub fn editor_gui(ui: &imgui::Ui, signals: &mut WorldSignals, textures: &TextureStore) {
+    // Publish ImGui mouse-capture state so editor_update can suppress world picks next frame.
+    if ui.io().want_capture_mouse {
+        signals.set_flag(sig::IMGUI_WANTS_MOUSE);
+    } else {
+        signals.clear_flag(sig::IMGUI_WANTS_MOUSE);
+    }
+
+    let open_about = draw_menu_bar(ui, signals);
+    let (open_rename_popup, open_remove_popup) = draw_texture_editor(ui, signals, textures);
+    draw_map_preview(ui, signals);
+    draw_entity_selector(ui, signals);
+    draw_entity_editor(ui, signals, textures);
+
+    if open_rename_popup {
+        ui.open_popup("Rename Key##texture_editor");
+    }
+    if open_remove_popup {
+        ui.open_popup("Remove Texture##texture_editor");
+    }
+    if open_about {
+        ui.open_popup("About");
+    }
+
+    draw_texture_modals(ui, signals);
+    draw_about_modal(ui);
+    draw_selection_outline(ui, signals);
+}
+
+fn handle_file_actions(ctx: &mut GameCtx) {
+    if ctx.world_signals.take_flag(sig::ACTION_FILE_NEW_MAP) {
+        ctx.commands.trigger(NewMapRequested);
+    }
+
+    if ctx.world_signals.take_flag(sig::ACTION_FILE_OPEN_MAP)
+        && let Some(path) = rfd::FileDialog::new()
+            .add_filter("Map", &["json"])
+            .pick_file()
+    {
+        let path = path.display().to_string();
+        ctx.world_signals
+            .set_string(sig::MAP_CURRENT_PATH, path.clone());
+        ctx.commands.trigger(LoadMapRequested { path });
+    }
+
+    if ctx.world_signals.take_flag(sig::ACTION_FILE_SAVE) {
+        if let Some(path) = ctx
+            .world_signals
+            .get_string(sig::MAP_CURRENT_PATH)
+            .map(|s| s.to_owned())
+        {
+            ctx.commands.trigger(SaveMapRequested { path });
+        } else {
+            ctx.world_signals.set_flag(sig::ACTION_FILE_SAVE_AS);
+        }
+    }
+
+    if ctx.world_signals.take_flag(sig::ACTION_FILE_SAVE_AS)
+        && let Some(path) = rfd::FileDialog::new()
+            .add_filter("Map", &["json"])
+            .save_file()
+    {
+        let path = path.display().to_string();
+        ctx.world_signals
+            .set_string(sig::MAP_CURRENT_PATH, path.clone());
+        ctx.commands.trigger(SaveMapRequested { path });
+    }
+
+    if ctx.world_signals.take_flag(sig::ACTION_FILE_LOAD_TILEMAP)
+        && let Some(path) = rfd::FileDialog::new().pick_folder()
+    {
+        ctx.commands.trigger(LoadTilemapRequested {
+            path: path.display().to_string(),
+        });
+    }
+}
+
+fn handle_texture_actions(ctx: &mut GameCtx) {
+    if ctx.world_signals.take_flag(sig::ACTION_TEXTURE_RENAME) {
+        let old_key = ctx
+            .world_signals
+            .get_string(sig::TEX_RENAME_SRC)
+            .map(|s| s.to_owned());
+        let new_key = ctx
+            .world_signals
+            .get_string(sig::TEX_RENAME_BUF)
+            .map(|s| s.to_owned());
+        if let (Some(old_key), Some(new_key)) = (old_key, new_key) {
+            ctx.commands
+                .trigger(RenameTextureKeyRequested { old_key, new_key });
+        }
+    }
+
+    if ctx.world_signals.take_flag(sig::ACTION_TEXTURE_REMOVE)
+        && let Some(key) = ctx
+            .world_signals
+            .get_string(sig::TEX_REMOVE_KEY)
+            .map(|s| s.to_owned())
+    {
+        ctx.commands.trigger(RemoveTextureRequested { key });
+    }
+
+    if ctx.world_signals.take_flag(sig::ACTION_TEXTURE_ADD_BROWSE) {
+        let key = ctx
+            .world_signals
+            .get_string(sig::TEX_ADD_KEY_BUF)
+            .map(|s| s.to_owned())
+            .unwrap_or_default();
+        if !key.is_empty()
+            && let Some(path) = rfd::FileDialog::new()
+                .add_filter("Image", &["png", "jpg", "jpeg", "bmp"])
+                .pick_file()
+        {
+            ctx.commands.trigger(AddTextureRequested {
+                key,
+                path: path.display().to_string(),
+            });
+        }
+    }
+}
+
+fn handle_view_actions(ctx: &mut GameCtx) {
+    if ctx.world_signals.take_flag(sig::ACTION_VIEW_TOGGLE_DEBUG) {
+        ctx.commands.trigger(SwitchDebugEvent {});
+    }
+
+    if ctx
+        .world_signals
+        .take_flag(sig::ACTION_VIEW_PREVIEW_MAPDATA)
+    {
+        ctx.commands.trigger(PreviewMapDataRequested);
+    }
+}
+
+fn draw_map_preview(ui: &imgui::Ui, signals: &mut WorldSignals) {
+    if !signals.has_flag(sig::UI_PREVIEW_MAPDATA_OPEN) {
+        return;
+    }
+
+    let mut window_open = true;
+    ui.window("Map Data Preview")
+        .size([600.0, 500.0], imgui::Condition::FirstUseEver)
+        .opened(&mut window_open)
+        .build(|| {
+            if ui.button("Refresh") {
+                signals.set_flag(sig::ACTION_VIEW_PREVIEW_MAPDATA);
+            }
+            ui.separator();
+
+            let mut json = signals
+                .get_string(sig::MAPDATA_PREVIEW_JSON)
+                .cloned()
+                .unwrap_or_default();
+            ui.input_text_multiline("##mapdata_json", &mut json, [-1.0, -1.0])
+                .read_only(true)
+                .build();
+        });
+
+    if !window_open {
+        signals.take_flag(sig::UI_PREVIEW_MAPDATA_OPEN);
+    }
+}
