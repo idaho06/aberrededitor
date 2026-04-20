@@ -1,12 +1,16 @@
 use crate::signals as sig;
 use aberredengine::bevy_ecs;
 use aberredengine::bevy_ecs::prelude::{Entity, Event, On, Query, ResMut};
+use aberredengine::components::animation::Animation;
 use aberredengine::components::boxcollider::BoxCollider;
 use aberredengine::components::group::Group;
 use aberredengine::components::mapposition::MapPosition;
+use aberredengine::components::phase::Phase;
 use aberredengine::components::rotation::Rotation;
 use aberredengine::components::scale::Scale;
 use aberredengine::components::sprite::Sprite;
+use aberredengine::components::timer::Timer;
+use aberredengine::components::ttl::Ttl;
 use aberredengine::components::zindex::ZIndex;
 use aberredengine::resources::worldsignals::WorldSignals;
 
@@ -42,6 +46,33 @@ pub(crate) struct ColliderSnapshot {
 }
 
 #[derive(serde::Serialize, serde::Deserialize)]
+pub(crate) struct AnimationSnapshot {
+    pub(crate) animation_key: String,
+    pub(crate) frame_index: usize,
+    pub(crate) elapsed_time: f32,
+}
+
+#[derive(serde::Serialize, serde::Deserialize)]
+pub(crate) struct TtlSnapshot {
+    pub(crate) remaining: f32,
+}
+
+#[derive(serde::Serialize, serde::Deserialize)]
+pub(crate) struct TimerSnapshot {
+    pub(crate) duration: f32,
+    pub(crate) elapsed: f32,
+}
+
+#[derive(serde::Serialize, serde::Deserialize)]
+pub(crate) struct PhaseSnapshot {
+    pub(crate) current: String,
+    pub(crate) previous: Option<String>,
+    pub(crate) next: Option<String>,
+    pub(crate) time_in_phase: f32,
+    pub(crate) phase_names: Vec<String>,
+}
+
+#[derive(serde::Serialize, serde::Deserialize)]
 pub(crate) struct ComponentSnapshot {
     pub(crate) entity_bits: u64,
     /// WorldSignals entity keys whose value matches this entity.
@@ -53,6 +84,10 @@ pub(crate) struct ComponentSnapshot {
     pub(crate) box_collider: Option<ColliderSnapshot>,
     pub(crate) rotation_deg: Option<f32>,
     pub(crate) scale: Option<[f32; 2]>,
+    pub(crate) animation: Option<AnimationSnapshot>,
+    pub(crate) ttl: Option<TtlSnapshot>,
+    pub(crate) timer: Option<TimerSnapshot>,
+    pub(crate) phase: Option<PhaseSnapshot>,
 }
 
 // ---------------------------------------------------------------------------
@@ -70,15 +105,22 @@ pub fn entity_inspect_observer(
         Option<&Group>,
         Option<&Rotation>,
         Option<&Scale>,
+        Option<&Animation>,
+        Option<&Ttl>,
+        Option<&Timer>,
+        Option<&Phase>,
     )>,
     mut signals: ResMut<WorldSignals>,
 ) {
     let entity = trigger.event().entity;
-    let Ok((pos, z, sprite, collider, group, rot, scale)) = query.get(entity) else {
+    let Ok((pos, z, sprite, collider, group, rot, scale, animation, ttl, timer, phase)) =
+        query.get(entity)
+    else {
         return;
     };
 
-    let world_signal_keys: Vec<String> = signals.entities
+    let world_signal_keys: Vec<String> = signals
+        .entities
         .iter()
         .filter(|(_, e)| **e == entity)
         .map(|(k, _)| k.clone())
@@ -106,6 +148,29 @@ pub fn entity_inspect_observer(
         }),
         rotation_deg: rot.map(|r| r.degrees),
         scale: scale.map(|s| [s.scale.x, s.scale.y]),
+        animation: animation.map(|a| AnimationSnapshot {
+            animation_key: a.animation_key.clone(),
+            frame_index: a.frame_index,
+            elapsed_time: a.elapsed_time,
+        }),
+        ttl: ttl.map(|t| TtlSnapshot {
+            remaining: t.remaining,
+        }),
+        timer: timer.map(|t| TimerSnapshot {
+            duration: t.duration,
+            elapsed: t.elapsed,
+        }),
+        phase: phase.map(|p| {
+            let mut phase_names: Vec<String> = p.phases.keys().cloned().collect();
+            phase_names.sort();
+            PhaseSnapshot {
+                current: p.current.clone(),
+                previous: p.previous.clone(),
+                next: p.next.clone(),
+                time_in_phase: p.time_in_phase,
+                phase_names,
+            }
+        }),
     };
 
     if let Ok(json) = serde_json::to_string(&snapshot) {

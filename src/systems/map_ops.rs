@@ -3,14 +3,14 @@ use aberredengine::bevy_ecs;
 use aberredengine::bevy_ecs::prelude::{Commands, Entity, Event, On, Query, Res, ResMut};
 use aberredengine::components::group::Group;
 use aberredengine::events::spawnmap::SpawnMapRequested;
-use aberredengine::resources::mapdata::{load_map, save_map, MapData, TextureEntry};
+use aberredengine::resources::mapdata::{MapData, TextureEntry, load_map, save_map};
 use aberredengine::resources::texturestore::TextureStore;
 use aberredengine::resources::tilemapstore::TilemapStore;
 use aberredengine::resources::worldsignals::WorldSignals;
 use aberredengine::systems::RaylibAccess;
 use log::{info, warn};
 
-use crate::systems::entity_selector::{clear_selector_state, EntitySelectorCache};
+use crate::systems::entity_selector::{EntitySelectorCache, clear_selector_state};
 use crate::systems::utils::to_relative;
 
 const GROUP_TILES: &str = "tiles";
@@ -150,7 +150,10 @@ pub fn add_texture_observer(
             texture_store.insert(key, texture);
             texture_store.paths.insert(key.clone(), rel_path.clone());
             if !map_data.textures.iter().any(|e| e.key == *key) {
-                map_data.textures.push(TextureEntry { key: key.clone(), path: rel_path });
+                map_data.textures.push(TextureEntry {
+                    key: key.clone(),
+                    path: rel_path,
+                });
             }
         }
         Err(e) => {

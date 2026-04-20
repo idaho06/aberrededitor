@@ -1,7 +1,7 @@
+use super::entity_inspector::InspectEntityRequested;
 use crate::signals as sig;
 use aberredengine::bevy_ecs;
 use aberredengine::bevy_ecs::prelude::{Commands, Entity, Event, On, Query, Res, ResMut, Resource};
-use super::entity_inspector::InspectEntityRequested;
 use aberredengine::components::boxcollider::BoxCollider;
 use aberredengine::components::globaltransform2d::GlobalTransform2D;
 use aberredengine::components::group::Group;
@@ -99,22 +99,44 @@ pub fn entity_pick_observer(
 ) {
     let click_x = trigger.event().x;
     let click_y = trigger.event().y;
-    let click = Vector2 { x: click_x, y: click_y };
+    let click = Vector2 {
+        x: click_x,
+        y: click_y,
+    };
 
     let mut hits: Vec<HitEntry> = Vec::new();
 
-    for (entity, pos, maybe_collider, maybe_sprite, maybe_rot, maybe_scale, maybe_zindex, maybe_gt, maybe_group)
-        in query.iter()
+    for (
+        entity,
+        pos,
+        maybe_collider,
+        maybe_sprite,
+        maybe_rot,
+        maybe_scale,
+        maybe_zindex,
+        maybe_gt,
+        maybe_group,
+    ) in query.iter()
     {
-        let (resolved_pos, resolved_scale, resolved_rot) =
-            resolve_world_transform(*pos, maybe_scale.copied(), maybe_rot.copied(), maybe_gt.copied());
+        let (resolved_pos, resolved_scale, resolved_rot) = resolve_world_transform(
+            *pos,
+            maybe_scale.copied(),
+            maybe_rot.copied(),
+            maybe_gt.copied(),
+        );
 
         let hit = if let Some(collider) = maybe_collider {
             // BoxCollider takes priority — axis-aligned, ignores sprite rotation
             collider.contains_point(resolved_pos.pos, click)
         } else if let Some(sprite) = maybe_sprite {
             // Sprite bounds with rotation support
-            point_in_sprite(click, &resolved_pos, sprite, resolved_scale.as_ref(), resolved_rot.as_ref())
+            point_in_sprite(
+                click,
+                &resolved_pos,
+                sprite,
+                resolved_scale.as_ref(),
+                resolved_rot.as_ref(),
+            )
         } else {
             // No pickable bounds — non-pickable entity
             false
@@ -122,7 +144,9 @@ pub fn entity_pick_observer(
 
         if hit {
             let zindex = maybe_zindex.map_or(0.0, |z| z.0);
-            let group_label = maybe_group.map(|g| format!(" [{}]", g.0)).unwrap_or_default();
+            let group_label = maybe_group
+                .map(|g| format!(" [{}]", g.0))
+                .unwrap_or_default();
             let label = format!("Entity #{}{}", entity.index(), group_label);
             let corners = compute_corners(
                 &resolved_pos,
@@ -131,7 +155,12 @@ pub fn entity_pick_observer(
                 resolved_scale.as_ref(),
                 resolved_rot.as_ref(),
             );
-            hits.push(HitEntry { entity, label, zindex, corners });
+            hits.push(HitEntry {
+                entity,
+                label,
+                zindex,
+                corners,
+            });
         }
     }
 
@@ -252,18 +281,10 @@ fn compute_corners(
         let ox = geom.origin.x;
         let oy = geom.origin.y;
         // Local offsets relative to anchor (TL, TR, BR, BL)
-        let locals: [(f32, f32); 4] = [
-            (-ox, -oy),
-            (w - ox, -oy),
-            (w - ox, h - oy),
-            (-ox, h - oy),
-        ];
+        let locals: [(f32, f32); 4] = [(-ox, -oy), (w - ox, -oy), (w - ox, h - oy), (-ox, h - oy)];
         let mut corners = [[0.0f32; 2]; 4];
         for (i, (lx, ly)) in locals.iter().enumerate() {
-            corners[i] = [
-                ax + lx * cos_a - ly * sin_a,
-                ay + lx * sin_a + ly * cos_a,
-            ];
+            corners[i] = [ax + lx * cos_a - ly * sin_a, ay + lx * sin_a + ly * cos_a];
         }
         corners
     } else {

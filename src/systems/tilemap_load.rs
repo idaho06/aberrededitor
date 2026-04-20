@@ -3,8 +3,8 @@ use aberredengine::bevy_ecs::prelude::{Commands, Event, On, ResMut};
 use aberredengine::resources::mapdata::{MapData, TextureEntry, TilemapEntry};
 use aberredengine::resources::texturestore::TextureStore;
 use aberredengine::resources::tilemapstore::TilemapStore;
-use aberredengine::systems::tilemap::{load_tilemap, spawn_tiles};
 use aberredengine::systems::RaylibAccess;
+use aberredengine::systems::tilemap::{load_tilemap, spawn_tiles};
 use log::info;
 
 use crate::systems::utils::to_relative;
@@ -53,5 +53,8 @@ pub fn tilemap_load_observer(
         });
     }
 
-    info!("tilemap_load_observer: loaded tilemap '{}' from '{}'", id, dir_path);
+    info!(
+        "tilemap_load_observer: loaded tilemap '{}' from '{}'",
+        id, dir_path
+    );
 }

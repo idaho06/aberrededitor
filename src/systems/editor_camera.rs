@@ -25,10 +25,18 @@ pub fn editor_camera_system(
 
     let mut dx = 0.0_f32;
     let mut dy = 0.0_f32;
-    if input.maindirection_left.active || input.secondarydirection_left.active   { dx -= 1.0; }
-    if input.maindirection_right.active || input.secondarydirection_right.active { dx += 1.0; }
-    if input.maindirection_up.active || input.secondarydirection_up.active       { dy -= 1.0; }
-    if input.maindirection_down.active || input.secondarydirection_down.active   { dy += 1.0; }
+    if input.maindirection_left.active || input.secondarydirection_left.active {
+        dx -= 1.0;
+    }
+    if input.maindirection_right.active || input.secondarydirection_right.active {
+        dx += 1.0;
+    }
+    if input.maindirection_up.active || input.secondarydirection_up.active {
+        dy -= 1.0;
+    }
+    if input.maindirection_down.active || input.secondarydirection_down.active {
+        dy += 1.0;
+    }
     if dx != 0.0 || dy != 0.0 {
         let pan_speed = 300.0_f32; // pixels/sec at zoom 1.0
         let zoom = camera_targets.get(entity).map(|ct| ct.zoom).unwrap_or(1.0);

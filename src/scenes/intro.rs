@@ -15,7 +15,7 @@ use rustc_hash::FxHashMap;
 
 const PHASE_DURATION: f32 = 1.5;
 const GLITCH_RATE: f32 = 0.1; // uglitch units per second during "medium" phase
-const FADE_RATE: f32 = 0.7;   // fade alpha units per second during "fadeout" phase
+const FADE_RATE: f32 = 0.7; // fade alpha units per second during "fadeout" phase
 const FADE_THRESHOLD: f32 = 1.1; // alpha at which we switch to the editor
 
 fn shader_control_phases() -> FxHashMap<String, PhaseCallbackFns> {

@@ -1,5 +1,5 @@
-use aberredengine::bevy_ecs::prelude::{Commands, NonSendMut, ResMut};
 use crate::systems::entity_selector::EntitySelectorCache;
+use aberredengine::bevy_ecs::prelude::{Commands, NonSendMut, ResMut};
 use aberredengine::raylib::prelude::Color;
 use aberredengine::resources::gameconfig::GameConfig;
 use aberredengine::resources::gamestate::{GameStates, NextGameState};
@@ -11,7 +11,7 @@ use aberredengine::systems::RaylibAccess;
 use log::info;
 
 const SHADER_GLITCH: &str = "./assets/shaders/glitch.fs";
-const SHADER_FADE:   &str = "./assets/shaders/fade.fs";
+const SHADER_FADE: &str = "./assets/shaders/fade.fs";
 const TEXTURE_ISOMETRIC: &str = "./assets/textures/aberred_engine_isometric_alpha.png";
 
 /// Called as a Bevy ECS system during the engine setup stage.

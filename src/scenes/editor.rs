@@ -1,4 +1,13 @@
 use crate::signals as sig;
+use crate::systems::entity_inspector::ComponentSnapshot;
+use crate::systems::entity_selector::{
+    PickEntitiesAtPointRequested, SelectEntityRequested, clear_selector_signals,
+};
+use crate::systems::map_ops::{
+    AddTextureRequested, LoadMapRequested, NewMapRequested, PreviewMapDataRequested,
+    RemoveTextureRequested, RenameTextureKeyRequested, SaveMapRequested,
+};
+use crate::systems::tilemap_load::LoadTilemapRequested;
 use aberredengine::components::cameratarget::CameraTarget;
 use aberredengine::components::mapposition::MapPosition;
 use aberredengine::events::input::InputAction;
@@ -13,13 +22,6 @@ use aberredengine::resources::input_bindings::InputBinding;
 use aberredengine::resources::texturestore::TextureStore;
 use aberredengine::resources::worldsignals::WorldSignals;
 use aberredengine::systems::GameCtx;
-use crate::systems::entity_inspector::ComponentSnapshot;
-use crate::systems::entity_selector::{clear_selector_signals, PickEntitiesAtPointRequested, SelectEntityRequested};
-use crate::systems::map_ops::{
-    AddTextureRequested, LoadMapRequested, NewMapRequested, PreviewMapDataRequested,
-    RemoveTextureRequested, RenameTextureKeyRequested, SaveMapRequested,
-};
-use crate::systems::tilemap_load::LoadTilemapRequested;
 use log::info;
 
 pub fn editor_enter(ctx: &mut GameCtx) {
@@ -56,10 +58,14 @@ pub fn editor_exit(ctx: &mut GameCtx) {
     info!("editor_exit: leaving editor scene");
 
     // Restore default Action1 bindings (Space + MouseLeft)
-    ctx.input_bindings
-        .rebind(InputAction::Action1, InputBinding::Keyboard(KeyboardKey::KEY_SPACE));
-    ctx.input_bindings
-        .add_binding(InputAction::Action1, InputBinding::MouseButton(MouseButton::MOUSE_BUTTON_LEFT));
+    ctx.input_bindings.rebind(
+        InputAction::Action1,
+        InputBinding::Keyboard(KeyboardKey::KEY_SPACE),
+    );
+    ctx.input_bindings.add_binding(
+        InputAction::Action1,
+        InputBinding::MouseButton(MouseButton::MOUSE_BUTTON_LEFT),
+    );
 
     clear_selector_signals(&mut ctx.world_signals);
     ctx.world_signals.clear_flag(sig::IMGUI_WANTS_MOUSE);
@@ -78,7 +84,9 @@ pub fn editor_update(ctx: &mut GameCtx, _dt: f32, input: &InputState) {
 
     // Resolve entity selection from GUI row click
     if let Some(row) = ctx.world_signals.clear_integer(sig::ES_SELECTED_ROW) {
-        ctx.commands.trigger(SelectEntityRequested { index: row as usize });
+        ctx.commands.trigger(SelectEntityRequested {
+            index: row as usize,
+        });
     }
 
     if ctx.world_signals.take_flag(sig::ACTION_FILE_NEW_MAP) {
@@ -86,10 +94,13 @@ pub fn editor_update(ctx: &mut GameCtx, _dt: f32, input: &InputState) {
     }
 
     if ctx.world_signals.take_flag(sig::ACTION_FILE_OPEN_MAP)
-        && let Some(path) = rfd::FileDialog::new().add_filter("Map", &["json"]).pick_file()
+        && let Some(path) = rfd::FileDialog::new()
+            .add_filter("Map", &["json"])
+            .pick_file()
     {
         let path = path.display().to_string();
-        ctx.world_signals.set_string(sig::MAP_CURRENT_PATH, path.clone());
+        ctx.world_signals
+            .set_string(sig::MAP_CURRENT_PATH, path.clone());
         ctx.commands.trigger(LoadMapRequested { path });
     }
 
@@ -111,7 +122,8 @@ pub fn editor_update(ctx: &mut GameCtx, _dt: f32, input: &InputState) {
             .save_file()
     {
         let path = path.display().to_string();
-        ctx.world_signals.set_string(sig::MAP_CURRENT_PATH, path.clone());
+        ctx.world_signals
+            .set_string(sig::MAP_CURRENT_PATH, path.clone());
         ctx.commands.trigger(SaveMapRequested { path });
     }
 
@@ -169,7 +181,10 @@ pub fn editor_update(ctx: &mut GameCtx, _dt: f32, input: &InputState) {
         ctx.commands.trigger(SwitchDebugEvent {});
     }
 
-    if ctx.world_signals.take_flag(sig::ACTION_VIEW_PREVIEW_MAPDATA) {
+    if ctx
+        .world_signals
+        .take_flag(sig::ACTION_VIEW_PREVIEW_MAPDATA)
+    {
         ctx.commands.trigger(PreviewMapDataRequested);
     }
 }
@@ -193,9 +208,15 @@ pub fn editor_gui(ui: &imgui::Ui, signals: &mut WorldSignals, textures: &Texture
     draw_entity_editor(ui, signals);
 
     // Popup triggers must come after window content in the same frame
-    if open_rename_popup { ui.open_popup("Rename Key##texture_editor"); }
-    if open_remove_popup { ui.open_popup("Remove Texture##texture_editor"); }
-    if open_about { ui.open_popup("About"); }
+    if open_rename_popup {
+        ui.open_popup("Rename Key##texture_editor");
+    }
+    if open_remove_popup {
+        ui.open_popup("Remove Texture##texture_editor");
+    }
+    if open_about {
+        ui.open_popup("About");
+    }
 
     draw_texture_modals(ui, signals);
     draw_about_modal(ui);
@@ -234,7 +255,8 @@ fn draw_menu_bar(ui: &imgui::Ui, signals: &mut WorldSignals) -> bool {
             if ui.menu_item("Reset Zoom") {
                 signals.set_flag(sig::ACTION_VIEW_RESET_ZOOM);
             }
-            if ui.menu_item_config("Toggle Debug Mode")
+            if ui
+                .menu_item_config("Toggle Debug Mode")
                 .shortcut("F11")
                 .selected(signals.has_flag(sig::UI_DEBUG_ACTIVE))
                 .build()
@@ -242,20 +264,23 @@ fn draw_menu_bar(ui: &imgui::Ui, signals: &mut WorldSignals) -> bool {
                 signals.set_flag(sig::ACTION_VIEW_TOGGLE_DEBUG);
             }
             ui.separator();
-            if ui.menu_item_config("Texture Store")
+            if ui
+                .menu_item_config("Texture Store")
                 .selected(signals.has_flag(sig::UI_TEXTURE_EDITOR_OPEN))
                 .build()
             {
                 signals.toggle_flag(sig::UI_TEXTURE_EDITOR_OPEN);
             }
-            if ui.menu_item_config("Entity Selector")
+            if ui
+                .menu_item_config("Entity Selector")
                 .selected(signals.has_flag(sig::UI_ENTITY_SELECTOR_OPEN))
                 .build()
             {
                 signals.toggle_flag(sig::UI_ENTITY_SELECTOR_OPEN);
             }
             let preview_open = signals.has_flag(sig::UI_PREVIEW_MAPDATA_OPEN);
-            if ui.menu_item_config("Preview Map Data")
+            if ui
+                .menu_item_config("Preview Map Data")
                 .selected(preview_open)
                 .build()
             {
@@ -421,10 +446,9 @@ fn draw_entity_selector(ui: &imgui::Ui, signals: &mut WorldSignals) {
                 }
                 Some(payload) => {
                     // Click position header
-                    if let (Some(cx), Some(cy)) = (
-                        payload["click"][0].as_f64(),
-                        payload["click"][1].as_f64(),
-                    ) {
+                    if let (Some(cx), Some(cy)) =
+                        (payload["click"][0].as_f64(), payload["click"][1].as_f64())
+                    {
                         ui.text_disabled(format!("Click: ({:.1}, {:.1})", cx, cy));
                     }
                     ui.separator();
@@ -494,7 +518,10 @@ fn draw_entity_editor(ui: &imgui::Ui, signals: &mut WorldSignals) {
             ui.separator();
 
             ui.text("MapPosition");
-            ui.text_disabled(format!("  x: {:.2}  y: {:.2}", snap.map_position[0], snap.map_position[1]));
+            ui.text_disabled(format!(
+                "  x: {:.2}  y: {:.2}",
+                snap.map_position[0], snap.map_position[1]
+            ));
 
             if let Some(z) = snap.z_index {
                 section("ZIndex", &|| ui.text_disabled(format!("  {:.1}", z)));
@@ -506,22 +533,75 @@ fn draw_entity_editor(ui: &imgui::Ui, signals: &mut WorldSignals) {
                 section("Sprite", &|| {
                     ui.text_disabled(format!("  tex_key: {}", s.tex_key));
                     ui.text_disabled(format!("  size: {:.1} x {:.1}", s.width, s.height));
-                    ui.text_disabled(format!("  offset: ({:.1}, {:.1})", s.offset[0], s.offset[1]));
-                    ui.text_disabled(format!("  origin: ({:.1}, {:.1})", s.origin[0], s.origin[1]));
+                    ui.text_disabled(format!(
+                        "  offset: ({:.1}, {:.1})",
+                        s.offset[0], s.offset[1]
+                    ));
+                    ui.text_disabled(format!(
+                        "  origin: ({:.1}, {:.1})",
+                        s.origin[0], s.origin[1]
+                    ));
                     ui.text_disabled(format!("  flip: h={}  v={}", s.flip_h, s.flip_v));
                 });
             }
             if let Some(ref c) = snap.box_collider {
                 section("BoxCollider", &|| {
                     ui.text_disabled(format!("  size: {:.1} x {:.1}", c.size[0], c.size[1]));
-                    ui.text_disabled(format!("  offset: ({:.1}, {:.1})", c.offset[0], c.offset[1]));
+                    ui.text_disabled(format!(
+                        "  offset: ({:.1}, {:.1})",
+                        c.offset[0], c.offset[1]
+                    ));
                 });
             }
             if let Some(deg) = snap.rotation_deg {
-                section("Rotation", &|| ui.text_disabled(format!("  {:.2}\u{b0}", deg)));
+                section("Rotation", &|| {
+                    ui.text_disabled(format!("  {:.2}\u{b0}", deg))
+                });
             }
             if let Some([sx, sy]) = snap.scale {
-                section("Scale", &|| ui.text_disabled(format!("  x: {:.3}  y: {:.3}", sx, sy)));
+                section("Scale", &|| {
+                    ui.text_disabled(format!("  x: {:.3}  y: {:.3}", sx, sy))
+                });
+            }
+            if let Some(ref animation) = snap.animation {
+                section("Animation", &|| {
+                    ui.text_disabled(format!("  key: {}", animation.animation_key));
+                    ui.text_disabled(format!("  frame_index: {}", animation.frame_index));
+                    ui.text_disabled(format!("  elapsed_time: {:.3}", animation.elapsed_time));
+                });
+            }
+            if let Some(ref ttl) = snap.ttl {
+                section("Ttl", &|| {
+                    ui.text_disabled(format!("  remaining: {:.3}", ttl.remaining))
+                });
+            }
+            if let Some(ref timer) = snap.timer {
+                section("Timer", &|| {
+                    ui.text_disabled(format!("  duration: {:.3}", timer.duration));
+                    ui.text_disabled(format!("  elapsed: {:.3}", timer.elapsed));
+                });
+            }
+            if let Some(ref phase) = snap.phase {
+                section("Phase", &|| {
+                    ui.text_disabled(format!("  current: {}", phase.current));
+                    ui.text_disabled(format!(
+                        "  previous: {}",
+                        phase.previous.as_deref().unwrap_or("(none)")
+                    ));
+                    ui.text_disabled(format!(
+                        "  next: {}",
+                        phase.next.as_deref().unwrap_or("(none)")
+                    ));
+                    ui.text_disabled(format!("  time_in_phase: {:.3}", phase.time_in_phase));
+                    if phase.phase_names.is_empty() {
+                        ui.text_disabled("  phase_names: (none)");
+                    } else {
+                        ui.text_disabled(format!(
+                            "  phase_names: {}",
+                            phase.phase_names.join(", ")
+                        ));
+                    }
+                });
             }
         });
 
@@ -622,12 +702,12 @@ fn draw_selection_outline(ui: &imgui::Ui, signals: &WorldSignals) {
 
     let target_x = signals.get_scalar(sig::CAM_TARGET_X).unwrap_or(0.0);
     let target_y = signals.get_scalar(sig::CAM_TARGET_Y).unwrap_or(0.0);
-    let zoom     = signals.get_scalar(sig::CAM_ZOOM).unwrap_or(1.0);
+    let zoom = signals.get_scalar(sig::CAM_ZOOM).unwrap_or(1.0);
     let offset_x = signals.get_scalar(sig::CAM_OFFSET_X).unwrap_or(0.0);
     let offset_y = signals.get_scalar(sig::CAM_OFFSET_Y).unwrap_or(0.0);
     let lb_scale = signals.get_scalar(sig::WIN_SCALE).unwrap_or(1.0);
-    let lb_x     = signals.get_scalar(sig::WIN_OFFSET_X).unwrap_or(0.0);
-    let lb_y     = signals.get_scalar(sig::WIN_OFFSET_Y).unwrap_or(0.0);
+    let lb_x = signals.get_scalar(sig::WIN_OFFSET_X).unwrap_or(0.0);
+    let lb_y = signals.get_scalar(sig::WIN_OFFSET_Y).unwrap_or(0.0);
 
     let to_screen = |wx: f32, wy: f32| -> [f32; 2] {
         let rx = (wx - target_x) * zoom + offset_x;
@@ -635,10 +715,7 @@ fn draw_selection_outline(ui: &imgui::Ui, signals: &WorldSignals) {
         [rx * lb_scale + lb_x, ry * lb_scale + lb_y]
     };
 
-    let pts: Vec<[f32; 2]> = corners
-        .iter()
-        .map(|&[wx, wy]| to_screen(wx, wy))
-        .collect();
+    let pts: Vec<[f32; 2]> = corners.iter().map(|&[wx, wy]| to_screen(wx, wy)).collect();
 
     let color = [1.0_f32, 0.85, 0.0, 1.0]; // gold
     let dl = ui.get_background_draw_list();
