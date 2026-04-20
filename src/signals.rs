@@ -64,7 +64,7 @@ pub const ES_SELECTED_ENTITY: &str = "editor:selected_entity";
 // ---- Entity editor / inspector ----
 pub const UI_ENTITY_EDITOR_OPEN: &str = "ui:entity_editor:open";
 pub const EE_COMPONENT_SNAPSHOT: &str = "editor:entity_editor:component_snapshot";
-pub const EE_LAST_SELECTED_BITS: &str = "editor:entity_editor:last_selected_bits";
+pub const EE_LAST_SELECTED_ENTITY: &str = "editor:entity_editor:last_selected_entity";
 
 // ---- Entity editor: pending buffers ----
 pub const GUI_EE_PENDING_POS_X: &str = "gui:entity_editor:pending:pos_x";
@@ -114,7 +114,7 @@ pub const ACTION_EE_COMMIT_COLLIDER: &str = "gui:action:entity_editor:commit_col
 pub const ACTION_EE_COMMIT_ANIMATION: &str = "gui:action:entity_editor:commit_animation";
 
 const _: &[&str] = &[
-    EE_LAST_SELECTED_BITS,
+    EE_LAST_SELECTED_ENTITY,
     GUI_EE_PENDING_POS_X,
     GUI_EE_PENDING_POS_Y,
     GUI_EE_PENDING_Z_INDEX,

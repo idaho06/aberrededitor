@@ -10,10 +10,9 @@ use aberredengine::components::scale::Scale;
 use aberredengine::components::sprite::Sprite;
 use aberredengine::components::zindex::ZIndex;
 use aberredengine::raylib::prelude::Vector2;
-use log::{info, warn};
+use log::{debug, warn};
 use std::sync::Arc;
 
-#[allow(dead_code)]
 #[derive(Event)]
 pub struct UpdateMapPositionRequested {
     pub entity: Entity,
@@ -21,28 +20,24 @@ pub struct UpdateMapPositionRequested {
     pub y: f32,
 }
 
-#[allow(dead_code)]
 #[derive(Event)]
 pub struct UpdateZIndexRequested {
     pub entity: Entity,
     pub z_index: f32,
 }
 
-#[allow(dead_code)]
 #[derive(Event)]
 pub struct UpdateGroupRequested {
     pub entity: Entity,
     pub group: String,
 }
 
-#[allow(dead_code)]
 #[derive(Event)]
 pub struct UpdateRotationRequested {
     pub entity: Entity,
     pub rotation_deg: f32,
 }
 
-#[allow(dead_code)]
 #[derive(Event)]
 pub struct UpdateScaleRequested {
     pub entity: Entity,
@@ -50,7 +45,6 @@ pub struct UpdateScaleRequested {
     pub y: f32,
 }
 
-#[allow(dead_code)]
 #[derive(Event)]
 pub struct UpdateSpriteRequested {
     pub entity: Entity,
@@ -63,7 +57,6 @@ pub struct UpdateSpriteRequested {
     pub flip_v: bool,
 }
 
-#[allow(dead_code)]
 #[derive(Event)]
 pub struct UpdateBoxColliderRequested {
     pub entity: Entity,
@@ -72,7 +65,6 @@ pub struct UpdateBoxColliderRequested {
     pub origin: [f32; 2],
 }
 
-#[allow(dead_code)]
 #[derive(Event)]
 pub struct UpdateAnimationRequested {
     pub entity: Entity,
@@ -93,7 +85,7 @@ pub fn update_map_position_observer(
         return;
     };
     map_position.pos = Vector2::new(event.x, event.y);
-    info!(
+    debug!(
         "update_map_position_observer: updated entity {} -> ({:.3}, {:.3})",
         entity.to_bits(),
         event.x,
@@ -114,7 +106,7 @@ pub fn update_z_index_observer(
         return;
     };
     z_index.0 = event.z_index;
-    info!(
+    debug!(
         "update_z_index_observer: updated entity {} -> {:.3}",
         entity.to_bits(),
         event.z_index
@@ -134,7 +126,7 @@ pub fn update_group_observer(
         return;
     };
     group.0 = event.group.clone();
-    info!(
+    debug!(
         "update_group_observer: updated entity {} -> '{}'",
         entity.to_bits(),
         event.group
@@ -154,7 +146,7 @@ pub fn update_rotation_observer(
         return;
     };
     rotation.degrees = event.rotation_deg;
-    info!(
+    debug!(
         "update_rotation_observer: updated entity {} -> {:.3} deg",
         entity.to_bits(),
         event.rotation_deg
@@ -174,7 +166,7 @@ pub fn update_scale_observer(
         return;
     };
     scale.scale = Vector2::new(event.x, event.y);
-    info!(
+    debug!(
         "update_scale_observer: updated entity {} -> ({:.3}, {:.3})",
         entity.to_bits(),
         event.x,
@@ -201,7 +193,7 @@ pub fn update_sprite_observer(
     sprite.origin = Vector2::new(event.origin[0], event.origin[1]);
     sprite.flip_h = event.flip_h;
     sprite.flip_v = event.flip_v;
-    info!(
+    debug!(
         "update_sprite_observer: updated entity {} sprite '{}'",
         entity.to_bits(),
         event.tex_key
@@ -223,7 +215,7 @@ pub fn update_box_collider_observer(
     collider.size = Vector2::new(event.size[0], event.size[1]);
     collider.offset = Vector2::new(event.offset[0], event.offset[1]);
     collider.origin = Vector2::new(event.origin[0], event.origin[1]);
-    info!(
+    debug!(
         "update_box_collider_observer: updated entity {} collider",
         entity.to_bits()
     );
@@ -244,7 +236,7 @@ pub fn update_animation_observer(
     animation.animation_key = event.animation_key.clone();
     animation.frame_index = event.frame_index;
     animation.elapsed_time = event.elapsed_time;
-    info!(
+    debug!(
         "update_animation_observer: updated entity {} animation '{}' frame {} elapsed {:.3}",
         entity.to_bits(),
         event.animation_key,

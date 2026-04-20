@@ -75,7 +75,8 @@ pub fn editor_exit(ctx: &mut GameCtx) {
 
     clear_selector_signals(&mut ctx.world_signals);
     clear_entity_editor_pending(&mut ctx.world_signals);
-    ctx.world_signals.remove_string(sig::EE_LAST_SELECTED_BITS);
+    ctx.world_signals
+        .remove_entity(sig::EE_LAST_SELECTED_ENTITY);
     ctx.world_signals.clear_flag(sig::IMGUI_WANTS_MOUSE);
 }
 
@@ -839,43 +840,67 @@ fn draw_entity_editor(ui: &imgui::Ui, signals: &mut WorldSignals, textures: &Tex
 }
 
 fn handle_entity_editor_selection_change(signals: &mut WorldSignals) {
-    let current_bits = signals
-        .get_entity(sig::ES_SELECTED_ENTITY)
-        .map(|entity| entity.to_bits());
-    let previous_bits = signals
-        .get_string(sig::EE_LAST_SELECTED_BITS)
-        .and_then(|bits| bits.parse::<u64>().ok());
+    let current = signals.get_entity(sig::ES_SELECTED_ENTITY).copied();
+    let previous = signals.get_entity(sig::EE_LAST_SELECTED_ENTITY).copied();
 
-    if current_bits != previous_bits {
+    if current != previous {
         clear_entity_editor_pending(signals);
-        if let Some(bits) = current_bits {
-            signals.set_string(sig::EE_LAST_SELECTED_BITS, bits.to_string());
+        if let Some(entity) = current {
+            signals.set_entity(sig::EE_LAST_SELECTED_ENTITY, entity);
         } else {
-            signals.remove_string(sig::EE_LAST_SELECTED_BITS);
+            signals.remove_entity(sig::EE_LAST_SELECTED_ENTITY);
         }
     }
 }
 
 fn consume_entity_editor_commits(ctx: &mut GameCtx) {
-    consume_position_commit(ctx);
-    consume_z_commit(ctx);
-    consume_group_commit(ctx);
-    consume_rotation_commit(ctx);
-    consume_scale_commit(ctx);
-    consume_sprite_commit(ctx);
-    consume_collider_commit(ctx);
-    consume_animation_commit(ctx);
-}
-
-fn consume_position_commit(ctx: &mut GameCtx) {
-    if !ctx.world_signals.take_flag(sig::ACTION_EE_COMMIT_POSITION) {
+    const COMMIT_FLAGS: &[&str] = &[
+        sig::ACTION_EE_COMMIT_POSITION,
+        sig::ACTION_EE_COMMIT_Z,
+        sig::ACTION_EE_COMMIT_GROUP,
+        sig::ACTION_EE_COMMIT_ROTATION,
+        sig::ACTION_EE_COMMIT_SCALE,
+        sig::ACTION_EE_COMMIT_SPRITE,
+        sig::ACTION_EE_COMMIT_COLLIDER,
+        sig::ACTION_EE_COMMIT_ANIMATION,
+    ];
+    if !COMMIT_FLAGS.iter().any(|k| ctx.world_signals.has_flag(k)) {
         return;
     }
-    let Some((entity, snapshot)) =
-        selected_entity_and_snapshot(&ctx.world_signals, "consume_position_commit")
-    else {
+    let Some((entity, snapshot)) = selected_entity_and_snapshot(&ctx.world_signals) else {
+        for key in COMMIT_FLAGS {
+            ctx.world_signals.clear_flag(key);
+        }
         return;
     };
+
+    if ctx.world_signals.take_flag(sig::ACTION_EE_COMMIT_POSITION) {
+        consume_position_commit(ctx, entity, &snapshot);
+    }
+    if ctx.world_signals.take_flag(sig::ACTION_EE_COMMIT_Z) {
+        consume_z_commit(ctx, entity, &snapshot);
+    }
+    if ctx.world_signals.take_flag(sig::ACTION_EE_COMMIT_GROUP) {
+        consume_group_commit(ctx, entity, &snapshot);
+    }
+    if ctx.world_signals.take_flag(sig::ACTION_EE_COMMIT_ROTATION) {
+        consume_rotation_commit(ctx, entity, &snapshot);
+    }
+    if ctx.world_signals.take_flag(sig::ACTION_EE_COMMIT_SCALE) {
+        consume_scale_commit(ctx, entity, &snapshot);
+    }
+    if ctx.world_signals.take_flag(sig::ACTION_EE_COMMIT_SPRITE) {
+        consume_sprite_commit(ctx, entity, &snapshot);
+    }
+    if ctx.world_signals.take_flag(sig::ACTION_EE_COMMIT_COLLIDER) {
+        consume_collider_commit(ctx, entity, &snapshot);
+    }
+    if ctx.world_signals.take_flag(sig::ACTION_EE_COMMIT_ANIMATION) {
+        consume_animation_commit(ctx, entity, &snapshot);
+    }
+}
+
+fn consume_position_commit(ctx: &mut GameCtx, entity: Entity, snapshot: &ComponentSnapshot) {
     ctx.commands.trigger(UpdateMapPositionRequested {
         entity,
         x: pending_scalar_or(
@@ -891,15 +916,7 @@ fn consume_position_commit(ctx: &mut GameCtx) {
     });
 }
 
-fn consume_z_commit(ctx: &mut GameCtx) {
-    if !ctx.world_signals.take_flag(sig::ACTION_EE_COMMIT_Z) {
-        return;
-    }
-    let Some((entity, snapshot)) =
-        selected_entity_and_snapshot(&ctx.world_signals, "consume_z_commit")
-    else {
-        return;
-    };
+fn consume_z_commit(ctx: &mut GameCtx, entity: Entity, snapshot: &ComponentSnapshot) {
     let Some(z_index) = snapshot.z_index else {
         warn!(
             "consume_z_commit: snapshot missing ZIndex for entity {}",
@@ -913,16 +930,8 @@ fn consume_z_commit(ctx: &mut GameCtx) {
     });
 }
 
-fn consume_group_commit(ctx: &mut GameCtx) {
-    if !ctx.world_signals.take_flag(sig::ACTION_EE_COMMIT_GROUP) {
-        return;
-    }
-    let Some((entity, snapshot)) =
-        selected_entity_and_snapshot(&ctx.world_signals, "consume_group_commit")
-    else {
-        return;
-    };
-    let Some(group) = snapshot.group else {
+fn consume_group_commit(ctx: &mut GameCtx, entity: Entity, snapshot: &ComponentSnapshot) {
+    let Some(ref group) = snapshot.group else {
         warn!(
             "consume_group_commit: snapshot missing Group for entity {}",
             entity.to_bits()
@@ -935,22 +944,14 @@ fn consume_group_commit(ctx: &mut GameCtx) {
             &ctx.world_signals,
             sig::GUI_EE_PENDING_GROUP,
             sig::GUI_EE_PENDING_GROUP_DIRTY,
-            &group,
+            group,
         ),
     });
     ctx.world_signals
         .clear_flag(sig::GUI_EE_PENDING_GROUP_DIRTY);
 }
 
-fn consume_rotation_commit(ctx: &mut GameCtx) {
-    if !ctx.world_signals.take_flag(sig::ACTION_EE_COMMIT_ROTATION) {
-        return;
-    }
-    let Some((entity, snapshot)) =
-        selected_entity_and_snapshot(&ctx.world_signals, "consume_rotation_commit")
-    else {
-        return;
-    };
+fn consume_rotation_commit(ctx: &mut GameCtx, entity: Entity, snapshot: &ComponentSnapshot) {
     let Some(rotation_deg) = snapshot.rotation_deg else {
         warn!(
             "consume_rotation_commit: snapshot missing Rotation for entity {}",
@@ -968,15 +969,7 @@ fn consume_rotation_commit(ctx: &mut GameCtx) {
     });
 }
 
-fn consume_scale_commit(ctx: &mut GameCtx) {
-    if !ctx.world_signals.take_flag(sig::ACTION_EE_COMMIT_SCALE) {
-        return;
-    }
-    let Some((entity, snapshot)) =
-        selected_entity_and_snapshot(&ctx.world_signals, "consume_scale_commit")
-    else {
-        return;
-    };
+fn consume_scale_commit(ctx: &mut GameCtx, entity: Entity, snapshot: &ComponentSnapshot) {
     let Some([x, y]) = snapshot.scale else {
         warn!(
             "consume_scale_commit: snapshot missing Scale for entity {}",
@@ -991,16 +984,8 @@ fn consume_scale_commit(ctx: &mut GameCtx) {
     });
 }
 
-fn consume_sprite_commit(ctx: &mut GameCtx) {
-    if !ctx.world_signals.take_flag(sig::ACTION_EE_COMMIT_SPRITE) {
-        return;
-    }
-    let Some((entity, snapshot)) =
-        selected_entity_and_snapshot(&ctx.world_signals, "consume_sprite_commit")
-    else {
-        return;
-    };
-    let Some(sprite) = snapshot.sprite else {
+fn consume_sprite_commit(ctx: &mut GameCtx, entity: Entity, snapshot: &ComponentSnapshot) {
+    let Some(ref sprite) = snapshot.sprite else {
         warn!(
             "consume_sprite_commit: snapshot missing Sprite for entity {}",
             entity.to_bits()
@@ -1070,16 +1055,8 @@ fn consume_sprite_commit(ctx: &mut GameCtx) {
         .clear_flag(sig::GUI_EE_PENDING_SPRITE_FLIP_V_DIRTY);
 }
 
-fn consume_collider_commit(ctx: &mut GameCtx) {
-    if !ctx.world_signals.take_flag(sig::ACTION_EE_COMMIT_COLLIDER) {
-        return;
-    }
-    let Some((entity, snapshot)) =
-        selected_entity_and_snapshot(&ctx.world_signals, "consume_collider_commit")
-    else {
-        return;
-    };
-    let Some(collider) = snapshot.box_collider else {
+fn consume_collider_commit(ctx: &mut GameCtx, entity: Entity, snapshot: &ComponentSnapshot) {
+    let Some(ref collider) = snapshot.box_collider else {
         warn!(
             "consume_collider_commit: snapshot missing BoxCollider for entity {}",
             entity.to_bits()
@@ -1127,16 +1104,8 @@ fn consume_collider_commit(ctx: &mut GameCtx) {
     });
 }
 
-fn consume_animation_commit(ctx: &mut GameCtx) {
-    if !ctx.world_signals.take_flag(sig::ACTION_EE_COMMIT_ANIMATION) {
-        return;
-    }
-    let Some((entity, snapshot)) =
-        selected_entity_and_snapshot(&ctx.world_signals, "consume_animation_commit")
-    else {
-        return;
-    };
-    let Some(animation) = snapshot.animation else {
+fn consume_animation_commit(ctx: &mut GameCtx, entity: Entity, snapshot: &ComponentSnapshot) {
+    let Some(ref animation) = snapshot.animation else {
         warn!(
             "consume_animation_commit: snapshot missing Animation for entity {}",
             entity.to_bits()
@@ -1168,37 +1137,11 @@ fn consume_animation_commit(ctx: &mut GameCtx) {
         .clear_flag(sig::GUI_EE_PENDING_ANIM_KEY_DIRTY);
 }
 
-fn selected_entity_and_snapshot(
-    signals: &WorldSignals,
-    context: &str,
-) -> Option<(Entity, ComponentSnapshot)> {
-    let Some(entity) = signals.get_entity(sig::ES_SELECTED_ENTITY).copied() else {
-        warn!("{context}: no selected entity");
-        return None;
-    };
-    let Some(snapshot_json) = signals.get_string(sig::EE_COMPONENT_SNAPSHOT) else {
-        warn!(
-            "{context}: missing component snapshot for entity {}",
-            entity.to_bits()
-        );
-        return None;
-    };
-    let Ok(snapshot) = serde_json::from_str::<ComponentSnapshot>(snapshot_json) else {
-        warn!(
-            "{context}: invalid component snapshot for entity {}",
-            entity.to_bits()
-        );
-        return None;
-    };
-    if snapshot.entity_bits != entity.to_bits() {
-        warn!(
-            "{context}: snapshot entity {} does not match selected entity {}",
-            snapshot.entity_bits,
-            entity.to_bits()
-        );
-        return None;
-    }
-    Some((entity, snapshot))
+fn selected_entity_and_snapshot(signals: &WorldSignals) -> Option<(Entity, ComponentSnapshot)> {
+    let entity = signals.get_entity(sig::ES_SELECTED_ENTITY).copied()?;
+    let snapshot_json = signals.get_string(sig::EE_COMPONENT_SNAPSHOT)?;
+    let snapshot = serde_json::from_str::<ComponentSnapshot>(snapshot_json).ok()?;
+    (snapshot.entity_bits == entity.to_bits()).then_some((entity, snapshot))
 }
 
 fn pending_scalar_or(signals: &WorldSignals, key: &str, fallback: f32) -> f32 {
@@ -1337,18 +1280,19 @@ fn draw_text_buffer_input(
 }
 
 fn seed_text_buffer(
-    signals: &mut WorldSignals,
+    signals: &WorldSignals,
     buffer_key: &str,
     dirty_key: &str,
     snapshot_value: &str,
 ) -> String {
-    if !signals.has_flag(dirty_key) {
-        signals.set_string(buffer_key, snapshot_value);
+    if signals.has_flag(dirty_key) {
+        signals
+            .get_string(buffer_key)
+            .cloned()
+            .unwrap_or_else(|| snapshot_value.to_owned())
+    } else {
+        snapshot_value.to_owned()
     }
-    signals
-        .get_string(buffer_key)
-        .cloned()
-        .unwrap_or_else(|| snapshot_value.to_owned())
 }
 
 fn commit_scalar_signal(
