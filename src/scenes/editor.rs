@@ -537,7 +537,6 @@ fn draw_entity_editor(ui: &imgui::Ui, signals: &mut WorldSignals, textures: &Tex
                     sig::ACTION_EE_COMMIT_POSITION,
                 );
             }
-            ui.same_line();
             let mut pos_y = snap.map_position[1];
             imgui::Drag::new("y##map_position")
                 .speed(0.1)
