@@ -4,6 +4,7 @@ mod entity_selector_panel;
 mod lifecycle;
 mod menu;
 mod overlay;
+pub(crate) mod pending_state;
 mod state;
 mod texture_panel;
 mod update;

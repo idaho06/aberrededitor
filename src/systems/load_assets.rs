@@ -1,7 +1,9 @@
+use crate::scenes::editor::pending_state::{PendingEditState, PendingMutex};
 use crate::scenes::editor::EditorState;
 use crate::systems::entity_selector::EntitySelectorCache;
 use aberredengine::bevy_ecs::prelude::{Commands, NonSendMut, ResMut};
 use aberredengine::raylib::prelude::Color;
+use aberredengine::resources::appstate::AppState;
 use aberredengine::resources::gameconfig::GameConfig;
 use aberredengine::resources::gamestate::{GameStates, NextGameState};
 use aberredengine::resources::mapdata::MapData;
@@ -24,6 +26,7 @@ pub fn load_assets(
     mut raylib: RaylibAccess,
     mut next_state: ResMut<NextGameState>,
     mut shaders: NonSendMut<ShaderStore>,
+    mut app_state: ResMut<AppState>,
 ) {
     info!("load_assets: loading editor assets");
     config.background_color = Color::BLACK;
@@ -51,6 +54,7 @@ pub fn load_assets(
     commands.insert_resource(MapData::default());
     commands.insert_resource(EntitySelectorCache::default());
     commands.insert_resource(EditorState::default());
+    app_state.insert(PendingMutex::new(PendingEditState::default()));
 
     next_state.set(GameStates::Playing);
 }

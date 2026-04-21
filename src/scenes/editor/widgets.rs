@@ -1,5 +1,4 @@
 use aberredengine::imgui;
-use aberredengine::resources::worldsignals::WorldSignals;
 
 pub(super) const BTN_W: f32 = 22.0;
 pub(super) const BTN_SPACING: f32 = 4.0;
@@ -10,12 +9,7 @@ fn split_imgui_label(label: &str) -> (&str, &str) {
 }
 
 fn hidden_numeric_label(label: &str) -> String {
-    let (_, id_suffix) = split_imgui_label(label);
-    if id_suffix.is_empty() {
-        format!("##{label}")
-    } else {
-        format!("##{id_suffix}")
-    }
+    format!("##{label}")
 }
 
 fn numeric_input_width(ui: &imgui::Ui, visible_label: &str) -> f32 {
@@ -32,169 +26,99 @@ fn draw_trailing_numeric_label(ui: &imgui::Ui, visible_label: &str) {
     if visible_label.is_empty() {
         return;
     }
-
     ui.same_line_with_spacing(0.0, BTN_SPACING);
     ui.text(visible_label);
 }
 
-/// Renders − and + step buttons after the previously rendered widget (same line).
-pub(super) fn draw_step_buttons(
-    ui: &imgui::Ui,
-    signals: &mut WorldSignals,
-    pending_key: &str,
-    value: f32,
-    step: f32,
-    action_key: &str,
-) {
+/// Renders − and + step buttons. Returns `Some(new_value)` if a button was clicked.
+fn draw_step_buttons(ui: &imgui::Ui, label: &str, value: f32, step: f32) -> Option<f32> {
+    let mut result = None;
     ui.same_line_with_spacing(0.0, BTN_SPACING);
-    if ui.button_with_size(format!("-##{pending_key}"), [BTN_W, 0.0]) {
-        commit_scalar_signal(signals, pending_key, value - step, action_key);
+    if ui.button_with_size(format!("-##{label}"), [BTN_W, 0.0]) {
+        result = Some(value - step);
     }
     ui.same_line_with_spacing(0.0, BTN_SPACING);
-    if ui.button_with_size(format!("+##{pending_key}"), [BTN_W, 0.0]) {
-        commit_scalar_signal(signals, pending_key, value + step, action_key);
+    if ui.button_with_size(format!("+##{label}"), [BTN_W, 0.0]) {
+        result = Some(value + step);
     }
+    result
 }
 
+/// Float input with step buttons. Returns `Some(committed_value)` on deactivation or step click.
 pub(super) fn draw_float_input(
     ui: &imgui::Ui,
-    signals: &mut WorldSignals,
     label: &str,
-    snapshot_value: f32,
-    pending_key: &str,
-    action_key: &str,
+    current: f32,
     step: f32,
-) {
+) -> Option<f32> {
     let (visible_label, _) = split_imgui_label(label);
     let hidden_label = hidden_numeric_label(label);
     ui.set_next_item_width(numeric_input_width(ui, visible_label));
-    let mut value = snapshot_value;
+    let mut value = current;
     ui.input_float(hidden_label.as_str(), &mut value)
         .enter_returns_true(true)
         .build();
-    if ui.is_item_deactivated_after_edit() {
-        commit_scalar_signal(signals, pending_key, value, action_key);
+    let mut result = ui.is_item_deactivated_after_edit().then_some(value);
+    if let Some(stepped) = draw_step_buttons(ui, label, current, step) {
+        result = Some(stepped);
     }
-    draw_step_buttons(ui, signals, pending_key, snapshot_value, step, action_key);
     draw_trailing_numeric_label(ui, visible_label);
+    result
 }
 
+/// Drag float input with step buttons. Returns `Some(committed_value)` on deactivation or step click.
 #[allow(clippy::too_many_arguments)]
 pub(super) fn draw_drag_float_input(
     ui: &imgui::Ui,
-    signals: &mut WorldSignals,
     label: &str,
-    snapshot_value: f32,
-    pending_key: &str,
-    action_key: &str,
+    current: f32,
     step: f32,
     speed: f32,
-) {
+) -> Option<f32> {
     let (visible_label, _) = split_imgui_label(label);
     let hidden_label = hidden_numeric_label(label);
     ui.set_next_item_width(numeric_input_width(ui, visible_label));
-    let mut value = snapshot_value;
+    let mut value = current;
     imgui::Drag::new(hidden_label.as_str())
         .speed(speed)
         .display_format("%.2f")
         .build(ui, &mut value);
-    if ui.is_item_deactivated_after_edit() {
-        commit_scalar_signal(signals, pending_key, value, action_key);
+    let mut result = ui.is_item_deactivated_after_edit().then_some(value);
+    if let Some(stepped) = draw_step_buttons(ui, label, current, step) {
+        result = Some(stepped);
     }
-    draw_step_buttons(ui, signals, pending_key, snapshot_value, step, action_key);
     draw_trailing_numeric_label(ui, visible_label);
+    result
 }
 
-pub(super) fn draw_int_input(
-    ui: &imgui::Ui,
-    signals: &mut WorldSignals,
-    label: &str,
-    snapshot_value: i32,
-    pending_key: &str,
-    action_key: &str,
-) {
+/// Integer input. Returns `Some(committed_value)` on deactivation.
+pub(super) fn draw_int_input(ui: &imgui::Ui, label: &str, current: i32) -> Option<i32> {
     let (visible_label, _) = split_imgui_label(label);
     let hidden_label = hidden_numeric_label(label);
     ui.set_next_item_width(numeric_input_width(ui, visible_label));
-    let mut value = snapshot_value;
+    let mut value = current;
     ui.input_int(hidden_label.as_str(), &mut value)
         .enter_returns_true(true)
         .build();
-    if ui.is_item_deactivated_after_edit() {
-        commit_integer_signal(signals, pending_key, value, action_key);
-    }
+    let result = ui.is_item_deactivated_after_edit().then_some(value);
     draw_trailing_numeric_label(ui, visible_label);
+    result
 }
 
+/// Text input. Updates `pending` live on every keystroke; sets `*committed = true` on deactivation.
 pub(super) fn draw_text_buffer_input(
     ui: &imgui::Ui,
-    signals: &mut WorldSignals,
     label: &str,
+    pending: &mut Option<String>,
+    committed: &mut bool,
     snapshot_value: &str,
-    buffer_key: &str,
-    dirty_key: &str,
-    action_key: &str,
 ) {
-    let mut buffer = seed_text_buffer(signals, buffer_key, dirty_key, snapshot_value);
+    let mut buffer = pending.clone().unwrap_or_else(|| snapshot_value.to_owned());
     if ui.input_text(label, &mut buffer).build() {
-        signals.set_string(buffer_key, buffer.as_str());
-        signals.set_flag(dirty_key);
+        *pending = Some(buffer.clone());
     }
     if ui.is_item_deactivated_after_edit() {
-        signals.set_string(buffer_key, buffer.as_str());
-        signals.set_flag(dirty_key);
-        signals.set_flag(action_key);
+        *pending = Some(buffer);
+        *committed = true;
     }
-}
-
-pub(super) fn seed_text_buffer(
-    signals: &WorldSignals,
-    buffer_key: &str,
-    dirty_key: &str,
-    snapshot_value: &str,
-) -> String {
-    if signals.has_flag(dirty_key) {
-        signals
-            .get_string(buffer_key)
-            .cloned()
-            .unwrap_or_else(|| snapshot_value.to_owned())
-    } else {
-        snapshot_value.to_owned()
-    }
-}
-
-pub(super) fn commit_scalar_signal(
-    signals: &mut WorldSignals,
-    pending_key: &str,
-    value: f32,
-    action_key: &str,
-) {
-    signals.set_scalar(pending_key, value);
-    signals.set_flag(action_key);
-}
-
-pub(super) fn commit_bool_flag(
-    signals: &mut WorldSignals,
-    pending_key: &str,
-    dirty_key: &str,
-    value: bool,
-    action_key: &str,
-) {
-    if value {
-        signals.set_flag(pending_key);
-    } else {
-        signals.clear_flag(pending_key);
-    }
-    signals.set_flag(dirty_key);
-    signals.set_flag(action_key);
-}
-
-pub(super) fn commit_integer_signal(
-    signals: &mut WorldSignals,
-    pending_key: &str,
-    value: i32,
-    action_key: &str,
-) {
-    signals.set_integer(pending_key, value);
-    signals.set_flag(action_key);
 }
