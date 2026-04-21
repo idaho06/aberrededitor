@@ -147,6 +147,28 @@ pub(super) fn clear_entity_editor_pending(signals: &mut WorldSignals) {
     }
 }
 
+pub(super) const BTN_W: f32 = 22.0;
+pub(super) const BTN_SPACING: f32 = 4.0;
+
+/// Renders − and + step buttons after the previously rendered widget (same line).
+pub(super) fn draw_step_buttons(
+    ui: &imgui::Ui,
+    signals: &mut WorldSignals,
+    pending_key: &str,
+    value: f32,
+    step: f32,
+    action_key: &str,
+) {
+    ui.same_line_with_spacing(0.0, BTN_SPACING);
+    if ui.button_with_size(format!("-##{pending_key}"), [BTN_W, 0.0]) {
+        commit_scalar_signal(signals, pending_key, value - step, action_key);
+    }
+    ui.same_line_with_spacing(0.0, BTN_SPACING);
+    if ui.button_with_size(format!("+##{pending_key}"), [BTN_W, 0.0]) {
+        commit_scalar_signal(signals, pending_key, value + step, action_key);
+    }
+}
+
 pub(super) fn draw_float_input(
     ui: &imgui::Ui,
     signals: &mut WorldSignals,
@@ -154,7 +176,9 @@ pub(super) fn draw_float_input(
     snapshot_value: f32,
     pending_key: &str,
     action_key: &str,
+    step: f32,
 ) {
+    ui.set_next_item_width(-(BTN_W * 2.0 + BTN_SPACING * 3.0));
     let mut value = snapshot_value;
     ui.input_float(label, &mut value)
         .enter_returns_true(true)
@@ -162,6 +186,7 @@ pub(super) fn draw_float_input(
     if ui.is_item_deactivated_after_edit() {
         commit_scalar_signal(signals, pending_key, value, action_key);
     }
+    draw_step_buttons(ui, signals, pending_key, snapshot_value, step, action_key);
 }
 
 pub(super) fn draw_int_input(

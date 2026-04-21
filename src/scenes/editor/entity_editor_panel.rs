@@ -1,6 +1,6 @@
 use super::state::{
     commit_bool_flag, commit_scalar_signal, draw_float_input, draw_int_input,
-    draw_text_buffer_input, seed_text_buffer,
+    draw_step_buttons, draw_text_buffer_input, seed_text_buffer, BTN_SPACING, BTN_W,
 };
 use crate::editor_types::ComponentSnapshot;
 use crate::signals as sig;
@@ -39,6 +39,7 @@ pub(super) fn draw_entity_editor(
 
             ui.text("MapPosition");
             let mut pos_x = snap.map_position[0];
+            ui.set_next_item_width(-(BTN_W * 2.0 + BTN_SPACING * 3.0));
             imgui::Drag::new("x##map_position")
                 .speed(0.1)
                 .display_format("%.2f")
@@ -51,8 +52,10 @@ pub(super) fn draw_entity_editor(
                     sig::ACTION_EE_COMMIT_POSITION,
                 );
             }
+            draw_step_buttons(ui, signals, sig::GUI_EE_PENDING_POS_X, snap.map_position[0], 1.0, sig::ACTION_EE_COMMIT_POSITION);
 
             let mut pos_y = snap.map_position[1];
+            ui.set_next_item_width(-(BTN_W * 2.0 + BTN_SPACING * 3.0));
             imgui::Drag::new("y##map_position")
                 .speed(0.1)
                 .display_format("%.2f")
@@ -65,6 +68,7 @@ pub(super) fn draw_entity_editor(
                     sig::ACTION_EE_COMMIT_POSITION,
                 );
             }
+            draw_step_buttons(ui, signals, sig::GUI_EE_PENDING_POS_Y, snap.map_position[1], 1.0, sig::ACTION_EE_COMMIT_POSITION);
 
             if let Some(z) = snap.z_index {
                 ui.separator();
@@ -76,6 +80,7 @@ pub(super) fn draw_entity_editor(
                     z,
                     sig::GUI_EE_PENDING_Z_INDEX,
                     sig::ACTION_EE_COMMIT_Z,
+                    1.0,
                 );
             }
             if let Some(ref group) = snap.group {
@@ -132,6 +137,7 @@ pub(super) fn draw_entity_editor(
                     sprite.width,
                     sig::GUI_EE_PENDING_SPRITE_WIDTH,
                     sig::ACTION_EE_COMMIT_SPRITE,
+                    1.0,
                 );
                 draw_float_input(
                     ui,
@@ -140,6 +146,7 @@ pub(super) fn draw_entity_editor(
                     sprite.height,
                     sig::GUI_EE_PENDING_SPRITE_HEIGHT,
                     sig::ACTION_EE_COMMIT_SPRITE,
+                    1.0,
                 );
                 draw_float_input(
                     ui,
@@ -148,6 +155,7 @@ pub(super) fn draw_entity_editor(
                     sprite.offset[0],
                     sig::GUI_EE_PENDING_SPRITE_OFFX,
                     sig::ACTION_EE_COMMIT_SPRITE,
+                    1.0,
                 );
                 draw_float_input(
                     ui,
@@ -156,6 +164,7 @@ pub(super) fn draw_entity_editor(
                     sprite.offset[1],
                     sig::GUI_EE_PENDING_SPRITE_OFFY,
                     sig::ACTION_EE_COMMIT_SPRITE,
+                    1.0,
                 );
                 draw_float_input(
                     ui,
@@ -164,6 +173,7 @@ pub(super) fn draw_entity_editor(
                     sprite.origin[0],
                     sig::GUI_EE_PENDING_SPRITE_ORGX,
                     sig::ACTION_EE_COMMIT_SPRITE,
+                    1.0,
                 );
                 draw_float_input(
                     ui,
@@ -172,6 +182,7 @@ pub(super) fn draw_entity_editor(
                     sprite.origin[1],
                     sig::GUI_EE_PENDING_SPRITE_ORGY,
                     sig::ACTION_EE_COMMIT_SPRITE,
+                    1.0,
                 );
 
                 let mut flip_h = sprite.flip_h;
@@ -206,6 +217,7 @@ pub(super) fn draw_entity_editor(
                     collider.size[0],
                     sig::GUI_EE_PENDING_BOX_SIZE_X,
                     sig::ACTION_EE_COMMIT_COLLIDER,
+                    1.0,
                 );
                 draw_float_input(
                     ui,
@@ -214,6 +226,7 @@ pub(super) fn draw_entity_editor(
                     collider.size[1],
                     sig::GUI_EE_PENDING_BOX_SIZE_Y,
                     sig::ACTION_EE_COMMIT_COLLIDER,
+                    1.0,
                 );
                 draw_float_input(
                     ui,
@@ -222,6 +235,7 @@ pub(super) fn draw_entity_editor(
                     collider.offset[0],
                     sig::GUI_EE_PENDING_BOX_OFFX,
                     sig::ACTION_EE_COMMIT_COLLIDER,
+                    1.0,
                 );
                 draw_float_input(
                     ui,
@@ -230,6 +244,7 @@ pub(super) fn draw_entity_editor(
                     collider.offset[1],
                     sig::GUI_EE_PENDING_BOX_OFFY,
                     sig::ACTION_EE_COMMIT_COLLIDER,
+                    1.0,
                 );
                 draw_float_input(
                     ui,
@@ -238,6 +253,7 @@ pub(super) fn draw_entity_editor(
                     collider.origin[0],
                     sig::GUI_EE_PENDING_BOX_ORGX,
                     sig::ACTION_EE_COMMIT_COLLIDER,
+                    1.0,
                 );
                 draw_float_input(
                     ui,
@@ -246,6 +262,7 @@ pub(super) fn draw_entity_editor(
                     collider.origin[1],
                     sig::GUI_EE_PENDING_BOX_ORGY,
                     sig::ACTION_EE_COMMIT_COLLIDER,
+                    1.0,
                 );
             }
             if let Some(rotation_deg) = snap.rotation_deg {
@@ -258,6 +275,7 @@ pub(super) fn draw_entity_editor(
                     rotation_deg,
                     sig::GUI_EE_PENDING_ROT_DEG,
                     sig::ACTION_EE_COMMIT_ROTATION,
+                    1.0,
                 );
             }
             if let Some([scale_x, scale_y]) = snap.scale {
@@ -270,6 +288,7 @@ pub(super) fn draw_entity_editor(
                     scale_x,
                     sig::GUI_EE_PENDING_SCALE_X,
                     sig::ACTION_EE_COMMIT_SCALE,
+                    1.0,
                 );
                 draw_float_input(
                     ui,
@@ -278,6 +297,7 @@ pub(super) fn draw_entity_editor(
                     scale_y,
                     sig::GUI_EE_PENDING_SCALE_Y,
                     sig::ACTION_EE_COMMIT_SCALE,
+                    1.0,
                 );
             }
             if let Some(ref animation) = snap.animation {
@@ -308,6 +328,7 @@ pub(super) fn draw_entity_editor(
                     animation.elapsed_time,
                     sig::GUI_EE_PENDING_ANIM_ELAPSED,
                     sig::ACTION_EE_COMMIT_ANIMATION,
+                    1.0,
                 );
             }
             if let Some(ref ttl) = snap.ttl {
