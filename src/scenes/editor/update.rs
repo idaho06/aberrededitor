@@ -2,7 +2,7 @@ use super::entity_editor_panel::draw_entity_editor;
 use super::entity_selector_panel::draw_entity_selector;
 use super::menu::{draw_about_modal, draw_menu_bar};
 use super::overlay::draw_selection_outline;
-use super::state::consume_entity_editor_commits;
+use super::commit::consume_entity_editor_commits;
 use super::texture_panel::{draw_texture_editor, draw_texture_modals};
 use crate::signals as sig;
 use crate::systems::entity_selector::{PickEntitiesAtPointRequested, SelectEntityRequested};

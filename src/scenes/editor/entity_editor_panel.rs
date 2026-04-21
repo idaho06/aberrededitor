@@ -1,4 +1,4 @@
-use super::state::{
+use super::widgets::{
     commit_bool_flag, draw_drag_float_input, draw_float_input, draw_int_input,
     draw_text_buffer_input, seed_text_buffer,
 };
