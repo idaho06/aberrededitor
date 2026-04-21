@@ -1,6 +1,6 @@
 use super::state::{
-    commit_bool_flag, commit_scalar_signal, draw_float_input, draw_int_input,
-    draw_step_buttons, draw_text_buffer_input, seed_text_buffer, BTN_SPACING, BTN_W,
+    commit_bool_flag, draw_drag_float_input, draw_float_input, draw_int_input,
+    draw_text_buffer_input, seed_text_buffer,
 };
 use crate::editor_types::ComponentSnapshot;
 use crate::signals as sig;
@@ -38,37 +38,26 @@ pub(super) fn draw_entity_editor(
             ui.separator();
 
             ui.text("MapPosition");
-            let mut pos_x = snap.map_position[0];
-            ui.set_next_item_width(-(BTN_W * 2.0 + BTN_SPACING * 3.0));
-            imgui::Drag::new("x##map_position")
-                .speed(0.1)
-                .display_format("%.2f")
-                .build(ui, &mut pos_x);
-            if ui.is_item_deactivated_after_edit() {
-                commit_scalar_signal(
-                    signals,
-                    sig::GUI_EE_PENDING_POS_X,
-                    pos_x,
-                    sig::ACTION_EE_COMMIT_POSITION,
-                );
-            }
-            draw_step_buttons(ui, signals, sig::GUI_EE_PENDING_POS_X, snap.map_position[0], 1.0, sig::ACTION_EE_COMMIT_POSITION);
-
-            let mut pos_y = snap.map_position[1];
-            ui.set_next_item_width(-(BTN_W * 2.0 + BTN_SPACING * 3.0));
-            imgui::Drag::new("y##map_position")
-                .speed(0.1)
-                .display_format("%.2f")
-                .build(ui, &mut pos_y);
-            if ui.is_item_deactivated_after_edit() {
-                commit_scalar_signal(
-                    signals,
-                    sig::GUI_EE_PENDING_POS_Y,
-                    pos_y,
-                    sig::ACTION_EE_COMMIT_POSITION,
-                );
-            }
-            draw_step_buttons(ui, signals, sig::GUI_EE_PENDING_POS_Y, snap.map_position[1], 1.0, sig::ACTION_EE_COMMIT_POSITION);
+            draw_drag_float_input(
+                ui,
+                signals,
+                "x##map_position",
+                snap.map_position[0],
+                sig::GUI_EE_PENDING_POS_X,
+                sig::ACTION_EE_COMMIT_POSITION,
+                1.0,
+                0.1,
+            );
+            draw_drag_float_input(
+                ui,
+                signals,
+                "y##map_position",
+                snap.map_position[1],
+                sig::GUI_EE_PENDING_POS_Y,
+                sig::ACTION_EE_COMMIT_POSITION,
+                1.0,
+                0.1,
+            );
 
             if let Some(z) = snap.z_index {
                 ui.separator();
