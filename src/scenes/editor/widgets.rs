@@ -79,6 +79,7 @@ pub(super) fn draw_float_input(
     draw_trailing_numeric_label(ui, visible_label);
 }
 
+#[allow(clippy::too_many_arguments)]
 pub(super) fn draw_drag_float_input(
     ui: &imgui::Ui,
     signals: &mut WorldSignals,
