@@ -4,6 +4,10 @@
 // Entity selector payloads
 // ---------------------------------------------------------------------------
 
+/// World-space quad corners for the active entity selection outline: TL → TR → BR → BL.
+#[derive(Debug, Clone, Copy)]
+pub struct SelectionCorners(pub [[f32; 2]; 4]);
+
 #[derive(Debug, Clone)]
 pub struct HitEntry {
     pub label: String,
@@ -20,7 +24,7 @@ pub struct HitPayload {
 // Entity inspector payloads
 // ---------------------------------------------------------------------------
 
-#[derive(serde::Serialize, serde::Deserialize, Clone)]
+#[derive(Clone)]
 pub struct SpriteSnapshot {
     pub tex_key: String,
     pub width: f32,
@@ -31,32 +35,32 @@ pub struct SpriteSnapshot {
     pub flip_v: bool,
 }
 
-#[derive(serde::Serialize, serde::Deserialize, Clone)]
+#[derive(Clone)]
 pub struct ColliderSnapshot {
     pub size: [f32; 2],
     pub offset: [f32; 2],
     pub origin: [f32; 2],
 }
 
-#[derive(serde::Serialize, serde::Deserialize, Clone)]
+#[derive(Clone)]
 pub struct AnimationSnapshot {
     pub animation_key: String,
     pub frame_index: usize,
     pub elapsed_time: f32,
 }
 
-#[derive(serde::Serialize, serde::Deserialize, Clone)]
+#[derive(Clone)]
 pub struct TtlSnapshot {
     pub remaining: f32,
 }
 
-#[derive(serde::Serialize, serde::Deserialize, Clone)]
+#[derive(Clone)]
 pub struct TimerSnapshot {
     pub duration: f32,
     pub elapsed: f32,
 }
 
-#[derive(serde::Serialize, serde::Deserialize, Clone)]
+#[derive(Clone)]
 pub struct PhaseSnapshot {
     pub current: String,
     pub previous: Option<String>,
@@ -65,7 +69,7 @@ pub struct PhaseSnapshot {
     pub phase_names: Vec<String>,
 }
 
-#[derive(serde::Serialize, serde::Deserialize, Clone)]
+#[derive(Clone)]
 pub struct ComponentSnapshot {
     pub entity_bits: u64,
     /// WorldSignals entity keys whose value matches this entity.

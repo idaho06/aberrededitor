@@ -5,6 +5,7 @@ use super::state::{
 use crate::editor_types::ComponentSnapshot;
 use crate::signals as sig;
 use aberredengine::imgui;
+use aberredengine::resources::appstate::AppState;
 use aberredengine::resources::texturestore::TextureStore;
 use aberredengine::resources::worldsignals::WorldSignals;
 
@@ -12,6 +13,7 @@ pub(super) fn draw_entity_editor(
     ui: &imgui::Ui,
     signals: &mut WorldSignals,
     textures: &TextureStore,
+    app_state: &AppState,
 ) {
     if !signals.has_flag(sig::UI_ENTITY_EDITOR_OPEN) {
         return;
@@ -22,7 +24,7 @@ pub(super) fn draw_entity_editor(
         .size([380.0, 420.0], imgui::Condition::FirstUseEver)
         .opened(&mut window_open)
         .build(|| {
-            let Some(snap) = signals.get_payload::<ComponentSnapshot>(sig::EE_COMPONENT_SNAPSHOT).cloned() else {
+            let Some(snap) = app_state.get::<ComponentSnapshot>().cloned() else {
                 ui.text_disabled("No entity selected.");
                 return;
             };

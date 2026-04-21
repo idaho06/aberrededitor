@@ -1,5 +1,5 @@
 use super::entity_inspector::InspectEntityRequested;
-use crate::editor_types::{HitEntry, HitPayload};
+use crate::editor_types::{ComponentSnapshot, HitEntry, HitPayload, SelectionCorners};
 use crate::signals as sig;
 use aberredengine::bevy_ecs;
 use aberredengine::bevy_ecs::prelude::{Commands, Entity, Event, On, Query, Res, ResMut, Resource};
@@ -12,6 +12,7 @@ use aberredengine::components::scale::Scale;
 use aberredengine::components::sprite::Sprite;
 use aberredengine::components::zindex::ZIndex;
 use aberredengine::raylib::prelude::Vector2;
+use aberredengine::resources::appstate::AppState;
 use aberredengine::resources::worldsignals::WorldSignals;
 use aberredengine::systems::render::geometry::{compute_sprite_geometry, resolve_world_transform};
 use log::warn;
@@ -37,10 +38,10 @@ pub struct SelectEntityRequested {
 
 /// Transient editor resource that holds the real `Entity` handles from the last pick.
 ///
-/// The GUI-facing payload lives in `WorldSignals.payloads` as a typed [`HitPayload`] and
-/// contains display data (labels, z-values). This cache keeps the actual
-/// `Entity` values, labels, and world-space corner quads so the selection resolve
-/// observer can look them up by row index.
+/// The GUI-facing payload lives in `AppState` as a typed [`HitPayload`] and contains
+/// display data (labels, z-values). This cache keeps the actual `Entity` values,
+/// labels, and world-space corner quads so the selection resolve observer can look
+/// them up by row index.
 #[derive(Resource, Default)]
 pub struct EntitySelectorCache {
     pub hits: Vec<Entity>,
@@ -81,6 +82,7 @@ pub fn entity_pick_observer(
     )>,
     mut cache: ResMut<EntitySelectorCache>,
     mut world_signals: ResMut<WorldSignals>,
+    mut app_state: ResMut<AppState>,
     mut commands: Commands,
 ) {
     let click_x = trigger.event().x;
@@ -158,13 +160,11 @@ pub fn entity_pick_observer(
             .then_with(|| a.entity.index().cmp(&b.entity.index()))
     });
 
-    // Update cache
     cache.hits = hits.iter().map(|h| h.entity).collect();
     cache.labels = hits.iter().map(|h| h.label.clone()).collect();
     cache.corner_sets = hits.iter().map(|h| h.corners).collect();
     cache.click_pos = (click_x, click_y);
 
-    // Build and publish typed payload
     let payload = HitPayload {
         click: [click_x, click_y],
         hits: hits
@@ -175,22 +175,22 @@ pub fn entity_pick_observer(
             })
             .collect(),
     };
-    world_signals.set_payload(sig::ES_PAYLOAD, payload);
+    app_state.insert(payload);
     world_signals.set_flag(sig::UI_ENTITY_SELECTOR_OPEN);
 
     // Empty click — clear active selection and outline; otherwise auto-select topmost
     if cache.hits.is_empty() {
         world_signals.remove_entity(sig::ES_SELECTED_ENTITY);
-        world_signals.remove_payload(sig::ES_SELECTION_CORNERS);
         world_signals.remove_string(sig::ES_SELECTED_LABEL);
-        world_signals.remove_payload(sig::EE_COMPONENT_SNAPSHOT);
         world_signals.clear_flag(sig::UI_ENTITY_EDITOR_OPEN);
+        app_state.remove::<SelectionCorners>();
+        app_state.remove::<ComponentSnapshot>();
     } else {
-        // Auto-select the topmost entity (index 0, sorted by ZIndex desc)
         let top = cache.hits[0];
         world_signals.set_entity(sig::ES_SELECTED_ENTITY, top);
         world_signals.set_string(sig::ES_SELECTED_LABEL, &cache.labels[0]);
-        world_signals.set_payload(sig::ES_SELECTION_CORNERS, cache.corner_sets[0]);
+        app_state.remove::<ComponentSnapshot>();
+        app_state.insert(SelectionCorners(cache.corner_sets[0]));
         commands.trigger(InspectEntityRequested { entity: top });
     }
 }
@@ -203,6 +203,7 @@ pub fn select_entity_observer(
     trigger: On<SelectEntityRequested>,
     cache: Res<EntitySelectorCache>,
     mut world_signals: ResMut<WorldSignals>,
+    mut app_state: ResMut<AppState>,
     mut commands: Commands,
 ) {
     let index = trigger.event().index;
@@ -212,7 +213,7 @@ pub fn select_entity_observer(
             world_signals.set_string(sig::ES_SELECTED_LABEL, label.as_str());
         }
         if let Some(&corners) = cache.corner_sets.get(index) {
-            world_signals.set_payload(sig::ES_SELECTION_CORNERS, corners);
+            app_state.insert(SelectionCorners(corners));
         }
         commands.trigger(InspectEntityRequested { entity });
     } else {
@@ -317,21 +318,24 @@ fn point_in_sprite(
 // Lifecycle cleanup helpers
 // ---------------------------------------------------------------------------
 
-/// Clear the WorldSignals keys owned by the entity selector.
-/// Use this when only the signals need clearing but the cache is not accessible.
-pub fn clear_selector_signals(world_signals: &mut WorldSignals) {
-    world_signals.remove_payload(sig::ES_PAYLOAD);
+/// Clear WorldSignals keys and AppState entries owned by the entity selector.
+pub fn clear_selector_signals(world_signals: &mut WorldSignals, app_state: &mut AppState) {
+    app_state.remove::<HitPayload>();
+    app_state.remove::<SelectionCorners>();
+    app_state.remove::<ComponentSnapshot>();
     world_signals.remove_string(sig::ES_SELECTED_LABEL);
-    world_signals.remove_payload(sig::ES_SELECTION_CORNERS);
     world_signals.remove_entity(sig::ES_SELECTED_ENTITY);
-    world_signals.remove_payload(sig::EE_COMPONENT_SNAPSHOT);
     world_signals.clear_flag(sig::UI_ENTITY_EDITOR_OPEN);
 }
 
-/// Clear all entity selector state from WorldSignals and the cache resource.
+/// Clear all entity selector state from WorldSignals, AppState, and the cache resource.
 /// Call on new-map or load-map operations.
-pub fn clear_selector_state(world_signals: &mut WorldSignals, cache: &mut EntitySelectorCache) {
-    clear_selector_signals(world_signals);
+pub fn clear_selector_state(
+    world_signals: &mut WorldSignals,
+    app_state: &mut AppState,
+    cache: &mut EntitySelectorCache,
+) {
+    clear_selector_signals(world_signals, app_state);
     cache.hits.clear();
     cache.labels.clear();
     cache.corner_sets.clear();

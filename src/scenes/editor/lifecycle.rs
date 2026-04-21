@@ -55,9 +55,7 @@ pub fn editor_exit(ctx: &mut GameCtx) {
         InputBinding::MouseButton(MouseButton::MOUSE_BUTTON_LEFT),
     );
 
-    clear_selector_signals(&mut ctx.world_signals);
+    clear_selector_signals(&mut ctx.world_signals, &mut ctx.app_state);
     clear_entity_editor_pending(&mut ctx.world_signals);
-    ctx.world_signals
-        .remove_entity(sig::EE_LAST_SELECTED_ENTITY);
     ctx.world_signals.clear_flag(sig::IMGUI_WANTS_MOUSE);
 }

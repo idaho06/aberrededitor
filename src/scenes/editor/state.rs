@@ -1,3 +1,5 @@
+use aberredengine::bevy_ecs;
+use aberredengine::bevy_ecs::prelude::Resource;
 use crate::signals as sig;
 use crate::systems::entity_edit::{
     UpdateAnimationRequested, UpdateBoxColliderRequested, UpdateGroupRequested,
@@ -5,23 +7,35 @@ use crate::systems::entity_edit::{
     UpdateSpriteRequested, UpdateZIndexRequested,
 };
 use crate::editor_types::ComponentSnapshot;
-use aberredengine::bevy_ecs::prelude::Entity;
+use aberredengine::bevy_ecs::prelude::{Entity, ResMut};
 use aberredengine::imgui;
+use aberredengine::resources::appstate::AppState;
 use aberredengine::resources::worldsignals::WorldSignals;
 use aberredengine::systems::GameCtx;
 use log::warn;
 
-pub(super) fn handle_entity_editor_selection_change(signals: &mut WorldSignals) {
-    let current = signals.get_entity(sig::ES_SELECTED_ENTITY).copied();
-    let previous = signals.get_entity(sig::EE_LAST_SELECTED_ENTITY).copied();
+/// Canonical owner of ECS-only transient editor state.
+///
+/// Fields here are never needed by the GUI callback (which only reads `WorldSignals`).
+/// Storing them here instead of in `WorldSignals` keeps the signal bus as pure transport.
+#[derive(Resource, Default)]
+pub struct EditorState {
+    /// The entity that was selected when the last inspector snapshot was built.
+    /// Used to detect selection changes and clear pending edit buffers.
+    pub last_selected: Option<Entity>,
+}
 
-    if current != previous {
-        clear_entity_editor_pending(signals);
-        if let Some(entity) = current {
-            signals.set_entity(sig::EE_LAST_SELECTED_ENTITY, entity);
-        } else {
-            signals.remove_entity(sig::EE_LAST_SELECTED_ENTITY);
-        }
+/// Detects entity selection changes and clears pending edit buffers on change.
+pub fn entity_editor_selection_change_system(
+    mut editor_state: ResMut<EditorState>,
+    mut signals: ResMut<WorldSignals>,
+    mut app_state: ResMut<AppState>,
+) {
+    let current = signals.get_entity(sig::ES_SELECTED_ENTITY).copied();
+    if current != editor_state.last_selected {
+        clear_entity_editor_pending(&mut signals);
+        app_state.remove::<ComponentSnapshot>();
+        editor_state.last_selected = current;
     }
 }
 
@@ -44,7 +58,7 @@ pub(super) fn consume_entity_editor_commits(ctx: &mut GameCtx) {
         return;
     }
 
-    let Some((entity, snapshot)) = selected_entity_and_snapshot(&ctx.world_signals) else {
+    let Some((entity, snapshot)) = selected_entity_and_snapshot(&ctx.world_signals, &ctx.app_state) else {
         for key in COMMIT_FLAGS {
             ctx.world_signals.clear_flag(key);
         }
@@ -475,9 +489,12 @@ fn consume_animation_commit(ctx: &mut GameCtx, entity: Entity, snapshot: &Compon
         .clear_flag(sig::GUI_EE_PENDING_ANIM_KEY_DIRTY);
 }
 
-fn selected_entity_and_snapshot(signals: &WorldSignals) -> Option<(Entity, ComponentSnapshot)> {
+fn selected_entity_and_snapshot(
+    signals: &WorldSignals,
+    app_state: &AppState,
+) -> Option<(Entity, ComponentSnapshot)> {
     let entity = signals.get_entity(sig::ES_SELECTED_ENTITY).copied()?;
-    let snapshot = signals.get_payload::<ComponentSnapshot>(sig::EE_COMPONENT_SNAPSHOT).cloned()?;
+    let snapshot = app_state.get::<ComponentSnapshot>()?.clone();
     (snapshot.entity_bits == entity.to_bits()).then_some((entity, snapshot))
 }
 

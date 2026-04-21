@@ -35,6 +35,7 @@ fn main() {
         .add_observer(systems::entity_inspector::entity_inspect_observer)
         .add_system(systems::camera_sync::editor_camera_sync_system)
         .add_system(systems::editor_camera::editor_camera_system)
+        .add_system(scenes::editor::entity_editor_selection_change_system)
         .add_scene(
             "intro",
             SceneDescriptor {

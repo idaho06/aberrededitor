@@ -16,6 +16,7 @@ use aberredengine::components::sprite::Sprite;
 use aberredengine::components::timer::Timer;
 use aberredengine::components::ttl::Ttl;
 use aberredengine::components::zindex::ZIndex;
+use aberredengine::resources::appstate::AppState;
 use aberredengine::resources::worldsignals::WorldSignals;
 
 // ---------------------------------------------------------------------------
@@ -48,6 +49,7 @@ pub fn entity_inspect_observer(
         Option<&Phase>,
     )>,
     mut signals: ResMut<WorldSignals>,
+    mut app_state: ResMut<AppState>,
 ) {
     let entity = trigger.event().entity;
     let Ok((pos, z, sprite, collider, group, rot, scale, animation, ttl, timer, phase)) =
@@ -110,6 +112,6 @@ pub fn entity_inspect_observer(
         }),
     };
 
-    signals.set_payload(sig::EE_COMPONENT_SNAPSHOT, snapshot);
+    app_state.insert(snapshot);
     signals.set_flag(sig::UI_ENTITY_EDITOR_OPEN);
 }

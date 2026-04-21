@@ -1,3 +1,4 @@
+use crate::scenes::editor::EditorState;
 use crate::systems::entity_selector::EntitySelectorCache;
 use aberredengine::bevy_ecs::prelude::{Commands, NonSendMut, ResMut};
 use aberredengine::raylib::prelude::Color;
@@ -49,6 +50,7 @@ pub fn load_assets(
     commands.insert_resource(TilemapStore::new());
     commands.insert_resource(MapData::default());
     commands.insert_resource(EntitySelectorCache::default());
+    commands.insert_resource(EditorState::default());
 
     next_state.set(GameStates::Playing);
 }

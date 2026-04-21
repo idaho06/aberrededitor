@@ -55,16 +55,12 @@ pub const UI_PREVIEW_MAPDATA_OPEN: &str = "gui:view:preview_mapdata_open";
 
 // ---- Entity selector ----
 pub const UI_ENTITY_SELECTOR_OPEN: &str = "ui:entity_selector:open";
-pub const ES_PAYLOAD: &str = "gui:entity_selector:payload";
 pub const ES_SELECTED_ROW: &str = "gui:entity_selector:selected_row";
 pub const ES_SELECTED_LABEL: &str = "gui:entity_selector:selected_label";
-pub const ES_SELECTION_CORNERS: &str = "gui:entity_selector:selection_corners";
 pub const ES_SELECTED_ENTITY: &str = "editor:selected_entity";
 
 // ---- Entity editor / inspector ----
 pub const UI_ENTITY_EDITOR_OPEN: &str = "ui:entity_editor:open";
-pub const EE_COMPONENT_SNAPSHOT: &str = "editor:entity_editor:component_snapshot";
-pub const EE_LAST_SELECTED_ENTITY: &str = "editor:entity_editor:last_selected_entity";
 
 // ---- Entity editor: pending buffers ----
 pub const GUI_EE_PENDING_POS_X: &str = "gui:entity_editor:pending:pos_x";
@@ -114,7 +110,6 @@ pub const ACTION_EE_COMMIT_COLLIDER: &str = "gui:action:entity_editor:commit_col
 pub const ACTION_EE_COMMIT_ANIMATION: &str = "gui:action:entity_editor:commit_animation";
 
 const _: &[&str] = &[
-    EE_LAST_SELECTED_ENTITY,
     GUI_EE_PENDING_POS_X,
     GUI_EE_PENDING_POS_Y,
     GUI_EE_PENDING_Z_INDEX,

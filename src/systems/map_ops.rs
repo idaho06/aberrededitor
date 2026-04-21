@@ -3,6 +3,7 @@ use aberredengine::bevy_ecs;
 use aberredengine::bevy_ecs::prelude::{Commands, Entity, Event, On, Query, Res, ResMut};
 use aberredengine::components::group::Group;
 use aberredengine::events::spawnmap::SpawnMapRequested;
+use aberredengine::resources::appstate::AppState;
 use aberredengine::resources::mapdata::{MapData, TextureEntry, load_map, save_map};
 use aberredengine::resources::texturestore::TextureStore;
 use aberredengine::resources::tilemapstore::TilemapStore;
@@ -39,6 +40,7 @@ pub fn new_map_observer(
     groups: Query<(Entity, &Group)>,
     mut tilemap_store: ResMut<TilemapStore>,
     mut world_signals: ResMut<WorldSignals>,
+    mut app_state: ResMut<AppState>,
     mut selector_cache: ResMut<EntitySelectorCache>,
 ) {
     reset_editor_map(
@@ -46,6 +48,7 @@ pub fn new_map_observer(
         &groups,
         &mut tilemap_store,
         &mut world_signals,
+        &mut app_state,
         &mut selector_cache,
         MapData::default(),
     );
@@ -58,6 +61,7 @@ pub fn load_map_observer(
     groups: Query<(Entity, &Group)>,
     mut tilemap_store: ResMut<TilemapStore>,
     mut world_signals: ResMut<WorldSignals>,
+    mut app_state: ResMut<AppState>,
     mut selector_cache: ResMut<EntitySelectorCache>,
 ) {
     let path = &trigger.event().path;
@@ -73,6 +77,7 @@ pub fn load_map_observer(
         &groups,
         &mut tilemap_store,
         &mut world_signals,
+        &mut app_state,
         &mut selector_cache,
         map.clone(),
     );
@@ -96,13 +101,14 @@ fn reset_editor_map(
     groups: &Query<(Entity, &Group)>,
     tilemap_store: &mut TilemapStore,
     world_signals: &mut WorldSignals,
+    app_state: &mut AppState,
     selector_cache: &mut EntitySelectorCache,
     map_data: MapData,
 ) {
     clear_map_entities(commands, groups);
     tilemap_store.clear();
     commands.insert_resource(map_data);
-    clear_selector_state(world_signals, selector_cache);
+    clear_selector_state(world_signals, app_state, selector_cache);
 }
 
 fn clear_map_entities(commands: &mut Commands, groups: &Query<(Entity, &Group)>) {

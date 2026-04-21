@@ -1,9 +1,14 @@
 use crate::editor_types::HitPayload;
 use crate::signals as sig;
 use aberredengine::imgui;
+use aberredengine::resources::appstate::AppState;
 use aberredengine::resources::worldsignals::WorldSignals;
 
-pub(super) fn draw_entity_selector(ui: &imgui::Ui, signals: &mut WorldSignals) {
+pub(super) fn draw_entity_selector(
+    ui: &imgui::Ui,
+    signals: &mut WorldSignals,
+    app_state: &AppState,
+) {
     if !signals.has_flag(sig::UI_ENTITY_SELECTOR_OPEN) {
         return;
     }
@@ -15,7 +20,7 @@ pub(super) fn draw_entity_selector(ui: &imgui::Ui, signals: &mut WorldSignals) {
         .size([320.0, 400.0], imgui::Condition::FirstUseEver)
         .opened(&mut window_open)
         .build(|| {
-            match signals.get_payload::<HitPayload>(sig::ES_PAYLOAD) {
+            match app_state.get::<HitPayload>() {
                 None => {
                     ui.text_disabled("Left-click in the scene to pick entities.");
                 }

@@ -2,7 +2,7 @@ use super::entity_editor_panel::draw_entity_editor;
 use super::entity_selector_panel::draw_entity_selector;
 use super::menu::{draw_about_modal, draw_menu_bar};
 use super::overlay::draw_selection_outline;
-use super::state::{consume_entity_editor_commits, handle_entity_editor_selection_change};
+use super::state::consume_entity_editor_commits;
 use super::texture_panel::{draw_texture_editor, draw_texture_modals};
 use crate::signals as sig;
 use crate::systems::entity_selector::{PickEntitiesAtPointRequested, SelectEntityRequested};
@@ -13,6 +13,7 @@ use crate::systems::map_ops::{
 use crate::systems::tilemap_load::LoadTilemapRequested;
 use aberredengine::events::switchdebug::SwitchDebugEvent;
 use aberredengine::imgui;
+use aberredengine::resources::appstate::AppState;
 use aberredengine::resources::input::InputState;
 use aberredengine::resources::texturestore::TextureStore;
 use aberredengine::resources::worldsignals::WorldSignals;
@@ -35,14 +36,18 @@ pub fn editor_update(ctx: &mut GameCtx, _dt: f32, input: &InputState) {
         });
     }
 
-    handle_entity_editor_selection_change(&mut ctx.world_signals);
     consume_entity_editor_commits(ctx);
     handle_file_actions(ctx);
     handle_texture_actions(ctx);
     handle_view_actions(ctx);
 }
 
-pub fn editor_gui(ui: &imgui::Ui, signals: &mut WorldSignals, textures: &TextureStore) {
+pub fn editor_gui(
+    ui: &imgui::Ui,
+    signals: &mut WorldSignals,
+    textures: &TextureStore,
+    app_state: &AppState,
+) {
     // Publish ImGui mouse-capture state so editor_update can suppress world picks next frame.
     if ui.io().want_capture_mouse {
         signals.set_flag(sig::IMGUI_WANTS_MOUSE);
@@ -53,8 +58,8 @@ pub fn editor_gui(ui: &imgui::Ui, signals: &mut WorldSignals, textures: &Texture
     let open_about = draw_menu_bar(ui, signals);
     let (open_rename_popup, open_remove_popup) = draw_texture_editor(ui, signals, textures);
     draw_map_preview(ui, signals);
-    draw_entity_selector(ui, signals);
-    draw_entity_editor(ui, signals, textures);
+    draw_entity_selector(ui, signals, app_state);
+    draw_entity_editor(ui, signals, textures, app_state);
 
     if open_rename_popup {
         ui.open_popup("Rename Key##texture_editor");
@@ -68,7 +73,7 @@ pub fn editor_gui(ui: &imgui::Ui, signals: &mut WorldSignals, textures: &Texture
 
     draw_texture_modals(ui, signals);
     draw_about_modal(ui);
-    draw_selection_outline(ui, signals);
+    draw_selection_outline(ui, signals, app_state);
 }
 
 fn handle_file_actions(ctx: &mut GameCtx) {
