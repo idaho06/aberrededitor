@@ -15,6 +15,7 @@ pub const WIN_OFFSET_Y: &str = "editor:win:offset_y";
 
 // ---- ImGui / input state ----
 pub const IMGUI_WANTS_MOUSE: &str = "imgui:wants_mouse";
+pub const IMGUI_WANTS_KEYBOARD: &str = "imgui:wants_keyboard";
 
 // ---- Debug mode ----
 pub const UI_DEBUG_ACTIVE: &str = "ui:debug_active";

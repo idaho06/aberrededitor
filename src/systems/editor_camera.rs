@@ -17,6 +17,10 @@ pub fn editor_camera_system(
         return;
     };
 
+    if world_signals.has_flag(sig::IMGUI_WANTS_KEYBOARD) {
+        return;
+    }
+
     if world_signals.take_flag(sig::ACTION_VIEW_RESET_ZOOM)
         && let Ok(mut ct) = camera_targets.get_mut(entity)
     {

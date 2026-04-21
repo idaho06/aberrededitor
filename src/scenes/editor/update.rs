@@ -54,6 +54,11 @@ pub fn editor_gui(
     } else {
         signals.clear_flag(sig::IMGUI_WANTS_MOUSE);
     }
+    if ui.io().want_capture_keyboard {
+        signals.set_flag(sig::IMGUI_WANTS_KEYBOARD);
+    } else {
+        signals.clear_flag(sig::IMGUI_WANTS_KEYBOARD);
+    }
 
     let open_about = draw_menu_bar(ui, signals);
     let (open_rename_popup, open_remove_popup) = draw_texture_editor(ui, signals, textures);
