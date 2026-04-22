@@ -41,6 +41,7 @@ fn main() {
         .add_observer(systems::entity_edit::remove_ttl_observer)
         .add_observer(systems::entity_edit::remove_timer_observer)
         .add_observer(systems::entity_edit::remove_phase_observer)
+        .add_observer(systems::entity_edit::add_component_observer)
         .add_observer(systems::entity_selector::entity_pick_observer)
         .add_observer(systems::entity_selector::select_entity_observer)
         .add_observer(systems::entity_inspector::entity_inspect_observer)

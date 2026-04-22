@@ -1,6 +1,7 @@
 use super::entity_inspector::InspectEntityRequested;
+use crate::editor_types::ComponentKind;
 use aberredengine::bevy_ecs;
-use aberredengine::bevy_ecs::prelude::{Commands, Entity, Event, On, Query};
+use aberredengine::bevy_ecs::prelude::{Commands, Entity, Event, On, Query, Res};
 use aberredengine::components::animation::Animation;
 use aberredengine::components::boxcollider::BoxCollider;
 use aberredengine::components::group::Group;
@@ -13,6 +14,7 @@ use aberredengine::components::timer::Timer;
 use aberredengine::components::ttl::Ttl;
 use aberredengine::components::zindex::ZIndex;
 use aberredengine::raylib::prelude::Vector2;
+use aberredengine::resources::texturestore::TextureStore;
 use log::{debug, warn};
 use std::sync::Arc;
 
@@ -98,6 +100,12 @@ pub struct RemoveTtlRequested          { pub entity: Entity }
 pub struct RemoveTimerRequested        { pub entity: Entity }
 #[derive(Event)]
 pub struct RemovePhaseRequested        { pub entity: Entity }
+
+#[derive(Event)]
+pub struct AddComponentRequested {
+    pub entity: Entity,
+    pub kind:   ComponentKind,
+}
 
 macro_rules! component_edit_observer {
     (
@@ -282,6 +290,61 @@ component_remove_observer!(remove_animation_observer,    RemoveAnimationRequeste
 component_remove_observer!(remove_ttl_observer,          RemoveTtlRequested,          Ttl,         "Ttl");
 component_remove_observer!(remove_timer_observer,        RemoveTimerRequested,        Timer,       "Timer");
 component_remove_observer!(remove_phase_observer,        RemovePhaseRequested,        Phase,       "Phase");
+
+pub fn add_component_observer(
+    trigger: On<AddComponentRequested>,
+    textures: Res<TextureStore>,
+    mut commands: Commands,
+) {
+    let event = trigger.event();
+    let entity = event.entity;
+    match event.kind {
+        ComponentKind::MapPosition => {
+            commands.entity(entity).insert(MapPosition::new(0.0, 0.0));
+        }
+        ComponentKind::ZIndex => {
+            commands.entity(entity).insert(ZIndex(0.0));
+        }
+        ComponentKind::Group => {
+            commands.entity(entity).insert(Group::new(""));
+        }
+        ComponentKind::Rotation => {
+            commands.entity(entity).insert(Rotation::default());
+        }
+        ComponentKind::Scale => {
+            commands.entity(entity).insert(Scale::default());
+        }
+        ComponentKind::Sprite => {
+            let tex_key: Arc<str> = Arc::from(
+                textures.map.keys().min().map(|k| k.as_str()).unwrap_or(""),
+            );
+            commands.entity(entity).insert(Sprite {
+                tex_key,
+                width: 32.0,
+                height: 32.0,
+                offset: Vector2::zero(),
+                origin: Vector2::zero(),
+                flip_h: false,
+                flip_v: false,
+            });
+        }
+        ComponentKind::BoxCollider => {
+            commands.entity(entity).insert(BoxCollider::new(32.0, 32.0));
+        }
+        ComponentKind::Animation => {
+            commands.entity(entity).insert(Animation::new(""));
+        }
+        ComponentKind::Ttl => {
+            commands.entity(entity).insert(Ttl::new(5.0));
+        }
+    }
+    debug!(
+        "add_component_observer: added {:?} to entity {}",
+        event.kind,
+        entity.to_bits()
+    );
+    refresh_inspector(&mut commands, entity);
+}
 
 fn refresh_inspector(commands: &mut Commands, entity: Entity) {
     commands.trigger(InspectEntityRequested { entity });

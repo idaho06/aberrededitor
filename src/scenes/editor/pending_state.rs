@@ -1,3 +1,4 @@
+use crate::editor_types::ComponentKind;
 use std::sync::Mutex;
 
 /// Typed owner of transient entity-editor pending values and commit flags.
@@ -66,6 +67,9 @@ pub(crate) struct PendingEditState {
     pub remove_ttl:          bool,
     pub remove_timer:        bool,
     pub remove_phase:        bool,
+    // Add component
+    pub add_component:       Option<ComponentKind>,
+    pub add_combo_selection: usize,
 }
 
 impl PendingEditState {
@@ -89,6 +93,7 @@ impl PendingEditState {
             || self.remove_ttl
             || self.remove_timer
             || self.remove_phase
+            || self.add_component.is_some()
     }
 }
 

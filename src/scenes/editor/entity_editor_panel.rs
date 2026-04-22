@@ -1,6 +1,6 @@
 use super::pending_state::PendingMutex;
 use super::widgets::{draw_drag_float_input, draw_float_input, draw_int_input, draw_text_buffer_input};
-use crate::editor_types::ComponentSnapshot;
+use crate::editor_types::{ComponentKind, ComponentSnapshot};
 use crate::signals as sig;
 use aberredengine::imgui;
 use aberredengine::resources::appstate::AppState;
@@ -40,6 +40,40 @@ pub(super) fn draw_entity_editor(
             ui.separator();
 
             let mut p = mutex.lock().unwrap();
+
+            let addable: Vec<(&str, ComponentKind)> = [
+                (snap.map_position.is_none(), "MapPosition", ComponentKind::MapPosition),
+                (snap.z_index.is_none(),      "ZIndex",      ComponentKind::ZIndex),
+                (snap.group.is_none(),        "Group",       ComponentKind::Group),
+                (snap.rotation_deg.is_none(), "Rotation",    ComponentKind::Rotation),
+                (snap.scale.is_none(),        "Scale",       ComponentKind::Scale),
+                (snap.sprite.is_none(),       "Sprite",      ComponentKind::Sprite),
+                (snap.box_collider.is_none(), "BoxCollider", ComponentKind::BoxCollider),
+                (snap.animation.is_none(),    "Animation",   ComponentKind::Animation),
+                (snap.ttl.is_none(),          "Ttl",         ComponentKind::Ttl),
+            ]
+            .into_iter()
+            .filter_map(|(absent, label, kind)| absent.then_some((label, kind)))
+            .collect();
+
+            if addable.is_empty() {
+                ui.text_disabled("All components present");
+            } else {
+                p.add_combo_selection = p.add_combo_selection.min(addable.len() - 1);
+                let mut sel = p.add_combo_selection;
+                ui.set_next_item_width(-60.0);
+                ui.combo_simple_string("##add_combo", &mut sel, &addable.iter().map(|(l, _)| *l).collect::<Vec<_>>());
+                p.add_combo_selection = sel;
+                ui.same_line();
+                if ui.button("Add##add_component") {
+                    p.add_component = Some(addable[sel].1);
+                }
+            }
+            ui.separator();
+
+            ui.child_window("##components_scroll")
+                .size([0.0, 0.0])
+                .build(|| {
 
             if let Some([pos_x, pos_y]) = snap.map_position {
                 ui.text("MapPosition");
@@ -256,6 +290,8 @@ pub(super) fn draw_entity_editor(
                     }
                 });
             }
+
+            });
         });
 
     if !window_open {

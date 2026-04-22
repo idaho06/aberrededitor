@@ -1,6 +1,23 @@
 // Shared payload types for cross-module communication between ECS systems and GUI panels.
 
 // ---------------------------------------------------------------------------
+// Component kind selector (for Add-component feature)
+// ---------------------------------------------------------------------------
+
+#[derive(Clone, Copy, PartialEq, Debug)]
+pub enum ComponentKind {
+    MapPosition,
+    ZIndex,
+    Group,
+    Rotation,
+    Scale,
+    Sprite,
+    BoxCollider,
+    Animation,
+    Ttl,
+}
+
+// ---------------------------------------------------------------------------
 // Entity selector payloads
 // ---------------------------------------------------------------------------
 
