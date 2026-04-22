@@ -36,7 +36,7 @@ pub struct InspectEntityRequested {
 pub fn entity_inspect_observer(
     trigger: On<InspectEntityRequested>,
     query: Query<(
-        &MapPosition,
+        Option<&MapPosition>,
         Option<&ZIndex>,
         Option<&Sprite>,
         Option<&BoxCollider>,
@@ -68,7 +68,7 @@ pub fn entity_inspect_observer(
     let snapshot = ComponentSnapshot {
         entity_bits: entity.to_bits(),
         world_signal_keys,
-        map_position: [pos.pos.x, pos.pos.y],
+        map_position: pos.map(|p| [p.pos.x, p.pos.y]),
         z_index: z.map(|z| z.0),
         group: group.map(|g| g.0.clone()),
         sprite: sprite.map(|s| SpriteSnapshot {

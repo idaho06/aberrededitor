@@ -62,7 +62,7 @@ pub struct ComponentSnapshot {
     pub entity_bits: u64,
     /// WorldSignals entity keys whose value matches this entity.
     pub world_signal_keys: Vec<String>,
-    pub map_position: [f32; 2],
+    pub map_position: Option<[f32; 2]>,
     pub z_index: Option<f32>,
     pub group: Option<String>,
     pub sprite: Option<SpriteSnapshot>,

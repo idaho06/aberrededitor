@@ -41,19 +41,25 @@ pub(super) fn draw_entity_editor(
 
             let mut p = mutex.lock().unwrap();
 
-            ui.text("MapPosition");
-            if let Some(v) = draw_drag_float_input(ui, "x##map_position", p.pos_x.unwrap_or(snap.map_position[0]), 1.0, 0.1) {
-                p.pos_x = Some(v);
-                p.commit_position = true;
-            }
-            if let Some(v) = draw_drag_float_input(ui, "y##map_position", p.pos_y.unwrap_or(snap.map_position[1]), 1.0, 0.1) {
-                p.pos_y = Some(v);
-                p.commit_position = true;
+            if let Some([pos_x, pos_y]) = snap.map_position {
+                ui.text("MapPosition");
+                ui.same_line();
+                if ui.button("Del##map_position") { p.remove_map_position = true; }
+                if let Some(v) = draw_drag_float_input(ui, "x##map_position", p.pos_x.unwrap_or(pos_x), 1.0, 0.1) {
+                    p.pos_x = Some(v);
+                    p.commit_position = true;
+                }
+                if let Some(v) = draw_drag_float_input(ui, "y##map_position", p.pos_y.unwrap_or(pos_y), 1.0, 0.1) {
+                    p.pos_y = Some(v);
+                    p.commit_position = true;
+                }
             }
 
             if let Some(z) = snap.z_index {
                 ui.separator();
                 ui.text("ZIndex");
+                ui.same_line();
+                if ui.button("Del##zindex") { p.remove_z = true; }
                 if let Some(v) = draw_float_input(ui, "value##zindex", p.z_index.unwrap_or(z), 1.0) {
                     p.z_index = Some(v);
                     p.commit_z = true;
@@ -62,6 +68,8 @@ pub(super) fn draw_entity_editor(
             if let Some(ref group) = snap.group {
                 ui.separator();
                 ui.text("Group");
+                ui.same_line();
+                if ui.button("Del##group") { p.remove_group = true; }
                 ui.set_next_item_width(-1.0);
                 let mut committed = false;
                 draw_text_buffer_input(ui, "name##group", &mut p.group, &mut committed, group);
@@ -72,6 +80,8 @@ pub(super) fn draw_entity_editor(
             if let Some(ref sprite) = snap.sprite {
                 ui.separator();
                 ui.text("Sprite");
+                ui.same_line();
+                if ui.button("Del##sprite") { p.remove_sprite = true; }
 
                 let tex_key_current = p.sprite_tex_key.clone().unwrap_or_else(|| sprite.tex_key.clone());
                 let mut texture_keys: Vec<&str> =
@@ -131,6 +141,8 @@ pub(super) fn draw_entity_editor(
             if let Some(ref collider) = snap.box_collider {
                 ui.separator();
                 ui.text("BoxCollider");
+                ui.same_line();
+                if ui.button("Del##collider") { p.remove_collider = true; }
                 if let Some(v) = draw_float_input(ui, "size x##collider", p.box_size_x.unwrap_or(collider.size[0]), 1.0) {
                     p.box_size_x = Some(v);
                     p.commit_collider = true;
@@ -159,6 +171,8 @@ pub(super) fn draw_entity_editor(
             if let Some(rotation_deg) = snap.rotation_deg {
                 ui.separator();
                 ui.text("Rotation");
+                ui.same_line();
+                if ui.button("Del##rotation") { p.remove_rotation = true; }
                 if let Some(v) = draw_float_input(ui, "degrees##rotation", p.rotation_deg.unwrap_or(rotation_deg), 1.0) {
                     p.rotation_deg = Some(v);
                     p.commit_rotation = true;
@@ -167,6 +181,8 @@ pub(super) fn draw_entity_editor(
             if let Some([scale_x, scale_y]) = snap.scale {
                 ui.separator();
                 ui.text("Scale");
+                ui.same_line();
+                if ui.button("Del##scale") { p.remove_scale = true; }
                 if let Some(v) = draw_float_input(ui, "x##scale", p.scale_x.unwrap_or(scale_x), 1.0) {
                     p.scale_x = Some(v);
                     p.commit_scale = true;
@@ -179,6 +195,8 @@ pub(super) fn draw_entity_editor(
             if let Some(ref animation) = snap.animation {
                 ui.separator();
                 ui.text("Animation");
+                ui.same_line();
+                if ui.button("Del##animation") { p.remove_animation = true; }
                 ui.set_next_item_width(-1.0);
                 let mut committed = false;
                 draw_text_buffer_input(ui, "key##animation", &mut p.anim_key, &mut committed, animation.animation_key.as_str());
@@ -198,11 +216,15 @@ pub(super) fn draw_entity_editor(
             if let Some(ref ttl) = snap.ttl {
                 ui.separator();
                 ui.text("Ttl");
+                ui.same_line();
+                if ui.button("Del##ttl") { p.remove_ttl = true; }
                 ui.group(|| ui.text_disabled(format!("  remaining: {:.3}", ttl.remaining)));
             }
             if let Some(ref timer) = snap.timer {
                 ui.separator();
                 ui.text("Timer");
+                ui.same_line();
+                if ui.button("Del##timer") { p.remove_timer = true; }
                 ui.group(|| {
                     ui.text_disabled(format!("  duration: {:.3}", timer.duration));
                     ui.text_disabled(format!("  elapsed: {:.3}", timer.elapsed));
@@ -211,6 +233,8 @@ pub(super) fn draw_entity_editor(
             if let Some(ref phase) = snap.phase {
                 ui.separator();
                 ui.text("Phase");
+                ui.same_line();
+                if ui.button("Del##phase") { p.remove_phase = true; }
                 ui.group(|| {
                     ui.text_disabled(format!("  current: {}", phase.current));
                     ui.text_disabled(format!(

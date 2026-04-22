@@ -54,6 +54,18 @@ pub(crate) struct PendingEditState {
     pub anim_frame_index: Option<i32>,
     pub anim_elapsed:     Option<f32>,
     pub commit_animation: bool,
+    // Remove flags
+    pub remove_map_position: bool,
+    pub remove_z:            bool,
+    pub remove_group:        bool,
+    pub remove_sprite:       bool,
+    pub remove_collider:     bool,
+    pub remove_rotation:     bool,
+    pub remove_scale:        bool,
+    pub remove_animation:    bool,
+    pub remove_ttl:          bool,
+    pub remove_timer:        bool,
+    pub remove_phase:        bool,
 }
 
 impl PendingEditState {
@@ -66,6 +78,17 @@ impl PendingEditState {
             || self.commit_sprite
             || self.commit_collider
             || self.commit_animation
+            || self.remove_map_position
+            || self.remove_z
+            || self.remove_group
+            || self.remove_sprite
+            || self.remove_collider
+            || self.remove_rotation
+            || self.remove_scale
+            || self.remove_animation
+            || self.remove_ttl
+            || self.remove_timer
+            || self.remove_phase
     }
 }
 

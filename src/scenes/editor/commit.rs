@@ -3,9 +3,12 @@ use super::state::clear_entity_editor_pending;
 use crate::editor_types::ComponentSnapshot;
 use crate::signals as sig;
 use crate::systems::entity_edit::{
-    UpdateAnimationRequested, UpdateBoxColliderRequested, UpdateGroupRequested,
-    UpdateMapPositionRequested, UpdateRotationRequested, UpdateScaleRequested,
-    UpdateSpriteRequested, UpdateZIndexRequested,
+    RemoveAnimationRequested, RemoveBoxColliderRequested, RemoveGroupRequested,
+    RemoveMapPositionRequested, RemovePhaseRequested, RemoveRotationRequested,
+    RemoveScaleRequested, RemoveSpriteRequested, RemoveTimerRequested, RemoveTtlRequested,
+    RemoveZIndexRequested, UpdateAnimationRequested, UpdateBoxColliderRequested,
+    UpdateGroupRequested, UpdateMapPositionRequested, UpdateRotationRequested,
+    UpdateScaleRequested, UpdateSpriteRequested, UpdateZIndexRequested,
 };
 use aberredengine::bevy_ecs::prelude::Entity;
 use aberredengine::resources::appstate::AppState;
@@ -33,30 +36,49 @@ pub(super) fn consume_entity_editor_commits(ctx: &mut GameCtx) {
         return;
     };
 
-    if p.commit_position {
+    if p.remove_map_position {
+        ctx.commands.trigger(RemoveMapPositionRequested { entity });
+    } else if p.commit_position {
         consume_position_commit(ctx, entity, &snapshot, &p);
     }
-    if p.commit_z {
+    if p.remove_z {
+        ctx.commands.trigger(RemoveZIndexRequested { entity });
+    } else if p.commit_z {
         consume_z_commit(ctx, entity, &snapshot, &p);
     }
-    if p.commit_group {
+    if p.remove_group {
+        ctx.commands.trigger(RemoveGroupRequested { entity });
+    } else if p.commit_group {
         consume_group_commit(ctx, entity, &snapshot, &p);
     }
-    if p.commit_rotation {
+    if p.remove_rotation {
+        ctx.commands.trigger(RemoveRotationRequested { entity });
+    } else if p.commit_rotation {
         consume_rotation_commit(ctx, entity, &snapshot, &p);
     }
-    if p.commit_scale {
+    if p.remove_scale {
+        ctx.commands.trigger(RemoveScaleRequested { entity });
+    } else if p.commit_scale {
         consume_scale_commit(ctx, entity, &snapshot, &p);
     }
-    if p.commit_sprite {
+    if p.remove_sprite {
+        ctx.commands.trigger(RemoveSpriteRequested { entity });
+    } else if p.commit_sprite {
         consume_sprite_commit(ctx, entity, &snapshot, &p);
     }
-    if p.commit_collider {
+    if p.remove_collider {
+        ctx.commands.trigger(RemoveBoxColliderRequested { entity });
+    } else if p.commit_collider {
         consume_collider_commit(ctx, entity, &snapshot, &p);
     }
-    if p.commit_animation {
+    if p.remove_animation {
+        ctx.commands.trigger(RemoveAnimationRequested { entity });
+    } else if p.commit_animation {
         consume_animation_commit(ctx, entity, &snapshot, &p);
     }
+    if p.remove_ttl   { ctx.commands.trigger(RemoveTtlRequested   { entity }); }
+    if p.remove_timer { ctx.commands.trigger(RemoveTimerRequested  { entity }); }
+    if p.remove_phase { ctx.commands.trigger(RemovePhaseRequested  { entity }); }
 
     clear_entity_editor_pending(&ctx.app_state);
 }
@@ -67,10 +89,17 @@ fn consume_position_commit(
     snapshot: &ComponentSnapshot,
     p: &PendingEditState,
 ) {
+    let Some([snap_x, snap_y]) = snapshot.map_position else {
+        warn!(
+            "consume_position_commit: snapshot missing MapPosition for entity {}",
+            entity.to_bits()
+        );
+        return;
+    };
     ctx.commands.trigger(UpdateMapPositionRequested {
         entity,
-        x: p.pos_x.unwrap_or(snapshot.map_position[0]),
-        y: p.pos_y.unwrap_or(snapshot.map_position[1]),
+        x: p.pos_x.unwrap_or(snap_x),
+        y: p.pos_y.unwrap_or(snap_y),
     });
 }
 

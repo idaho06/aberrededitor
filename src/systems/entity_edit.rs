@@ -5,9 +5,12 @@ use aberredengine::components::animation::Animation;
 use aberredengine::components::boxcollider::BoxCollider;
 use aberredengine::components::group::Group;
 use aberredengine::components::mapposition::MapPosition;
+use aberredengine::components::phase::Phase;
 use aberredengine::components::rotation::Rotation;
 use aberredengine::components::scale::Scale;
 use aberredengine::components::sprite::Sprite;
+use aberredengine::components::timer::Timer;
+use aberredengine::components::ttl::Ttl;
 use aberredengine::components::zindex::ZIndex;
 use aberredengine::raylib::prelude::Vector2;
 use log::{debug, warn};
@@ -72,6 +75,29 @@ pub struct UpdateAnimationRequested {
     pub frame_index: usize,
     pub elapsed_time: f32,
 }
+
+#[derive(Event)]
+pub struct RemoveMapPositionRequested  { pub entity: Entity }
+#[derive(Event)]
+pub struct RemoveZIndexRequested       { pub entity: Entity }
+#[derive(Event)]
+pub struct RemoveGroupRequested        { pub entity: Entity }
+#[derive(Event)]
+pub struct RemoveSpriteRequested       { pub entity: Entity }
+#[derive(Event)]
+pub struct RemoveBoxColliderRequested  { pub entity: Entity }
+#[derive(Event)]
+pub struct RemoveRotationRequested     { pub entity: Entity }
+#[derive(Event)]
+pub struct RemoveScaleRequested        { pub entity: Entity }
+#[derive(Event)]
+pub struct RemoveAnimationRequested    { pub entity: Entity }
+#[derive(Event)]
+pub struct RemoveTtlRequested          { pub entity: Entity }
+#[derive(Event)]
+pub struct RemoveTimerRequested        { pub entity: Entity }
+#[derive(Event)]
+pub struct RemovePhaseRequested        { pub entity: Entity }
 
 macro_rules! component_edit_observer {
     (
@@ -230,6 +256,32 @@ component_edit_observer!(
         );
     }
 );
+
+macro_rules! component_remove_observer {
+    ($fn_name:ident, $event:ty, $component:ty, $component_name:literal) => {
+        pub fn $fn_name(trigger: On<$event>, mut commands: Commands) {
+            let entity = trigger.event().entity;
+            commands.entity(entity).remove::<$component>();
+            debug!(
+                concat!(stringify!($fn_name), ": removed ", $component_name, " from entity {}"),
+                entity.to_bits()
+            );
+            refresh_inspector(&mut commands, entity);
+        }
+    };
+}
+
+component_remove_observer!(remove_map_position_observer, RemoveMapPositionRequested, MapPosition, "MapPosition");
+component_remove_observer!(remove_z_index_observer,      RemoveZIndexRequested,      ZIndex,      "ZIndex");
+component_remove_observer!(remove_group_observer,        RemoveGroupRequested,        Group,       "Group");
+component_remove_observer!(remove_sprite_observer,       RemoveSpriteRequested,       Sprite,      "Sprite");
+component_remove_observer!(remove_box_collider_observer, RemoveBoxColliderRequested,  BoxCollider, "BoxCollider");
+component_remove_observer!(remove_rotation_observer,     RemoveRotationRequested,     Rotation,    "Rotation");
+component_remove_observer!(remove_scale_observer,        RemoveScaleRequested,        Scale,       "Scale");
+component_remove_observer!(remove_animation_observer,    RemoveAnimationRequested,    Animation,   "Animation");
+component_remove_observer!(remove_ttl_observer,          RemoveTtlRequested,          Ttl,         "Ttl");
+component_remove_observer!(remove_timer_observer,        RemoveTimerRequested,        Timer,       "Timer");
+component_remove_observer!(remove_phase_observer,        RemovePhaseRequested,        Phase,       "Phase");
 
 fn refresh_inspector(commands: &mut Commands, entity: Entity) {
     commands.trigger(InspectEntityRequested { entity });
