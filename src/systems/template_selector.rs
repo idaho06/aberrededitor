@@ -1,6 +1,8 @@
+use super::utils::entity_label;
 use aberredengine::bevy_ecs::prelude::{Entity, Or, Query, Res, ResMut, Without};
 use aberredengine::components::group::Group;
 use aberredengine::components::mapposition::MapPosition;
+use aberredengine::components::persistent::Persistent;
 use aberredengine::components::zindex::ZIndex;
 use aberredengine::resources::appstate::AppState;
 use aberredengine::resources::worldsignals::WorldSignals;
@@ -24,7 +26,7 @@ pub type TemplateSelectorMutex = std::sync::Mutex<TemplateSelectorCache>;
 // ---------------------------------------------------------------------------
 
 type TemplateQuery<'w, 's> =
-    Query<'w, 's, (Entity, Option<&'static Group>), Or<(Without<MapPosition>, Without<ZIndex>)>>;
+    Query<'w, 's, (Entity, Option<&'static Group>, Option<&'static Persistent>), Or<(Without<MapPosition>, Without<ZIndex>)>>;
 
 pub fn update_template_cache(
     app_state: ResMut<AppState>,
@@ -42,11 +44,8 @@ pub fn update_template_cache(
     };
     cache.entities.clear();
     cache.labels.clear();
-    for (entity, maybe_group) in query.iter() {
-        let group_suffix = maybe_group
-            .map(|g| format!(" [{}]", g.0))
-            .unwrap_or_default();
-        let label = format!("Entity #{}{}", entity.index(), group_suffix);
+    for (entity, maybe_group, maybe_persistent) in query.iter() {
+        let label = entity_label(entity, maybe_group, maybe_persistent);
         cache.entities.push(entity);
         cache.labels.push(label);
     }

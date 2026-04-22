@@ -51,6 +51,7 @@ pub(super) fn draw_entity_editor(
                 (snap.box_collider.is_none(), "BoxCollider", ComponentKind::BoxCollider),
                 (snap.animation.is_none(),    "Animation",   ComponentKind::Animation),
                 (snap.ttl.is_none(),          "Ttl",         ComponentKind::Ttl),
+                (!snap.persistent,            "Persistent",  ComponentKind::Persistent),
             ]
             .into_iter()
             .filter_map(|(absent, label, kind)| absent.then_some((label, kind)))
@@ -289,6 +290,12 @@ pub(super) fn draw_entity_editor(
                         ));
                     }
                 });
+            }
+            if snap.persistent {
+                ui.separator();
+                ui.text("Persistent");
+                ui.same_line();
+                if ui.button("Del##persistent") { p.remove_persistent = true; }
             }
 
             });

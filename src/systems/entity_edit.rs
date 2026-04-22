@@ -6,6 +6,7 @@ use aberredengine::components::animation::Animation;
 use aberredengine::components::boxcollider::BoxCollider;
 use aberredengine::components::group::Group;
 use aberredengine::components::mapposition::MapPosition;
+use aberredengine::components::persistent::Persistent;
 use aberredengine::components::phase::Phase;
 use aberredengine::components::rotation::Rotation;
 use aberredengine::components::scale::Scale;
@@ -100,6 +101,8 @@ pub struct RemoveTtlRequested          { pub entity: Entity }
 pub struct RemoveTimerRequested        { pub entity: Entity }
 #[derive(Event)]
 pub struct RemovePhaseRequested        { pub entity: Entity }
+#[derive(Event)]
+pub struct RemovePersistentRequested   { pub entity: Entity }
 
 #[derive(Event)]
 pub struct AddComponentRequested {
@@ -290,6 +293,7 @@ component_remove_observer!(remove_animation_observer,    RemoveAnimationRequeste
 component_remove_observer!(remove_ttl_observer,          RemoveTtlRequested,          Ttl,         "Ttl");
 component_remove_observer!(remove_timer_observer,        RemoveTimerRequested,        Timer,       "Timer");
 component_remove_observer!(remove_phase_observer,        RemovePhaseRequested,        Phase,       "Phase");
+component_remove_observer!(remove_persistent_observer,   RemovePersistentRequested,   Persistent,  "Persistent");
 
 pub fn add_component_observer(
     trigger: On<AddComponentRequested>,
@@ -336,6 +340,9 @@ pub fn add_component_observer(
         }
         ComponentKind::Ttl => {
             commands.entity(entity).insert(Ttl::new(5.0));
+        }
+        ComponentKind::Persistent => {
+            commands.entity(entity).insert(Persistent);
         }
     }
     debug!(

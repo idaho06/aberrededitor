@@ -5,10 +5,11 @@ use crate::signals as sig;
 use crate::systems::entity_edit::{
     AddComponentRequested, RemoveAnimationRequested, RemoveBoxColliderRequested,
     RemoveGroupRequested, RemoveMapPositionRequested, RemovePhaseRequested,
-    RemoveRotationRequested, RemoveScaleRequested, RemoveSpriteRequested, RemoveTimerRequested,
-    RemoveTtlRequested, RemoveZIndexRequested, UpdateAnimationRequested,
-    UpdateBoxColliderRequested, UpdateGroupRequested, UpdateMapPositionRequested,
-    UpdateRotationRequested, UpdateScaleRequested, UpdateSpriteRequested, UpdateZIndexRequested,
+    RemovePersistentRequested, RemoveRotationRequested, RemoveScaleRequested,
+    RemoveSpriteRequested, RemoveTimerRequested, RemoveTtlRequested, RemoveZIndexRequested,
+    UpdateAnimationRequested, UpdateBoxColliderRequested, UpdateGroupRequested,
+    UpdateMapPositionRequested, UpdateRotationRequested, UpdateScaleRequested,
+    UpdateSpriteRequested, UpdateZIndexRequested,
 };
 use aberredengine::bevy_ecs::prelude::Entity;
 use aberredengine::resources::appstate::AppState;
@@ -76,9 +77,10 @@ pub(super) fn consume_entity_editor_commits(ctx: &mut GameCtx) {
     } else if p.commit_animation {
         consume_animation_commit(ctx, entity, &snapshot, &p);
     }
-    if p.remove_ttl   { ctx.commands.trigger(RemoveTtlRequested   { entity }); }
-    if p.remove_timer { ctx.commands.trigger(RemoveTimerRequested  { entity }); }
-    if p.remove_phase { ctx.commands.trigger(RemovePhaseRequested  { entity }); }
+    if p.remove_ttl        { ctx.commands.trigger(RemoveTtlRequested        { entity }); }
+    if p.remove_timer      { ctx.commands.trigger(RemoveTimerRequested      { entity }); }
+    if p.remove_phase      { ctx.commands.trigger(RemovePhaseRequested      { entity }); }
+    if p.remove_persistent { ctx.commands.trigger(RemovePersistentRequested { entity }); }
     if let Some(kind) = p.add_component {
         ctx.commands.trigger(AddComponentRequested { entity, kind });
     }

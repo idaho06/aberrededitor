@@ -67,6 +67,7 @@ pub(crate) struct PendingEditState {
     pub remove_ttl:          bool,
     pub remove_timer:        bool,
     pub remove_phase:        bool,
+    pub remove_persistent:   bool,
     // Add component
     pub add_component:       Option<ComponentKind>,
     pub add_combo_selection: usize,
@@ -93,6 +94,7 @@ impl PendingEditState {
             || self.remove_ttl
             || self.remove_timer
             || self.remove_phase
+            || self.remove_persistent
             || self.add_component.is_some()
     }
 }

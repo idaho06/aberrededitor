@@ -15,6 +15,7 @@ pub enum ComponentKind {
     BoxCollider,
     Animation,
     Ttl,
+    Persistent,
 }
 
 // ---------------------------------------------------------------------------
@@ -90,4 +91,5 @@ pub struct ComponentSnapshot {
     pub ttl: Option<TtlSnapshot>,
     pub timer: Option<TimerSnapshot>,
     pub phase: Option<PhaseSnapshot>,
+    pub persistent: bool,
 }

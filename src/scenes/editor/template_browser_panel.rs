@@ -49,7 +49,6 @@ pub(super) fn draw_template_browser(
 
     if let Some(entity) = entity_to_select {
         signals.set_entity(sig::TEMPLATE_SELECT_ENTITY, entity);
-        signals.set_flag(sig::UI_ENTITY_EDITOR_OPEN);
     }
     if !window_open {
         signals.take_flag(sig::UI_TEMPLATE_BROWSER_OPEN);

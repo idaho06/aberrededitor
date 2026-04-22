@@ -9,6 +9,7 @@ use aberredengine::components::animation::Animation;
 use aberredengine::components::boxcollider::BoxCollider;
 use aberredengine::components::group::Group;
 use aberredengine::components::mapposition::MapPosition;
+use aberredengine::components::persistent::Persistent;
 use aberredengine::components::phase::Phase;
 use aberredengine::components::rotation::Rotation;
 use aberredengine::components::scale::Scale;
@@ -47,12 +48,13 @@ pub fn entity_inspect_observer(
         Option<&Ttl>,
         Option<&Timer>,
         Option<&Phase>,
+        Option<&Persistent>,
     )>,
     mut signals: ResMut<WorldSignals>,
     mut app_state: ResMut<AppState>,
 ) {
     let entity = trigger.event().entity;
-    let Ok((pos, z, sprite, collider, group, rot, scale, animation, ttl, timer, phase)) =
+    let Ok((pos, z, sprite, collider, group, rot, scale, animation, ttl, timer, phase, persistent)) =
         query.get(entity)
     else {
         return;
@@ -110,6 +112,7 @@ pub fn entity_inspect_observer(
                 phase_names,
             }
         }),
+        persistent: persistent.is_some(),
     };
 
     app_state.insert(snapshot);

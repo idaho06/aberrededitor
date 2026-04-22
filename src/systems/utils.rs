@@ -1,3 +1,14 @@
+use aberredengine::bevy_ecs::prelude::Entity;
+use aberredengine::components::group::Group;
+use aberredengine::components::persistent::Persistent;
+
+/// Build a display label for an entity: `Entity #<id> [group] [Persistent]`.
+pub fn entity_label(entity: Entity, group: Option<&Group>, persistent: Option<&Persistent>) -> String {
+    let group_suffix = group.map(|g| format!(" [{}]", g.0)).unwrap_or_default();
+    let persistent_tag = if persistent.is_some() { " [Persistent]" } else { "" };
+    format!("Entity #{}{}{}", entity.index(), group_suffix, persistent_tag)
+}
+
 /// Convert an absolute path to a path relative to the current working directory.
 /// Works across directory boundaries (produces `../` traversals when needed).
 /// Falls back to the original path if canonicalization fails.

@@ -3,10 +3,12 @@ use crate::editor_types::{ComponentSnapshot, SelectionCorners};
 use crate::signals as sig;
 use aberredengine::bevy_ecs;
 use aberredengine::bevy_ecs::prelude::{Commands, Entity, Event, On, Query, ResMut};
+use super::utils::entity_label;
 use aberredengine::components::boxcollider::BoxCollider;
 use aberredengine::components::globaltransform2d::GlobalTransform2D;
 use aberredengine::components::group::Group;
 use aberredengine::components::mapposition::MapPosition;
+use aberredengine::components::persistent::Persistent;
 use aberredengine::components::rotation::Rotation;
 use aberredengine::components::scale::Scale;
 use aberredengine::components::sprite::Sprite;
@@ -77,6 +79,7 @@ pub fn entity_pick_observer(
         Option<&ZIndex>,
         Option<&GlobalTransform2D>,
         Option<&Group>,
+        Option<&Persistent>,
     )>,
     mut world_signals: ResMut<WorldSignals>,
     mut app_state: ResMut<AppState>,
@@ -101,6 +104,7 @@ pub fn entity_pick_observer(
         maybe_zindex,
         maybe_gt,
         maybe_group,
+        maybe_persistent,
     ) in query.iter()
     {
         let (resolved_pos, resolved_scale, resolved_rot) = resolve_world_transform(
@@ -129,10 +133,7 @@ pub fn entity_pick_observer(
 
         if hit {
             let zindex = maybe_zindex.map_or(0.0, |z| z.0);
-            let group_label = maybe_group
-                .map(|g| format!(" [{}]", g.0))
-                .unwrap_or_default();
-            let label = format!("Entity #{}{}", entity.index(), group_label);
+            let label = entity_label(entity, maybe_group, maybe_persistent);
             let corners = compute_corners(
                 &resolved_pos,
                 maybe_collider,
