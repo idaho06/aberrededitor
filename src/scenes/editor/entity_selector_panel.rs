@@ -1,5 +1,5 @@
-use crate::editor_types::HitPayload;
 use crate::signals as sig;
+use crate::systems::entity_selector::SelectorMutex;
 use aberredengine::imgui;
 use aberredengine::resources::appstate::AppState;
 use aberredengine::resources::worldsignals::WorldSignals;
@@ -20,22 +20,26 @@ pub(super) fn draw_entity_selector(
         .size([320.0, 400.0], imgui::Condition::FirstUseEver)
         .opened(&mut window_open)
         .build(|| {
-            match app_state.get::<HitPayload>() {
+            let mutex = app_state.get::<SelectorMutex>();
+            let guard = mutex.map(|m| m.lock().unwrap());
+            let click_pos = guard.as_deref().and_then(|c| c.click_pos);
+
+            match click_pos {
                 None => {
                     ui.text_disabled("Left-click in the scene to pick entities.");
                 }
-                Some(payload) => {
-                    ui.text_disabled(format!(
-                        "Click: ({:.1}, {:.1})",
-                        payload.click[0], payload.click[1]
-                    ));
+                Some((cx, cy)) => {
+                    ui.text_disabled(format!("Click: ({:.1}, {:.1})", cx, cy));
                     ui.separator();
 
-                    if payload.hits.is_empty() {
+                    let cache = guard.as_deref().unwrap();
+                    if cache.hits.is_empty() {
                         ui.text_disabled("No entities at click position.");
                     } else {
-                        for (index, hit) in payload.hits.iter().enumerate() {
-                            let row_text = format!("{} (z={:.1})", hit.label, hit.zindex);
+                        for (index, (label, &zindex)) in
+                            cache.labels.iter().zip(cache.z_indices.iter()).enumerate()
+                        {
+                            let row_text = format!("{} (z={:.1})", label, zindex);
                             let _id = ui.push_id_usize(index);
                             if ui.selectable_config(&row_text).build() {
                                 row_to_select = Some(index as i32);

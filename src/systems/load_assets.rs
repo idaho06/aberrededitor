@@ -1,6 +1,6 @@
 use crate::scenes::editor::pending_state::{PendingEditState, PendingMutex};
 use crate::scenes::editor::EditorState;
-use crate::systems::entity_selector::EntitySelectorCache;
+use crate::systems::entity_selector::{EntitySelectorCache, SelectorMutex};
 use aberredengine::bevy_ecs::prelude::{Commands, NonSendMut, ResMut};
 use aberredengine::raylib::prelude::Color;
 use aberredengine::resources::appstate::AppState;
@@ -52,7 +52,7 @@ pub fn load_assets(
     commands.insert_resource(texture_store);
     commands.insert_resource(TilemapStore::new());
     commands.insert_resource(MapData::default());
-    commands.insert_resource(EntitySelectorCache::default());
+    app_state.insert(SelectorMutex::new(EntitySelectorCache::default()));
     commands.insert_resource(EditorState::default());
     app_state.insert(PendingMutex::new(PendingEditState::default()));
 

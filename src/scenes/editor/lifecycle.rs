@@ -1,6 +1,6 @@
 use super::state::clear_entity_editor_pending;
 use crate::signals as sig;
-use crate::systems::entity_selector::clear_selector_signals;
+use crate::systems::entity_selector::clear_selector_state;
 use aberredengine::components::cameratarget::CameraTarget;
 use aberredengine::components::mapposition::MapPosition;
 use aberredengine::events::input::InputAction;
@@ -55,7 +55,7 @@ pub fn editor_exit(ctx: &mut GameCtx) {
         InputBinding::MouseButton(MouseButton::MOUSE_BUTTON_LEFT),
     );
 
-    clear_selector_signals(&mut ctx.world_signals, &mut ctx.app_state);
+    clear_selector_state(&mut ctx.world_signals, &mut ctx.app_state);
     clear_entity_editor_pending(&ctx.app_state);
     ctx.world_signals.clear_flag(sig::IMGUI_WANTS_MOUSE);
     ctx.world_signals.clear_flag(sig::IMGUI_WANTS_KEYBOARD);

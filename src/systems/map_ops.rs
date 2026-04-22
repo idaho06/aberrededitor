@@ -11,7 +11,7 @@ use aberredengine::resources::worldsignals::WorldSignals;
 use aberredengine::systems::RaylibAccess;
 use log::{info, warn};
 
-use crate::systems::entity_selector::{EntitySelectorCache, clear_selector_state};
+use crate::systems::entity_selector::clear_selector_state;
 use crate::systems::utils::to_relative;
 
 const GROUP_TILES: &str = "tiles";
@@ -41,7 +41,6 @@ pub fn new_map_observer(
     mut tilemap_store: ResMut<TilemapStore>,
     mut world_signals: ResMut<WorldSignals>,
     mut app_state: ResMut<AppState>,
-    mut selector_cache: ResMut<EntitySelectorCache>,
 ) {
     reset_editor_map(
         &mut commands,
@@ -49,7 +48,6 @@ pub fn new_map_observer(
         &mut tilemap_store,
         &mut world_signals,
         &mut app_state,
-        &mut selector_cache,
         MapData::default(),
     );
     info!("new_map_observer: cleared map");
@@ -62,7 +60,6 @@ pub fn load_map_observer(
     mut tilemap_store: ResMut<TilemapStore>,
     mut world_signals: ResMut<WorldSignals>,
     mut app_state: ResMut<AppState>,
-    mut selector_cache: ResMut<EntitySelectorCache>,
 ) {
     let path = &trigger.event().path;
     let map = match load_map(path) {
@@ -78,7 +75,6 @@ pub fn load_map_observer(
         &mut tilemap_store,
         &mut world_signals,
         &mut app_state,
-        &mut selector_cache,
         map.clone(),
     );
     commands.trigger(SpawnMapRequested { map });
@@ -102,13 +98,12 @@ fn reset_editor_map(
     tilemap_store: &mut TilemapStore,
     world_signals: &mut WorldSignals,
     app_state: &mut AppState,
-    selector_cache: &mut EntitySelectorCache,
     map_data: MapData,
 ) {
     clear_map_entities(commands, groups);
     tilemap_store.clear();
     commands.insert_resource(map_data);
-    clear_selector_state(world_signals, app_state, selector_cache);
+    clear_selector_state(world_signals, app_state);
 }
 
 fn clear_map_entities(commands: &mut Commands, groups: &Query<(Entity, &Group)>) {

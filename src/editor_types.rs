@@ -8,18 +8,6 @@
 #[derive(Debug, Clone, Copy)]
 pub struct SelectionCorners(pub [[f32; 2]; 4]);
 
-#[derive(Debug, Clone)]
-pub struct HitEntry {
-    pub label: String,
-    pub zindex: f32,
-}
-
-#[derive(Debug, Clone)]
-pub struct HitPayload {
-    pub click: [f32; 2],
-    pub hits: Vec<HitEntry>,
-}
-
 // ---------------------------------------------------------------------------
 // Entity inspector payloads
 // ---------------------------------------------------------------------------

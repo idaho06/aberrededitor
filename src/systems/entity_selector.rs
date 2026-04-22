@@ -1,8 +1,8 @@
 use super::entity_inspector::InspectEntityRequested;
-use crate::editor_types::{ComponentSnapshot, HitEntry, HitPayload, SelectionCorners};
+use crate::editor_types::{ComponentSnapshot, SelectionCorners};
 use crate::signals as sig;
 use aberredengine::bevy_ecs;
-use aberredengine::bevy_ecs::prelude::{Commands, Entity, Event, On, Query, Res, ResMut, Resource};
+use aberredengine::bevy_ecs::prelude::{Commands, Entity, Event, On, Query, ResMut};
 use aberredengine::components::boxcollider::BoxCollider;
 use aberredengine::components::globaltransform2d::GlobalTransform2D;
 use aberredengine::components::group::Group;
@@ -36,20 +36,18 @@ pub struct SelectEntityRequested {
 // Cache resource
 // ---------------------------------------------------------------------------
 
-/// Transient editor resource that holds the real `Entity` handles from the last pick.
-///
-/// The GUI-facing payload lives in `AppState` as a typed [`HitPayload`] and contains
-/// display data (labels, z-values). This cache keeps the actual `Entity` values,
-/// labels, and world-space corner quads so the selection resolve observer can look
-/// them up by row index.
-#[derive(Resource, Default)]
+#[derive(Default)]
 pub struct EntitySelectorCache {
     pub hits: Vec<Entity>,
     pub labels: Vec<String>,
+    pub z_indices: Vec<f32>,
     /// World-space corners for each hit: TL, TR, BR, BL (clockwise).
     pub corner_sets: Vec<[[f32; 2]; 4]>,
-    pub click_pos: (f32, f32),
+    /// `None` means no pick has happened yet; `Some` holds the click position.
+    pub click_pos: Option<(f32, f32)>,
 }
+
+pub type SelectorMutex = std::sync::Mutex<EntitySelectorCache>;
 
 // ---------------------------------------------------------------------------
 // Pick observer — internal types
@@ -80,7 +78,6 @@ pub fn entity_pick_observer(
         Option<&GlobalTransform2D>,
         Option<&Group>,
     )>,
-    mut cache: ResMut<EntitySelectorCache>,
     mut world_signals: ResMut<WorldSignals>,
     mut app_state: ResMut<AppState>,
     mut commands: Commands,
@@ -160,37 +157,32 @@ pub fn entity_pick_observer(
             .then_with(|| a.entity.index().cmp(&b.entity.index()))
     });
 
-    cache.hits = hits.iter().map(|h| h.entity).collect();
-    cache.labels = hits.iter().map(|h| h.label.clone()).collect();
-    cache.corner_sets = hits.iter().map(|h| h.corners).collect();
-    cache.click_pos = (click_x, click_y);
-
-    let payload = HitPayload {
-        click: [click_x, click_y],
-        hits: hits
-            .iter()
-            .map(|h| HitEntry {
-                label: h.label.clone(),
-                zindex: h.zindex,
-            })
-            .collect(),
+    let (is_empty, top_hit) = {
+        let mutex = app_state.get::<SelectorMutex>().expect("SelectorMutex not in AppState");
+        let mut cache = mutex.lock().unwrap();
+        cache.hits = hits.iter().map(|h| h.entity).collect();
+        cache.labels = hits.iter().map(|h| h.label.clone()).collect();
+        cache.z_indices = hits.iter().map(|h| h.zindex).collect();
+        cache.corner_sets = hits.iter().map(|h| h.corners).collect();
+        cache.click_pos = Some((click_x, click_y));
+        let top = cache.hits.first().map(|&e| (e, cache.labels[0].clone(), cache.corner_sets[0]));
+        (cache.hits.is_empty(), top)
     };
-    app_state.insert(payload);
+
     world_signals.set_flag(sig::UI_ENTITY_SELECTOR_OPEN);
 
     // Empty click — clear active selection and outline; otherwise auto-select topmost
-    if cache.hits.is_empty() {
+    if is_empty {
         world_signals.remove_entity(sig::ES_SELECTED_ENTITY);
         world_signals.remove_string(sig::ES_SELECTED_LABEL);
         world_signals.clear_flag(sig::UI_ENTITY_EDITOR_OPEN);
         app_state.remove::<SelectionCorners>();
         app_state.remove::<ComponentSnapshot>();
-    } else {
-        let top = cache.hits[0];
+    } else if let Some((top, top_label, top_corners)) = top_hit {
         world_signals.set_entity(sig::ES_SELECTED_ENTITY, top);
-        world_signals.set_string(sig::ES_SELECTED_LABEL, &cache.labels[0]);
+        world_signals.set_string(sig::ES_SELECTED_LABEL, &top_label);
         app_state.remove::<ComponentSnapshot>();
-        app_state.insert(SelectionCorners(cache.corner_sets[0]));
+        app_state.insert(SelectionCorners(top_corners));
         commands.trigger(InspectEntityRequested { entity: top });
     }
 }
@@ -201,27 +193,37 @@ pub fn entity_pick_observer(
 
 pub fn select_entity_observer(
     trigger: On<SelectEntityRequested>,
-    cache: Res<EntitySelectorCache>,
     mut world_signals: ResMut<WorldSignals>,
     mut app_state: ResMut<AppState>,
     mut commands: Commands,
 ) {
     let index = trigger.event().index;
-    if let Some(&entity) = cache.hits.get(index) {
-        world_signals.set_entity(sig::ES_SELECTED_ENTITY, entity);
-        if let Some(label) = cache.labels.get(index) {
-            world_signals.set_string(sig::ES_SELECTED_LABEL, label.as_str());
+    let hit = {
+        let mutex = app_state.get::<SelectorMutex>().expect("SelectorMutex not in AppState");
+        let cache = mutex.lock().unwrap();
+        cache.hits.get(index).map(|&entity| {
+            let label = cache.labels.get(index).cloned();
+            let corners = cache.corner_sets.get(index).copied();
+            (entity, label, corners)
+        }).ok_or(cache.hits.len())
+    };
+    match hit {
+        Ok((entity, label, corners)) => {
+            world_signals.set_entity(sig::ES_SELECTED_ENTITY, entity);
+            if let Some(label) = label {
+                world_signals.set_string(sig::ES_SELECTED_LABEL, label.as_str());
+            }
+            if let Some(corners) = corners {
+                app_state.insert(SelectionCorners(corners));
+            }
+            commands.trigger(InspectEntityRequested { entity });
         }
-        if let Some(&corners) = cache.corner_sets.get(index) {
-            app_state.insert(SelectionCorners(corners));
+        Err(cache_len) => {
+            warn!(
+                "select_entity_observer: index {} out of range (cache has {} hits)",
+                index, cache_len
+            );
         }
-        commands.trigger(InspectEntityRequested { entity });
-    } else {
-        warn!(
-            "select_entity_observer: index {} out of range (cache has {} hits)",
-            index,
-            cache.hits.len()
-        );
     }
 }
 
@@ -318,26 +320,15 @@ fn point_in_sprite(
 // Lifecycle cleanup helpers
 // ---------------------------------------------------------------------------
 
-/// Clear WorldSignals keys and AppState entries owned by the entity selector.
-pub fn clear_selector_signals(world_signals: &mut WorldSignals, app_state: &mut AppState) {
-    app_state.remove::<HitPayload>();
+/// Clear WorldSignals keys, AppState entries, and the selector cache.
+/// Call on new-map or load-map operations.
+pub fn clear_selector_state(world_signals: &mut WorldSignals, app_state: &mut AppState) {
+    if let Some(m) = app_state.get::<SelectorMutex>() {
+        *m.lock().unwrap() = EntitySelectorCache::default();
+    }
     app_state.remove::<SelectionCorners>();
     app_state.remove::<ComponentSnapshot>();
     world_signals.remove_string(sig::ES_SELECTED_LABEL);
     world_signals.remove_entity(sig::ES_SELECTED_ENTITY);
     world_signals.clear_flag(sig::UI_ENTITY_EDITOR_OPEN);
-}
-
-/// Clear all entity selector state from WorldSignals, AppState, and the cache resource.
-/// Call on new-map or load-map operations.
-pub fn clear_selector_state(
-    world_signals: &mut WorldSignals,
-    app_state: &mut AppState,
-    cache: &mut EntitySelectorCache,
-) {
-    clear_selector_signals(world_signals, app_state);
-    cache.hits.clear();
-    cache.labels.clear();
-    cache.corner_sets.clear();
-    cache.click_pos = (0.0, 0.0);
 }
