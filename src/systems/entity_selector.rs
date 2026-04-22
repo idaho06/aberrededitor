@@ -37,7 +37,7 @@ pub struct SelectEntityRequested {
 // ---------------------------------------------------------------------------
 
 #[derive(Default)]
-pub struct EntitySelectorCache {
+pub struct RenderableSelectorCache {
     pub hits: Vec<Entity>,
     pub labels: Vec<String>,
     pub z_indices: Vec<f32>,
@@ -47,7 +47,7 @@ pub struct EntitySelectorCache {
     pub click_pos: Option<(f32, f32)>,
 }
 
-pub type SelectorMutex = std::sync::Mutex<EntitySelectorCache>;
+pub type RenderableSelectorMutex = std::sync::Mutex<RenderableSelectorCache>;
 
 // ---------------------------------------------------------------------------
 // Pick observer — internal types
@@ -158,7 +158,7 @@ pub fn entity_pick_observer(
     });
 
     let (is_empty, top_hit) = {
-        let mutex = app_state.get::<SelectorMutex>().expect("SelectorMutex not in AppState");
+        let mutex = app_state.get::<RenderableSelectorMutex>().expect("RenderableSelectorMutex not in AppState");
         let mut cache = mutex.lock().unwrap();
         cache.hits = hits.iter().map(|h| h.entity).collect();
         cache.labels = hits.iter().map(|h| h.label.clone()).collect();
@@ -199,7 +199,7 @@ pub fn select_entity_observer(
 ) {
     let index = trigger.event().index;
     let hit = {
-        let mutex = app_state.get::<SelectorMutex>().expect("SelectorMutex not in AppState");
+        let mutex = app_state.get::<RenderableSelectorMutex>().expect("RenderableSelectorMutex not in AppState");
         let cache = mutex.lock().unwrap();
         cache.hits.get(index).map(|&entity| {
             let label = cache.labels.get(index).cloned();
@@ -323,8 +323,8 @@ fn point_in_sprite(
 /// Clear WorldSignals keys, AppState entries, and the selector cache.
 /// Call on new-map or load-map operations.
 pub fn clear_selector_state(world_signals: &mut WorldSignals, app_state: &mut AppState) {
-    if let Some(m) = app_state.get::<SelectorMutex>() {
-        *m.lock().unwrap() = EntitySelectorCache::default();
+    if let Some(m) = app_state.get::<RenderableSelectorMutex>() {
+        *m.lock().unwrap() = RenderableSelectorCache::default();
     }
     app_state.remove::<SelectionCorners>();
     app_state.remove::<ComponentSnapshot>();

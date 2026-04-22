@@ -6,6 +6,7 @@ mod menu;
 mod overlay;
 pub(crate) mod pending_state;
 mod state;
+mod template_browser_panel;
 mod texture_panel;
 mod update;
 mod widgets;

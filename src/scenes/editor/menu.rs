@@ -52,6 +52,13 @@ pub(super) fn draw_menu_bar(ui: &imgui::Ui, signals: &mut WorldSignals) -> bool 
             {
                 signals.toggle_flag(sig::UI_ENTITY_SELECTOR_OPEN);
             }
+            if ui
+                .menu_item_config("Templates")
+                .selected(signals.has_flag(sig::UI_TEMPLATE_BROWSER_OPEN))
+                .build()
+            {
+                signals.toggle_flag(sig::UI_TEMPLATE_BROWSER_OPEN);
+            }
             let preview_open = signals.has_flag(sig::UI_PREVIEW_MAPDATA_OPEN);
             if ui
                 .menu_item_config("Preview Map Data")

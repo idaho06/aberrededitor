@@ -1,5 +1,5 @@
 use crate::signals as sig;
-use crate::systems::entity_selector::SelectorMutex;
+use crate::systems::entity_selector::RenderableSelectorMutex;
 use aberredengine::imgui;
 use aberredengine::resources::appstate::AppState;
 use aberredengine::resources::worldsignals::WorldSignals;
@@ -20,7 +20,7 @@ pub(super) fn draw_entity_selector(
         .size([320.0, 400.0], imgui::Condition::FirstUseEver)
         .opened(&mut window_open)
         .build(|| {
-            let mutex = app_state.get::<SelectorMutex>();
+            let mutex = app_state.get::<RenderableSelectorMutex>();
             let guard = mutex.map(|m| m.lock().unwrap());
             let click_pos = guard.as_deref().and_then(|c| c.click_pos);
 

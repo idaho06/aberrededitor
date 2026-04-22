@@ -1,10 +1,12 @@
 use super::entity_editor_panel::draw_entity_editor;
 use super::entity_selector_panel::draw_entity_selector;
 use super::menu::{draw_about_modal, draw_menu_bar};
+use super::template_browser_panel::draw_template_browser;
 use super::overlay::draw_selection_outline;
 use super::commit::consume_entity_editor_commits;
 use super::texture_panel::{draw_texture_editor, draw_texture_modals};
 use crate::signals as sig;
+use crate::systems::entity_inspector::InspectEntityRequested;
 use crate::systems::entity_selector::{PickEntitiesAtPointRequested, SelectEntityRequested};
 use crate::systems::map_ops::{
     AddTextureRequested, LoadMapRequested, NewMapRequested, PreviewMapDataRequested,
@@ -36,6 +38,11 @@ pub fn editor_update(ctx: &mut GameCtx, _dt: f32, input: &InputState) {
         });
     }
 
+    if let Some(entity) = ctx.world_signals.remove_entity(sig::TEMPLATE_SELECT_ENTITY) {
+        ctx.world_signals.set_entity(sig::ES_SELECTED_ENTITY, entity);
+        ctx.commands.trigger(InspectEntityRequested { entity });
+    }
+
     consume_entity_editor_commits(ctx);
     handle_file_actions(ctx);
     handle_texture_actions(ctx);
@@ -65,6 +72,7 @@ pub fn editor_gui(
     draw_map_preview(ui, signals);
     draw_entity_selector(ui, signals, app_state);
     draw_entity_editor(ui, signals, textures, app_state);
+    draw_template_browser(ui, signals, app_state);
 
     if open_rename_popup {
         ui.open_popup("Rename Key##texture_editor");
