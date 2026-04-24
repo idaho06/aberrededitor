@@ -2,7 +2,7 @@ use aberredengine::bevy_ecs;
 use aberredengine::bevy_ecs::prelude::{Added, Commands, Event, On, Query, ResMut};
 use aberredengine::components::group::Group;
 use aberredengine::components::tilemap::TileMap;
-use aberredengine::resources::mapdata::{MapData, TilemapEntry};
+use aberredengine::resources::mapdata::{EntityDef, MapData};
 use aberredengine::resources::texturestore::TextureStore;
 use log::info;
 
@@ -27,10 +27,11 @@ pub fn tilemap_load_observer(
 
     commands.spawn((TileMap::new(dir_path), Group::new("tilemap-roots")));
 
-    if !map_data.tilemaps.iter().any(|e| e.key == id) {
-        map_data.tilemaps.push(TilemapEntry {
-            key: id.clone(),
-            path: to_relative(dir_path),
+    if !map_data.entities.iter().any(|e| e.tilemap_path.as_deref() == Some(to_relative(dir_path).as_str())) {
+        map_data.entities.push(EntityDef {
+            group: Some("tilemap-roots".to_string()),
+            tilemap_path: Some(to_relative(dir_path)),
+            ..Default::default()
         });
     }
 

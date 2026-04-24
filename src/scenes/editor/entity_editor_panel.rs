@@ -46,6 +46,8 @@ pub(super) fn draw_entity_editor(
                 if ui.button("Select parent entity (TileMap root)") {
                     p.select_tilemap_parent = true;
                 }
+                ui.text_disabled("Changes to the components of");
+                ui.text_disabled("this entity will not be saved");
                 ui.separator();
             }
 

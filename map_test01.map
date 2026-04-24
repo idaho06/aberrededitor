@@ -1,0 +1,21 @@
+{
+  "name": "",
+  "textures": [],
+  "fonts": [],
+  "animations": [],
+  "entities": [
+    {
+      "position": [
+        -1000.0,
+        -200.0
+      ],
+      "group": "tilemap-roots",
+      "z_index": 2.0,
+      "scale": [
+        2.0,
+        2.0
+      ],
+      "tilemap_path": "../aberredengine/assets/tilemaps/sidescroller_test01"
+    }
+  ]
+}

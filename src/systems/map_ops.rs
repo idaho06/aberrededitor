@@ -1,7 +1,12 @@
 use crate::signals as sig;
 use aberredengine::bevy_ecs;
-use aberredengine::bevy_ecs::prelude::{Commands, Entity, Event, On, Query, Res, ResMut};
+use aberredengine::bevy_ecs::prelude::{Commands, Entity, Event, On, Query, ResMut};
 use aberredengine::components::group::Group;
+use aberredengine::components::mapposition::MapPosition;
+use aberredengine::components::rotation::Rotation;
+use aberredengine::components::scale::Scale;
+use aberredengine::components::tilemap::TileMap;
+use aberredengine::components::zindex::ZIndex;
 use aberredengine::events::spawnmap::SpawnMapRequested;
 use aberredengine::resources::appstate::AppState;
 use aberredengine::resources::mapdata::{MapData, TextureEntry, load_map, save_map};
@@ -76,9 +81,45 @@ pub fn load_map_observer(
     info!("load_map_observer: loaded map from '{}'", path);
 }
 
-pub fn save_map_observer(trigger: On<SaveMapRequested>, map_data: Res<MapData>) {
+type TilemapRootsQuery<'w, 's> = Query<
+    'w,
+    's,
+    (
+        &'static TileMap,
+        Option<&'static MapPosition>,
+        Option<&'static ZIndex>,
+        Option<&'static Group>,
+        Option<&'static Rotation>,
+        Option<&'static Scale>,
+    ),
+>;
+
+fn sync_tilemap_entities(map_data: &mut MapData, tilemap_roots: &TilemapRootsQuery) {
+    for (tilemap, pos, z, group, rot, scale) in tilemap_roots.iter() {
+        let path = to_relative(&tilemap.path);
+        if let Some(def) = map_data
+            .entities
+            .iter_mut()
+            .find(|e| e.tilemap_path.as_deref() == Some(path.as_str()))
+        {
+            def.position = pos.map(|p| [p.pos.x, p.pos.y]);
+            def.z_index = z.map(|z| z.0);
+            def.group = group.map(|g| g.0.clone());
+            def.rotation_deg = rot.map(|r| r.degrees);
+            def.scale = scale.map(|s| [s.scale.x, s.scale.y]);
+        }
+    }
+}
+
+pub fn save_map_observer(
+    trigger: On<SaveMapRequested>,
+    mut map_data: ResMut<MapData>,
+    tilemap_roots: TilemapRootsQuery,
+) {
+    sync_tilemap_entities(&mut map_data, &tilemap_roots);
+
     let path = &trigger.event().path;
-    if let Err(e) = save_map(path, &map_data) {
+    if let Err(e) = save_map(path, &*map_data) {
         warn!("save_map_observer: failed to save '{}': {}", path, e);
     } else {
         info!("save_map_observer: saved map to '{}'", path);
@@ -220,9 +261,11 @@ pub struct PreviewMapDataRequested;
 
 pub fn preview_mapdata_observer(
     _trigger: On<PreviewMapDataRequested>,
-    map_data: Res<MapData>,
+    mut map_data: ResMut<MapData>,
+    tilemap_roots: TilemapRootsQuery,
     mut world_signals: ResMut<WorldSignals>,
 ) {
+    sync_tilemap_entities(&mut map_data, &tilemap_roots);
     match serde_json::to_string_pretty(&*map_data) {
         Ok(json) => {
             world_signals.set_string(sig::MAPDATA_PREVIEW_JSON, json.as_str());

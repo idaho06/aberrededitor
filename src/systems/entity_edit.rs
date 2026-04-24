@@ -394,7 +394,7 @@ pub fn remove_tilemap_observer(
             .next_back()
             .unwrap_or(&tilemap.path)
             .to_owned();
-        map_data.tilemaps.retain(|e| e.key != stem);
+        map_data.entities.retain(|e| e.tilemap_path.as_deref() != Some(&tilemap.path));
         texture_store.paths.remove(&stem);
         debug!(
             "remove_tilemap_observer: removed tilemap '{}' (entity {})",

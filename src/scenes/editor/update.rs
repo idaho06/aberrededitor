@@ -97,7 +97,7 @@ fn handle_file_actions(ctx: &mut GameCtx) {
 
     if ctx.world_signals.take_flag(sig::ACTION_FILE_OPEN_MAP)
         && let Some(path) = rfd::FileDialog::new()
-            .add_filter("Map", &["json"])
+            .add_filter("Map", &["map"])
             .pick_file()
     {
         let path = to_relative(&path.display().to_string());
@@ -120,7 +120,7 @@ fn handle_file_actions(ctx: &mut GameCtx) {
 
     if ctx.world_signals.take_flag(sig::ACTION_FILE_SAVE_AS)
         && let Some(path) = rfd::FileDialog::new()
-            .add_filter("Map", &["json"])
+            .add_filter("Map", &["map"])
             .save_file()
     {
         let path = to_relative(&path.display().to_string());
