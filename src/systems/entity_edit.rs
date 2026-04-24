@@ -1,9 +1,10 @@
 use super::entity_inspector::InspectEntityRequested;
 use crate::editor_types::ComponentKind;
-use crate::signals as sig;
+use crate::systems::entity_selector::clear_selector_state;
+use crate::systems::utils::tilemap_stem;
 use aberredengine::bevy_ecs;
-use aberredengine::bevy_ecs::hierarchy::ChildOf;
 use aberredengine::bevy_ecs::prelude::{Commands, Entity, Event, On, Query, Res, ResMut};
+use aberredengine::resources::appstate::AppState;
 use aberredengine::components::animation::Animation;
 use aberredengine::components::boxcollider::BoxCollider;
 use aberredengine::components::group::Group;
@@ -373,27 +374,19 @@ fn warn_missing_component(observer: &str, entity: Entity, component: &str) {
     );
 }
 
-/// Despawns a TileMap root entity (and all its tile children) and cleans up
-/// the associated map data and texture path entries.
-/// Does NOT call refresh_inspector — the entity no longer exists after despawn.
 pub fn remove_tilemap_observer(
     trigger: On<RemoveTileMapRequested>,
     mut commands: Commands,
     tilemap_query: Query<&TileMap>,
-    children_query: Query<(Entity, &ChildOf)>,
     mut map_data: ResMut<MapData>,
     mut texture_store: ResMut<TextureStore>,
     mut world_signals: ResMut<WorldSignals>,
+    mut app_state: ResMut<AppState>,
 ) {
     let entity = trigger.event().entity;
 
     if let Ok(tilemap) = tilemap_query.get(entity) {
-        let stem = tilemap.path
-            .trim_end_matches('/')
-            .split('/')
-            .next_back()
-            .unwrap_or(&tilemap.path)
-            .to_owned();
+        let stem = tilemap_stem(&tilemap.path).to_owned();
         map_data.entities.retain(|e| e.tilemap_path.as_deref() != Some(&tilemap.path));
         texture_store.paths.remove(&stem);
         debug!(
@@ -403,12 +396,6 @@ pub fn remove_tilemap_observer(
         );
     }
 
-    // Despawn tile children (ChildOf hierarchy — no despawn_recursive in this Bevy version).
-    for (child, child_of) in children_query.iter() {
-        if child_of.0 == entity {
-            commands.entity(child).despawn();
-        }
-    }
     commands.entity(entity).despawn();
-    world_signals.clear_flag(sig::UI_ENTITY_EDITOR_OPEN);
+    clear_selector_state(&mut world_signals, &mut app_state);
 }

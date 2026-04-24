@@ -20,6 +20,7 @@ use crate::systems::utils::to_relative;
 
 const GROUP_TILES: &str = "tiles";
 const GROUP_TILES_TEMPLATES: &str = "tiles-templates";
+pub const GROUP_TILEMAP_ROOTS: &str = "tilemap-roots";
 
 // ---------------------------------------------------------------------------
 // Map lifecycle events
@@ -144,7 +145,7 @@ fn clear_map_entities(commands: &mut Commands, groups: &Query<(Entity, &Group)>)
     for (entity, group) in groups.iter() {
         if group.name() == GROUP_TILES
             || group.name() == GROUP_TILES_TEMPLATES
-            || group.name() == "tilemap-roots"
+            || group.name() == GROUP_TILEMAP_ROOTS
         {
             commands.entity(entity).despawn();
         }

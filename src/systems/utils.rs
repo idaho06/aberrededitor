@@ -9,12 +9,28 @@ pub fn entity_label(entity: Entity, group: Option<&Group>, persistent: Option<&P
     format!("Entity #{}{}{}", entity.index(), group_suffix, persistent_tag)
 }
 
+/// Returns the directory name (stem) of a tilemap path.
+/// E.g. `"assets/tilemaps/forest"` → `"forest"`.
+pub fn tilemap_stem(path: &str) -> &str {
+    std::path::Path::new(path.trim_end_matches('/'))
+        .file_name()
+        .and_then(|n| n.to_str())
+        .unwrap_or(path)
+}
+
 /// Convert an absolute path to a path relative to the current working directory.
 /// Works across directory boundaries (produces `../` traversals when needed).
 /// Falls back to the original path if canonicalization fails.
 pub fn to_relative(path: &str) -> String {
     let make_relative = || -> Option<String> {
-        let canon_path = std::path::Path::new(path).canonicalize().ok()?;
+        let p = std::path::Path::new(path);
+        // canonicalize() requires the path to exist; for new files (e.g. Save As),
+        // canonicalize the parent directory and re-append the filename.
+        let canon_path = if p.exists() {
+            p.canonicalize().ok()?
+        } else {
+            p.parent()?.canonicalize().ok()?.join(p.file_name()?)
+        };
         let canon_cwd = std::env::current_dir().ok()?.canonicalize().ok()?;
 
         let path_parts: Vec<_> = canon_path.components().collect();

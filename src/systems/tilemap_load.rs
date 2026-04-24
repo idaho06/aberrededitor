@@ -6,7 +6,8 @@ use aberredengine::resources::mapdata::{EntityDef, MapData};
 use aberredengine::resources::texturestore::TextureStore;
 use log::info;
 
-use crate::systems::utils::to_relative;
+use crate::systems::map_ops::GROUP_TILEMAP_ROOTS;
+use crate::systems::utils::{tilemap_stem, to_relative};
 
 #[derive(Event)]
 pub struct LoadTilemapRequested {
@@ -19,18 +20,15 @@ pub fn tilemap_load_observer(
     mut map_data: ResMut<MapData>,
 ) {
     let dir_path = &trigger.event().path;
-    let id = std::path::Path::new(dir_path)
-        .file_name()
-        .and_then(|n| n.to_str())
-        .unwrap_or("tilemap")
-        .to_string();
+    let rel = to_relative(dir_path);
+    let id = tilemap_stem(&rel).to_owned();
 
-    commands.spawn((TileMap::new(dir_path), Group::new("tilemap-roots")));
+    commands.spawn((TileMap::new(dir_path), Group::new(GROUP_TILEMAP_ROOTS)));
 
-    if !map_data.entities.iter().any(|e| e.tilemap_path.as_deref() == Some(to_relative(dir_path).as_str())) {
+    if !map_data.entities.iter().any(|e| e.tilemap_path.as_deref() == Some(rel.as_str())) {
         map_data.entities.push(EntityDef {
-            group: Some("tilemap-roots".to_string()),
-            tilemap_path: Some(to_relative(dir_path)),
+            group: Some(GROUP_TILEMAP_ROOTS.to_string()),
+            tilemap_path: Some(rel),
             ..Default::default()
         });
     }
@@ -41,16 +39,14 @@ pub fn tilemap_load_observer(
     );
 }
 
-/// Per-frame system that detects freshly-spawned TileMap entities and
-/// records their texture paths in TextureStore.paths for editor display
-/// and map persistence. The engine's tilemap_spawn_system loads the texture
-/// itself but does not populate paths — that is an editor-side concern.
+/// The engine's tilemap_spawn_system loads the texture itself but does not
+/// populate TextureStore.paths — that is an editor-side concern.
 pub fn track_tilemap_texture_path(
     query: Query<&TileMap, Added<TileMap>>,
     mut texture_store: ResMut<TextureStore>,
 ) {
     for tilemap in query.iter() {
-        let stem = tilemap.path.split('/').next_back().unwrap_or(&tilemap.path);
+        let stem = tilemap_stem(&tilemap.path);
         let tex_path = format!("{}/{}.png", tilemap.path, stem);
         texture_store
             .paths
