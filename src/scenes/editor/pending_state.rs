@@ -68,6 +68,9 @@ pub(crate) struct PendingEditState {
     pub remove_timer:        bool,
     pub remove_phase:        bool,
     pub remove_persistent:   bool,
+    pub remove_tilemap:      bool,
+    // Navigate to TileMap parent entity
+    pub select_tilemap_parent: bool,
     // Add component
     pub add_component:       Option<ComponentKind>,
     pub add_combo_selection: usize,
@@ -95,6 +98,8 @@ impl PendingEditState {
             || self.remove_timer
             || self.remove_phase
             || self.remove_persistent
+            || self.remove_tilemap
+            || self.select_tilemap_parent
             || self.add_component.is_some()
     }
 }

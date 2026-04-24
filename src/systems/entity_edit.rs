@@ -1,7 +1,9 @@
 use super::entity_inspector::InspectEntityRequested;
 use crate::editor_types::ComponentKind;
+use crate::signals as sig;
 use aberredengine::bevy_ecs;
-use aberredengine::bevy_ecs::prelude::{Commands, Entity, Event, On, Query, Res};
+use aberredengine::bevy_ecs::hierarchy::ChildOf;
+use aberredengine::bevy_ecs::prelude::{Commands, Entity, Event, On, Query, Res, ResMut};
 use aberredengine::components::animation::Animation;
 use aberredengine::components::boxcollider::BoxCollider;
 use aberredengine::components::group::Group;
@@ -11,11 +13,14 @@ use aberredengine::components::phase::Phase;
 use aberredengine::components::rotation::Rotation;
 use aberredengine::components::scale::Scale;
 use aberredengine::components::sprite::Sprite;
+use aberredengine::components::tilemap::TileMap;
 use aberredengine::components::timer::Timer;
 use aberredengine::components::ttl::Ttl;
 use aberredengine::components::zindex::ZIndex;
 use aberredengine::raylib::prelude::Vector2;
+use aberredengine::resources::mapdata::MapData;
 use aberredengine::resources::texturestore::TextureStore;
+use aberredengine::resources::worldsignals::WorldSignals;
 use log::{debug, warn};
 use std::sync::Arc;
 
@@ -103,6 +108,8 @@ pub struct RemoveTimerRequested        { pub entity: Entity }
 pub struct RemovePhaseRequested        { pub entity: Entity }
 #[derive(Event)]
 pub struct RemovePersistentRequested   { pub entity: Entity }
+#[derive(Event)]
+pub struct RemoveTileMapRequested      { pub entity: Entity }
 
 #[derive(Event)]
 pub struct AddComponentRequested {
@@ -364,4 +371,44 @@ fn warn_missing_component(observer: &str, entity: Entity, component: &str) {
         entity.to_bits(),
         component
     );
+}
+
+/// Despawns a TileMap root entity (and all its tile children) and cleans up
+/// the associated map data and texture path entries.
+/// Does NOT call refresh_inspector — the entity no longer exists after despawn.
+pub fn remove_tilemap_observer(
+    trigger: On<RemoveTileMapRequested>,
+    mut commands: Commands,
+    tilemap_query: Query<&TileMap>,
+    children_query: Query<(Entity, &ChildOf)>,
+    mut map_data: ResMut<MapData>,
+    mut texture_store: ResMut<TextureStore>,
+    mut world_signals: ResMut<WorldSignals>,
+) {
+    let entity = trigger.event().entity;
+
+    if let Ok(tilemap) = tilemap_query.get(entity) {
+        let stem = tilemap.path
+            .trim_end_matches('/')
+            .split('/')
+            .next_back()
+            .unwrap_or(&tilemap.path)
+            .to_owned();
+        map_data.tilemaps.retain(|e| e.key != stem);
+        texture_store.paths.remove(&stem);
+        debug!(
+            "remove_tilemap_observer: removed tilemap '{}' (entity {})",
+            stem,
+            entity.to_bits()
+        );
+    }
+
+    // Despawn tile children (ChildOf hierarchy — no despawn_recursive in this Bevy version).
+    for (child, child_of) in children_query.iter() {
+        if child_of.0 == entity {
+            commands.entity(child).despawn();
+        }
+    }
+    commands.entity(entity).despawn();
+    world_signals.clear_flag(sig::UI_ENTITY_EDITOR_OPEN);
 }

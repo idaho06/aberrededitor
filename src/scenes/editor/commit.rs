@@ -6,11 +6,12 @@ use crate::systems::entity_edit::{
     AddComponentRequested, RemoveAnimationRequested, RemoveBoxColliderRequested,
     RemoveGroupRequested, RemoveMapPositionRequested, RemovePhaseRequested,
     RemovePersistentRequested, RemoveRotationRequested, RemoveScaleRequested,
-    RemoveSpriteRequested, RemoveTimerRequested, RemoveTtlRequested, RemoveZIndexRequested,
-    UpdateAnimationRequested, UpdateBoxColliderRequested, UpdateGroupRequested,
-    UpdateMapPositionRequested, UpdateRotationRequested, UpdateScaleRequested,
-    UpdateSpriteRequested, UpdateZIndexRequested,
+    RemoveSpriteRequested, RemoveTileMapRequested, RemoveTimerRequested, RemoveTtlRequested,
+    RemoveZIndexRequested, UpdateAnimationRequested, UpdateBoxColliderRequested,
+    UpdateGroupRequested, UpdateMapPositionRequested, UpdateRotationRequested,
+    UpdateScaleRequested, UpdateSpriteRequested, UpdateZIndexRequested,
 };
+use crate::systems::entity_inspector::InspectEntityRequested;
 use aberredengine::bevy_ecs::prelude::Entity;
 use aberredengine::resources::appstate::AppState;
 use aberredengine::resources::worldsignals::WorldSignals;
@@ -81,6 +82,13 @@ pub(super) fn consume_entity_editor_commits(ctx: &mut GameCtx) {
     if p.remove_timer      { ctx.commands.trigger(RemoveTimerRequested      { entity }); }
     if p.remove_phase      { ctx.commands.trigger(RemovePhaseRequested      { entity }); }
     if p.remove_persistent { ctx.commands.trigger(RemovePersistentRequested { entity }); }
+    if p.remove_tilemap    { ctx.commands.trigger(RemoveTileMapRequested    { entity }); }
+    if p.select_tilemap_parent {
+        if let Some(parent_bits) = snapshot.tilemap_parent {
+            let parent = Entity::from_bits(parent_bits);
+            ctx.commands.trigger(InspectEntityRequested { entity: parent });
+        }
+    }
     if let Some(kind) = p.add_component {
         ctx.commands.trigger(AddComponentRequested { entity, kind });
     }

@@ -41,6 +41,14 @@ pub(super) fn draw_entity_editor(
 
             let mut p = mutex.lock().unwrap();
 
+            // If this entity is a tile child of a TileMap root, show a navigation button.
+            if snap.tilemap_parent.is_some() {
+                if ui.button("Select parent entity (TileMap root)") {
+                    p.select_tilemap_parent = true;
+                }
+                ui.separator();
+            }
+
             let addable: Vec<(&str, ComponentKind)> = [
                 (snap.map_position.is_none(), "MapPosition", ComponentKind::MapPosition),
                 (snap.z_index.is_none(),      "ZIndex",      ComponentKind::ZIndex),
@@ -296,6 +304,13 @@ pub(super) fn draw_entity_editor(
                 ui.text("Persistent");
                 ui.same_line();
                 if ui.button("Del##persistent") { p.remove_persistent = true; }
+            }
+            if let Some(ref path) = snap.tilemap_path {
+                ui.separator();
+                ui.text("TileMap");
+                ui.same_line();
+                if ui.button("Del##tilemap") { p.remove_tilemap = true; }
+                ui.group(|| ui.text_disabled(format!("  path: {}", path)));
             }
 
             });

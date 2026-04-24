@@ -92,4 +92,9 @@ pub struct ComponentSnapshot {
     pub timer: Option<TimerSnapshot>,
     pub phase: Option<PhaseSnapshot>,
     pub persistent: bool,
+    /// Path stored in the `TileMap` component, if the entity carries one.
+    pub tilemap_path: Option<String>,
+    /// Entity bits of the parent entity when that parent carries a `TileMap` component.
+    /// Set when the inspected entity is a tile child of a TileMap root.
+    pub tilemap_parent: Option<u64>,
 }

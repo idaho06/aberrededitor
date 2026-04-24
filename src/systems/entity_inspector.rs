@@ -4,7 +4,8 @@ use crate::editor_types::{
 };
 use crate::signals as sig;
 use aberredengine::bevy_ecs;
-use aberredengine::bevy_ecs::prelude::{Entity, Event, On, Query, ResMut};
+use aberredengine::bevy_ecs::hierarchy::ChildOf;
+use aberredengine::bevy_ecs::prelude::{Entity, Event, On, Query, ResMut, With};
 use aberredengine::components::animation::Animation;
 use aberredengine::components::boxcollider::BoxCollider;
 use aberredengine::components::group::Group;
@@ -14,6 +15,7 @@ use aberredengine::components::phase::Phase;
 use aberredengine::components::rotation::Rotation;
 use aberredengine::components::scale::Scale;
 use aberredengine::components::sprite::Sprite;
+use aberredengine::components::tilemap::TileMap;
 use aberredengine::components::timer::Timer;
 use aberredengine::components::ttl::Ttl;
 use aberredengine::components::zindex::ZIndex;
@@ -49,12 +51,15 @@ pub fn entity_inspect_observer(
         Option<&Timer>,
         Option<&Phase>,
         Option<&Persistent>,
+        Option<&TileMap>,
+        Option<&ChildOf>,
     )>,
+    tilemap_roots: Query<(), With<TileMap>>,
     mut signals: ResMut<WorldSignals>,
     mut app_state: ResMut<AppState>,
 ) {
     let entity = trigger.event().entity;
-    let Ok((pos, z, sprite, collider, group, rot, scale, animation, ttl, timer, phase, persistent)) =
+    let Ok((pos, z, sprite, collider, group, rot, scale, animation, ttl, timer, phase, persistent, tilemap, child_of)) =
         query.get(entity)
     else {
         return;
@@ -113,8 +118,13 @@ pub fn entity_inspect_observer(
             }
         }),
         persistent: persistent.is_some(),
+        tilemap_path: tilemap.map(|t| t.path.clone()),
+        tilemap_parent: child_of.and_then(|c| {
+            tilemap_roots.get(c.0).ok().map(|_| c.0.to_bits())
+        }),
     };
 
     app_state.insert(snapshot);
+    signals.set_entity(sig::ES_SELECTED_ENTITY, entity);
     signals.set_flag(sig::UI_ENTITY_EDITOR_OPEN);
 }
