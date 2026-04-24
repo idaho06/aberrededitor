@@ -1,10 +1,9 @@
 use aberredengine::bevy_ecs;
-use aberredengine::bevy_ecs::prelude::{Commands, Event, On, ResMut};
-use aberredengine::resources::mapdata::{MapData, TextureEntry, TilemapEntry};
+use aberredengine::bevy_ecs::prelude::{Added, Commands, Event, On, Query, ResMut};
+use aberredengine::components::group::Group;
+use aberredengine::components::tilemap::TileMap;
+use aberredengine::resources::mapdata::{MapData, TilemapEntry};
 use aberredengine::resources::texturestore::TextureStore;
-use aberredengine::resources::tilemapstore::TilemapStore;
-use aberredengine::systems::RaylibAccess;
-use aberredengine::systems::tilemap::{load_tilemap, spawn_tiles};
 use log::info;
 
 use crate::systems::utils::to_relative;
@@ -17,9 +16,6 @@ pub struct LoadTilemapRequested {
 pub fn tilemap_load_observer(
     trigger: On<LoadTilemapRequested>,
     mut commands: Commands,
-    mut raylib: RaylibAccess,
-    mut texture_store: ResMut<TextureStore>,
-    mut tilemap_store: ResMut<TilemapStore>,
     mut map_data: ResMut<MapData>,
 ) {
     let dir_path = &trigger.event().path;
@@ -29,32 +25,34 @@ pub fn tilemap_load_observer(
         .unwrap_or("tilemap")
         .to_string();
 
-    let (rl, th) = (&mut *raylib.rl, &*raylib.th);
-    let (texture, tilemap) = load_tilemap(rl, th, dir_path);
+    commands.spawn((TileMap::new(dir_path), Group::new("tilemap-roots")));
 
-    let tex_width = texture.width;
-    let tex_height = texture.height;
-    texture_store.insert(&id, texture);
-    let tex_path = to_relative(&format!("{}/{}.png", dir_path, id));
-    texture_store.paths.insert(id.clone(), tex_path.clone());
-    spawn_tiles(&mut commands, &id, tex_width, tex_height, &tilemap);
-    tilemap_store.insert(&id, tilemap);
-
-    if !map_data.textures.iter().any(|e| e.key == id) {
-        map_data.textures.push(TextureEntry {
-            key: id.clone(),
-            path: tex_path,
-        });
-    }
     if !map_data.tilemaps.iter().any(|e| e.key == id) {
         map_data.tilemaps.push(TilemapEntry {
             key: id.clone(),
-            path: dir_path.clone(),
+            path: to_relative(dir_path),
         });
     }
 
     info!(
-        "tilemap_load_observer: loaded tilemap '{}' from '{}'",
+        "tilemap_load_observer: queued tilemap '{}' from '{}'",
         id, dir_path
     );
+}
+
+/// Per-frame system that detects freshly-spawned TileMap entities and
+/// records their texture paths in TextureStore.paths for editor display
+/// and map persistence. The engine's tilemap_spawn_system loads the texture
+/// itself but does not populate paths — that is an editor-side concern.
+pub fn track_tilemap_texture_path(
+    query: Query<&TileMap, Added<TileMap>>,
+    mut texture_store: ResMut<TextureStore>,
+) {
+    for tilemap in query.iter() {
+        let stem = tilemap.path.split('/').next_back().unwrap_or(&tilemap.path);
+        let tex_path = format!("{}/{}.png", tilemap.path, stem);
+        texture_store
+            .paths
+            .insert(stem.to_owned(), to_relative(&tex_path));
+    }
 }

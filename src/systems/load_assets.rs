@@ -10,7 +10,6 @@ use aberredengine::resources::gamestate::{GameStates, NextGameState};
 use aberredengine::resources::mapdata::MapData;
 use aberredengine::resources::shaderstore::ShaderStore;
 use aberredengine::resources::texturestore::TextureStore;
-use aberredengine::resources::tilemapstore::TilemapStore;
 use aberredengine::systems::RaylibAccess;
 use log::info;
 
@@ -51,7 +50,6 @@ pub fn load_assets(
         .expect("Failed to load texture");
     texture_store.insert("aberred_engine_isometric_alpha", texture);
     commands.insert_resource(texture_store);
-    commands.insert_resource(TilemapStore::new());
     commands.insert_resource(MapData::default());
     app_state.insert(RenderableSelectorMutex::new(RenderableSelectorCache::default()));
     app_state.insert(TemplateSelectorMutex::new(TemplateSelectorCache::default()));

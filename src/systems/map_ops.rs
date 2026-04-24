@@ -6,7 +6,6 @@ use aberredengine::events::spawnmap::SpawnMapRequested;
 use aberredengine::resources::appstate::AppState;
 use aberredengine::resources::mapdata::{MapData, TextureEntry, load_map, save_map};
 use aberredengine::resources::texturestore::TextureStore;
-use aberredengine::resources::tilemapstore::TilemapStore;
 use aberredengine::resources::worldsignals::WorldSignals;
 use aberredengine::systems::RaylibAccess;
 use log::{info, warn};
@@ -38,14 +37,12 @@ pub fn new_map_observer(
     _trigger: On<NewMapRequested>,
     mut commands: Commands,
     groups: Query<(Entity, &Group)>,
-    mut tilemap_store: ResMut<TilemapStore>,
     mut world_signals: ResMut<WorldSignals>,
     mut app_state: ResMut<AppState>,
 ) {
     reset_editor_map(
         &mut commands,
         &groups,
-        &mut tilemap_store,
         &mut world_signals,
         &mut app_state,
         MapData::default(),
@@ -57,7 +54,6 @@ pub fn load_map_observer(
     trigger: On<LoadMapRequested>,
     mut commands: Commands,
     groups: Query<(Entity, &Group)>,
-    mut tilemap_store: ResMut<TilemapStore>,
     mut world_signals: ResMut<WorldSignals>,
     mut app_state: ResMut<AppState>,
 ) {
@@ -72,7 +68,6 @@ pub fn load_map_observer(
     reset_editor_map(
         &mut commands,
         &groups,
-        &mut tilemap_store,
         &mut world_signals,
         &mut app_state,
         map.clone(),
@@ -95,20 +90,21 @@ pub fn save_map_observer(trigger: On<SaveMapRequested>, map_data: Res<MapData>) 
 fn reset_editor_map(
     commands: &mut Commands,
     groups: &Query<(Entity, &Group)>,
-    tilemap_store: &mut TilemapStore,
     world_signals: &mut WorldSignals,
     app_state: &mut AppState,
     map_data: MapData,
 ) {
     clear_map_entities(commands, groups);
-    tilemap_store.clear();
     commands.insert_resource(map_data);
     clear_selector_state(world_signals, app_state);
 }
 
 fn clear_map_entities(commands: &mut Commands, groups: &Query<(Entity, &Group)>) {
     for (entity, group) in groups.iter() {
-        if group.name() == GROUP_TILES || group.name() == GROUP_TILES_TEMPLATES {
+        if group.name() == GROUP_TILES
+            || group.name() == GROUP_TILES_TEMPLATES
+            || group.name() == "tilemap-roots"
+        {
             commands.entity(entity).despawn();
         }
     }

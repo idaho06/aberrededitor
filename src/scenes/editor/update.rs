@@ -6,6 +6,7 @@ use super::overlay::draw_selection_outline;
 use super::commit::consume_entity_editor_commits;
 use super::texture_panel::{draw_texture_editor, draw_texture_modals};
 use crate::signals as sig;
+use crate::systems::utils::to_relative;
 use crate::systems::entity_inspector::InspectEntityRequested;
 use crate::systems::entity_selector::{PickEntitiesAtPointRequested, SelectEntityRequested};
 use crate::systems::map_ops::{
@@ -99,7 +100,7 @@ fn handle_file_actions(ctx: &mut GameCtx) {
             .add_filter("Map", &["json"])
             .pick_file()
     {
-        let path = path.display().to_string();
+        let path = to_relative(&path.display().to_string());
         ctx.world_signals
             .set_string(sig::MAP_CURRENT_PATH, path.clone());
         ctx.commands.trigger(LoadMapRequested { path });
@@ -122,7 +123,7 @@ fn handle_file_actions(ctx: &mut GameCtx) {
             .add_filter("Map", &["json"])
             .save_file()
     {
-        let path = path.display().to_string();
+        let path = to_relative(&path.display().to_string());
         ctx.world_signals
             .set_string(sig::MAP_CURRENT_PATH, path.clone());
         ctx.commands.trigger(SaveMapRequested { path });
@@ -132,7 +133,7 @@ fn handle_file_actions(ctx: &mut GameCtx) {
         && let Some(path) = rfd::FileDialog::new().pick_folder()
     {
         ctx.commands.trigger(LoadTilemapRequested {
-            path: path.display().to_string(),
+            path: to_relative(&path.display().to_string()),
         });
     }
 }
@@ -175,7 +176,7 @@ fn handle_texture_actions(ctx: &mut GameCtx) {
         {
             ctx.commands.trigger(AddTextureRequested {
                 key,
-                path: path.display().to_string(),
+                path: to_relative(&path.display().to_string()),
             });
         }
     }
