@@ -3,7 +3,8 @@ use crate::editor_types::{ComponentSnapshot, SelectionCorners};
 use crate::signals as sig;
 use aberredengine::bevy_ecs;
 use aberredengine::bevy_ecs::prelude::{Commands, Entity, Event, On, Query, ResMut};
-use super::utils::entity_label;
+use super::utils::{display_group_name, entity_label};
+use super::group_selector::{GroupListCache, GroupListMutex};
 use aberredengine::components::boxcollider::BoxCollider;
 use aberredengine::components::globaltransform2d::GlobalTransform2D;
 use aberredengine::components::group::Group;
@@ -34,9 +35,22 @@ pub struct SelectEntityRequested {
     pub index: usize,
 }
 
+#[derive(Event)]
+pub struct SelectGroupRequested {
+    pub group: String,
+}
+
 // ---------------------------------------------------------------------------
 // Cache resource
 // ---------------------------------------------------------------------------
+
+#[derive(Clone, Default)]
+pub enum SelectorSource {
+    #[default]
+    None,
+    Click { x: f32, y: f32 },
+    Group { display_name: String },
+}
 
 #[derive(Default)]
 pub struct RenderableSelectorCache {
@@ -44,9 +58,8 @@ pub struct RenderableSelectorCache {
     pub labels: Vec<String>,
     pub z_indices: Vec<f32>,
     /// World-space corners for each hit: TL, TR, BR, BL (clockwise).
-    pub corner_sets: Vec<[[f32; 2]; 4]>,
-    /// `None` means no pick has happened yet; `Some` holds the click position.
-    pub click_pos: Option<(f32, f32)>,
+    pub corner_sets: Vec<Option<[[f32; 2]; 4]>>,
+    pub source: SelectorSource,
 }
 
 pub type RenderableSelectorMutex = std::sync::Mutex<RenderableSelectorCache>;
@@ -59,7 +72,7 @@ struct PickResult {
     entity: Entity,
     label: String,
     zindex: f32,
-    corners: [[f32; 2]; 4],
+    corners: Option<[[f32; 2]; 4]>,
 }
 
 // ---------------------------------------------------------------------------
@@ -118,7 +131,6 @@ pub fn entity_pick_observer(
             // BoxCollider takes priority — axis-aligned, ignores sprite rotation
             collider.contains_point(resolved_pos.pos, click)
         } else if let Some(sprite) = maybe_sprite {
-            // Sprite bounds with rotation support
             point_in_sprite(
                 click,
                 &resolved_pos,
@@ -127,7 +139,6 @@ pub fn entity_pick_observer(
                 resolved_rot.as_ref(),
             )
         } else {
-            // No pickable bounds — non-pickable entity
             false
         };
 
@@ -145,7 +156,7 @@ pub fn entity_pick_observer(
                 entity,
                 label,
                 zindex,
-                corners,
+                corners: Some(corners),
             });
         }
     }
@@ -161,12 +172,21 @@ pub fn entity_pick_observer(
     let (is_empty, top_hit) = {
         let mutex = app_state.get::<RenderableSelectorMutex>().expect("RenderableSelectorMutex not in AppState");
         let mut cache = mutex.lock().unwrap();
-        cache.hits = hits.iter().map(|h| h.entity).collect();
-        cache.labels = hits.iter().map(|h| h.label.clone()).collect();
-        cache.z_indices = hits.iter().map(|h| h.zindex).collect();
-        cache.corner_sets = hits.iter().map(|h| h.corners).collect();
-        cache.click_pos = Some((click_x, click_y));
-        let top = cache.hits.first().map(|&e| (e, cache.labels[0].clone(), cache.corner_sets[0]));
+        populate_selector_cache(
+            &mut cache,
+            hits,
+            SelectorSource::Click {
+                x: click_x,
+                y: click_y,
+            },
+        );
+        let top = cache.hits.first().map(|&e| {
+            (
+                e,
+                cache.labels[0].clone(),
+                cache.corner_sets[0],
+            )
+        });
         (cache.hits.is_empty(), top)
     };
 
@@ -174,17 +194,115 @@ pub fn entity_pick_observer(
 
     // Empty click — clear active selection and outline; otherwise auto-select topmost
     if is_empty {
-        world_signals.remove_entity(sig::ES_SELECTED_ENTITY);
-        world_signals.remove_string(sig::ES_SELECTED_LABEL);
-        world_signals.clear_flag(sig::UI_ENTITY_EDITOR_OPEN);
-        app_state.remove::<SelectionCorners>();
-        app_state.remove::<ComponentSnapshot>();
+        clear_active_selection(&mut world_signals, &mut app_state);
     } else if let Some((top, top_label, top_corners)) = top_hit {
-        world_signals.set_entity(sig::ES_SELECTED_ENTITY, top);
-        world_signals.set_string(sig::ES_SELECTED_LABEL, &top_label);
-        app_state.remove::<ComponentSnapshot>();
-        app_state.insert(SelectionCorners(top_corners));
-        commands.trigger(InspectEntityRequested { entity: top });
+        apply_selection(
+            top,
+            &top_label,
+            top_corners,
+            &mut world_signals,
+            &mut app_state,
+            &mut commands,
+        );
+    }
+}
+
+#[allow(clippy::type_complexity)]
+pub fn select_group_observer(
+    trigger: On<SelectGroupRequested>,
+    query: Query<(
+        Entity,
+        Option<&MapPosition>,
+        Option<&BoxCollider>,
+        Option<&Sprite>,
+        Option<&Rotation>,
+        Option<&Scale>,
+        Option<&ZIndex>,
+        Option<&GlobalTransform2D>,
+        &Group,
+        Option<&Persistent>,
+    )>,
+    mut world_signals: ResMut<WorldSignals>,
+    mut app_state: ResMut<AppState>,
+    mut commands: Commands,
+) {
+    let selected_group = trigger.event().group.as_str();
+    let mut hits: Vec<PickResult> = Vec::new();
+
+    for (
+        entity,
+        maybe_pos,
+        maybe_collider,
+        maybe_sprite,
+        maybe_rot,
+        maybe_scale,
+        maybe_zindex,
+        maybe_gt,
+        group,
+        maybe_persistent,
+    ) in query.iter()
+    {
+        if group.name() != selected_group {
+            continue;
+        }
+
+        let zindex = maybe_zindex.map_or(0.0, |z| z.0);
+        hits.push(PickResult {
+            entity,
+            label: entity_label(entity, Some(group), maybe_persistent),
+            zindex,
+            corners: compute_group_corners(
+                maybe_pos,
+                maybe_collider,
+                maybe_sprite,
+                maybe_scale,
+                maybe_rot,
+                maybe_gt,
+            ),
+        });
+    }
+
+    hits.sort_by(|a, b| {
+        a.label
+            .cmp(&b.label)
+            .then_with(|| a.entity.index().cmp(&b.entity.index()))
+    });
+
+    let (is_empty, top_hit) = {
+        let mutex = app_state
+            .get::<RenderableSelectorMutex>()
+            .expect("RenderableSelectorMutex not in AppState");
+        let mut cache = mutex.lock().unwrap();
+        populate_selector_cache(
+            &mut cache,
+            hits,
+            SelectorSource::Group {
+                display_name: display_group_name(&trigger.event().group).to_owned(),
+            },
+        );
+        let top = cache.hits.first().map(|&entity| {
+            (
+                entity,
+                cache.labels[0].clone(),
+                cache.corner_sets[0],
+            )
+        });
+        (cache.hits.is_empty(), top)
+    };
+
+    world_signals.set_flag(sig::UI_ENTITY_SELECTOR_OPEN);
+
+    if is_empty {
+        clear_active_selection(&mut world_signals, &mut app_state);
+    } else if let Some((top, top_label, top_corners)) = top_hit {
+        apply_selection(
+            top,
+            &top_label,
+            top_corners,
+            &mut world_signals,
+            &mut app_state,
+            &mut commands,
+        );
     }
 }
 
@@ -204,20 +322,22 @@ pub fn select_entity_observer(
         let cache = mutex.lock().unwrap();
         cache.hits.get(index).map(|&entity| {
             let label = cache.labels.get(index).cloned();
-            let corners = cache.corner_sets.get(index).copied();
+            let corners = cache.corner_sets.get(index).copied().flatten();
             (entity, label, corners)
         }).ok_or(cache.hits.len())
     };
     match hit {
         Ok((entity, label, corners)) => {
-            world_signals.set_entity(sig::ES_SELECTED_ENTITY, entity);
             if let Some(label) = label {
-                world_signals.set_string(sig::ES_SELECTED_LABEL, label.as_str());
+                apply_selection(
+                    entity,
+                    &label,
+                    corners,
+                    &mut world_signals,
+                    &mut app_state,
+                    &mut commands,
+                );
             }
-            if let Some(corners) = corners {
-                app_state.insert(SelectionCorners(corners));
-            }
-            commands.trigger(InspectEntityRequested { entity });
         }
         Err(cache_len) => {
             warn!(
@@ -317,6 +437,79 @@ fn point_in_sprite(
     }
 }
 
+fn compute_group_corners(
+    maybe_pos: Option<&MapPosition>,
+    maybe_collider: Option<&BoxCollider>,
+    maybe_sprite: Option<&Sprite>,
+    maybe_scale: Option<&Scale>,
+    maybe_rot: Option<&Rotation>,
+    maybe_gt: Option<&GlobalTransform2D>,
+) -> Option<[[f32; 2]; 4]> {
+    let pos = maybe_pos?;
+    if maybe_collider.is_none() && maybe_sprite.is_none() {
+        return None;
+    }
+
+    let (resolved_pos, resolved_scale, resolved_rot) = resolve_world_transform(
+        *pos,
+        maybe_scale.copied(),
+        maybe_rot.copied(),
+        maybe_gt.copied(),
+    );
+    Some(compute_corners(
+        &resolved_pos,
+        maybe_collider,
+        maybe_sprite,
+        resolved_scale.as_ref(),
+        resolved_rot.as_ref(),
+    ))
+}
+
+fn populate_selector_cache(
+    cache: &mut RenderableSelectorCache,
+    hits: Vec<PickResult>,
+    source: SelectorSource,
+) {
+    cache.hits.clear();
+    cache.labels.clear();
+    cache.z_indices.clear();
+    cache.corner_sets.clear();
+    for hit in hits {
+        cache.hits.push(hit.entity);
+        cache.labels.push(hit.label);
+        cache.z_indices.push(hit.zindex);
+        cache.corner_sets.push(hit.corners);
+    }
+    cache.source = source;
+}
+
+fn clear_active_selection(world_signals: &mut WorldSignals, app_state: &mut AppState) {
+    world_signals.remove_entity(sig::ES_SELECTED_ENTITY);
+    world_signals.remove_string(sig::ES_SELECTED_LABEL);
+    world_signals.clear_flag(sig::UI_ENTITY_EDITOR_OPEN);
+    app_state.remove::<SelectionCorners>();
+    app_state.remove::<ComponentSnapshot>();
+}
+
+fn apply_selection(
+    entity: Entity,
+    label: &str,
+    corners: Option<[[f32; 2]; 4]>,
+    world_signals: &mut WorldSignals,
+    app_state: &mut AppState,
+    commands: &mut Commands,
+) {
+    world_signals.set_entity(sig::ES_SELECTED_ENTITY, entity);
+    world_signals.set_string(sig::ES_SELECTED_LABEL, label);
+    app_state.remove::<ComponentSnapshot>();
+    if let Some(corners) = corners {
+        app_state.insert(SelectionCorners(corners));
+    } else {
+        app_state.remove::<SelectionCorners>();
+    }
+    commands.trigger(InspectEntityRequested { entity });
+}
+
 // ---------------------------------------------------------------------------
 // Lifecycle cleanup helpers
 // ---------------------------------------------------------------------------
@@ -327,9 +520,10 @@ pub fn clear_selector_state(world_signals: &mut WorldSignals, app_state: &mut Ap
     if let Some(m) = app_state.get::<RenderableSelectorMutex>() {
         *m.lock().unwrap() = RenderableSelectorCache::default();
     }
-    app_state.remove::<SelectionCorners>();
-    app_state.remove::<ComponentSnapshot>();
-    world_signals.remove_string(sig::ES_SELECTED_LABEL);
-    world_signals.remove_entity(sig::ES_SELECTED_ENTITY);
-    world_signals.clear_flag(sig::UI_ENTITY_EDITOR_OPEN);
+    if let Some(m) = app_state.get::<GroupListMutex>() {
+        *m.lock().unwrap() = GroupListCache::default();
+    }
+    world_signals.clear_integer(sig::ES_SELECTED_ROW);
+    world_signals.remove_string(sig::GROUPS_SELECTED_GROUP);
+    clear_active_selection(world_signals, app_state);
 }

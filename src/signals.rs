@@ -60,6 +60,10 @@ pub const ES_SELECTED_ROW: &str = "gui:entity_selector:selected_row";
 pub const ES_SELECTED_LABEL: &str = "gui:entity_selector:selected_label";
 pub const ES_SELECTED_ENTITY: &str = "editor:selected_entity";
 
+// ---- Groups window ----
+pub const UI_GROUPS_WINDOW_OPEN: &str = "ui:groups_window:open";
+pub const GROUPS_SELECTED_GROUP: &str = "gui:groups:selected_group";
+
 // ---- Entity editor / inspector ----
 pub const UI_ENTITY_EDITOR_OPEN: &str = "ui:entity_editor:open";
 

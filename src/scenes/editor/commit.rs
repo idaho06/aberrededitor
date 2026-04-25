@@ -83,11 +83,11 @@ pub(super) fn consume_entity_editor_commits(ctx: &mut GameCtx) {
     if p.remove_phase      { ctx.commands.trigger(RemovePhaseRequested      { entity }); }
     if p.remove_persistent { ctx.commands.trigger(RemovePersistentRequested { entity }); }
     if p.remove_tilemap    { ctx.commands.trigger(RemoveTileMapRequested    { entity }); }
-    if p.select_tilemap_parent {
-        if let Some(parent_bits) = snapshot.tilemap_parent {
-            let parent = Entity::from_bits(parent_bits);
-            ctx.commands.trigger(InspectEntityRequested { entity: parent });
-        }
+    if p.select_tilemap_parent
+        && let Some(parent_bits) = snapshot.tilemap_parent
+    {
+        let parent = Entity::from_bits(parent_bits);
+        ctx.commands.trigger(InspectEntityRequested { entity: parent });
     }
     if let Some(kind) = p.add_component {
         ctx.commands.trigger(AddComponentRequested { entity, kind });

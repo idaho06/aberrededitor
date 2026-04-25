@@ -120,7 +120,7 @@ pub fn save_map_observer(
     sync_tilemap_entities(&mut map_data, &tilemap_roots);
 
     let path = &trigger.event().path;
-    if let Err(e) = save_map(path, &*map_data) {
+    if let Err(e) = save_map(path, &map_data) {
         warn!("save_map_observer: failed to save '{}': {}", path, e);
     } else {
         info!("save_map_observer: saved map to '{}'", path);

@@ -1,11 +1,13 @@
 use super::entity_editor_panel::draw_entity_editor;
 use super::entity_selector_panel::draw_entity_selector;
+use super::groups_panel::draw_groups_window;
 use super::menu::{draw_about_modal, draw_menu_bar};
 use super::template_browser_panel::draw_template_browser;
 use super::overlay::draw_selection_outline;
 use super::commit::consume_entity_editor_commits;
 use super::texture_panel::{draw_texture_editor, draw_texture_modals};
 use crate::signals as sig;
+use crate::systems::entity_selector::SelectGroupRequested;
 use crate::systems::utils::to_relative;
 use crate::systems::entity_inspector::InspectEntityRequested;
 use crate::systems::entity_selector::{PickEntitiesAtPointRequested, SelectEntityRequested};
@@ -37,6 +39,14 @@ pub fn editor_update(ctx: &mut GameCtx, _dt: f32, input: &InputState) {
         ctx.commands.trigger(SelectEntityRequested {
             index: row as usize,
         });
+    }
+
+    if let Some(group) = ctx
+        .world_signals
+        .remove_string(sig::GROUPS_SELECTED_GROUP)
+        .map(|s| s.to_owned())
+    {
+        ctx.commands.trigger(SelectGroupRequested { group });
     }
 
     if let Some(entity) = ctx.world_signals.remove_entity(sig::TEMPLATE_SELECT_ENTITY) {
@@ -71,6 +81,7 @@ pub fn editor_gui(
     let open_about = draw_menu_bar(ui, signals);
     let (open_rename_popup, open_remove_popup) = draw_texture_editor(ui, signals, textures);
     draw_map_preview(ui, signals);
+    draw_groups_window(ui, signals, app_state);
     draw_entity_selector(ui, signals, app_state);
     draw_entity_editor(ui, signals, textures, app_state);
     draw_template_browser(ui, signals, app_state);

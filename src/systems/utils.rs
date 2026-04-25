@@ -9,6 +9,10 @@ pub fn entity_label(entity: Entity, group: Option<&Group>, persistent: Option<&P
     format!("Entity #{}{}{}", entity.index(), group_suffix, persistent_tag)
 }
 
+pub fn display_group_name(group: &str) -> &str {
+    if group.is_empty() { "(empty)" } else { group }
+}
+
 /// Returns the directory name (stem) of a tilemap path.
 /// E.g. `"assets/tilemaps/forest"` → `"forest"`.
 pub fn tilemap_stem(path: &str) -> &str {
