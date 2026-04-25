@@ -10,3 +10,4 @@ pub mod load_assets;
 pub mod map_ops;
 pub mod tilemap_load;
 pub mod utils;
+pub mod window_resize;

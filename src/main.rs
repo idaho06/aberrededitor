@@ -48,6 +48,7 @@ fn main() {
         .add_observer(systems::entity_selector::select_entity_observer)
         .add_observer(systems::entity_selector::select_group_observer)
         .add_observer(systems::entity_inspector::entity_inspect_observer)
+        .configure_schedule(systems::window_resize::configure_resize_schedule)
         .add_system(systems::camera_sync::editor_camera_sync_system)
         .add_system(systems::editor_camera::editor_camera_system)
         .add_system(systems::group_selector::update_group_cache)
