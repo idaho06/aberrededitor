@@ -13,6 +13,8 @@ use aberredengine::systems::GameCtx;
 use log::info;
 use rustc_hash::FxHashMap;
 
+use crate::systems::map_ops::RemoveTextureRequested;
+
 const PHASE_DURATION: f32 = 1.5;
 const GLITCH_RATE: f32 = 0.1; // uglitch units per second during "medium" phase
 const FADE_RATE: f32 = 0.7; // fade alpha units per second during "fadeout" phase
@@ -177,4 +179,7 @@ pub fn intro_update(ctx: &mut GameCtx, _dt: f32, input: &InputState) {
 pub fn intro_exit(ctx: &mut GameCtx) {
     info!("intro_exit: clearing post-process shader chain");
     ctx.post_process.set_shader_chain(None);
+    ctx.commands.trigger(RemoveTextureRequested {
+        key: "aberred_engine_isometric_alpha".into(),
+    });
 }
