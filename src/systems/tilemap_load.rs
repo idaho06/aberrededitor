@@ -1,10 +1,12 @@
 use aberredengine::bevy_ecs;
-use aberredengine::bevy_ecs::prelude::{Added, Commands, Event, On, Query, ResMut};
+use aberredengine::bevy_ecs::prelude::{Added, Commands, Entity, Event, On, Query, ResMut};
 use aberredengine::components::group::Group;
 use aberredengine::components::tilemap::TileMap;
 use aberredengine::resources::mapdata::{EntityDef, MapData};
 use aberredengine::resources::texturestore::TextureStore;
 use log::info;
+
+use crate::components::map_entity::MapEntity;
 
 use crate::systems::map_ops::GROUP_TILEMAP_ROOTS;
 use crate::systems::utils::{tilemap_stem, to_relative};
@@ -39,13 +41,16 @@ pub fn tilemap_load_observer(
     );
 }
 
-/// The engine's tilemap_spawn_system loads the texture itself but does not
-/// populate TextureStore.paths — that is an editor-side concern.
-pub fn track_tilemap_texture_path(
-    query: Query<&TileMap, Added<TileMap>>,
+/// Runs on Added<TileMap> — covers both the UI-trigger path and the engine's
+/// load-from-file spawn path. TextureStore.paths is an editor concern; the
+/// engine's tilemap_spawn_system does not populate it.
+pub fn on_tilemap_added(
+    query: Query<(Entity, &TileMap), Added<TileMap>>,
+    mut commands: Commands,
     mut texture_store: ResMut<TextureStore>,
 ) {
-    for tilemap in query.iter() {
+    for (entity, tilemap) in query.iter() {
+        commands.entity(entity).insert(MapEntity);
         let stem = tilemap_stem(&tilemap.path);
         let tex_path = format!("{}/{}.png", tilemap.path, stem);
         texture_store

@@ -1,6 +1,6 @@
 use crate::signals as sig;
 use aberredengine::bevy_ecs;
-use aberredengine::bevy_ecs::prelude::{Commands, Entity, Event, On, Query, ResMut};
+use aberredengine::bevy_ecs::prelude::{Commands, Entity, Event, On, Query, ResMut, With};
 use aberredengine::components::group::Group;
 use aberredengine::components::mapposition::MapPosition;
 use aberredengine::components::rotation::Rotation;
@@ -15,6 +15,7 @@ use aberredengine::resources::worldsignals::WorldSignals;
 use aberredengine::systems::RaylibAccess;
 use log::{info, warn};
 
+use crate::components::map_entity::MapEntity;
 use crate::systems::entity_selector::clear_selector_state;
 use crate::systems::utils::to_relative;
 
@@ -82,42 +83,46 @@ pub fn load_map_observer(
     info!("load_map_observer: loaded map from '{}'", path);
 }
 
-type TilemapRootsQuery<'w, 's> = Query<
+type MapEntitiesQuery<'w, 's> = Query<
     'w,
     's,
     (
-        &'static TileMap,
+        Option<&'static TileMap>,
         Option<&'static MapPosition>,
         Option<&'static ZIndex>,
         Option<&'static Group>,
         Option<&'static Rotation>,
         Option<&'static Scale>,
     ),
+    With<MapEntity>,
 >;
 
-fn sync_tilemap_entities(map_data: &mut MapData, tilemap_roots: &TilemapRootsQuery) {
-    for (tilemap, pos, z, group, rot, scale) in tilemap_roots.iter() {
-        let path = to_relative(&tilemap.path);
-        if let Some(def) = map_data
-            .entities
-            .iter_mut()
-            .find(|e| e.tilemap_path.as_deref() == Some(path.as_str()))
-        {
-            def.position = pos.map(|p| [p.pos.x, p.pos.y]);
-            def.z_index = z.map(|z| z.0);
-            def.group = group.map(|g| g.0.clone());
-            def.rotation_deg = rot.map(|r| r.degrees);
-            def.scale = scale.map(|s| [s.scale.x, s.scale.y]);
+fn sync_map_entities(map_data: &mut MapData, entities: &MapEntitiesQuery) {
+    for (tilemap, pos, z, group, rot, scale) in entities.iter() {
+        if let Some(tilemap) = tilemap {
+            let path = to_relative(&tilemap.path);
+            if let Some(def) = map_data
+                .entities
+                .iter_mut()
+                .find(|e| e.tilemap_path.as_deref() == Some(path.as_str()))
+            {
+                def.position = pos.map(|p| [p.pos.x, p.pos.y]);
+                def.z_index = z.map(|z| z.0);
+                def.group = group.map(|g| g.0.clone());
+                def.rotation_deg = rot.map(|r| r.degrees);
+                def.scale = scale.map(|s| [s.scale.x, s.scale.y]);
+            }
         }
+        // Future: handle plain (non-tilemap) entities here
     }
 }
 
 pub fn save_map_observer(
     trigger: On<SaveMapRequested>,
     mut map_data: ResMut<MapData>,
-    tilemap_roots: TilemapRootsQuery,
+    map_entities: MapEntitiesQuery,
 ) {
-    sync_tilemap_entities(&mut map_data, &tilemap_roots);
+    sync_map_entities(&mut map_data, &map_entities);
 
     let path = &trigger.event().path;
     if let Err(e) = save_map(path, &map_data) {
@@ -263,10 +268,10 @@ pub struct PreviewMapDataRequested;
 pub fn preview_mapdata_observer(
     _trigger: On<PreviewMapDataRequested>,
     mut map_data: ResMut<MapData>,
-    tilemap_roots: TilemapRootsQuery,
+    map_entities: MapEntitiesQuery,
     mut world_signals: ResMut<WorldSignals>,
 ) {
-    sync_tilemap_entities(&mut map_data, &tilemap_roots);
+    sync_map_entities(&mut map_data, &map_entities);
     match serde_json::to_string_pretty(&*map_data) {
         Ok(json) => {
             world_signals.set_string(sig::MAPDATA_PREVIEW_JSON, json.as_str());
