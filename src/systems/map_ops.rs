@@ -5,11 +5,12 @@ use aberredengine::components::group::Group;
 use aberredengine::components::mapposition::MapPosition;
 use aberredengine::components::rotation::Rotation;
 use aberredengine::components::scale::Scale;
+use aberredengine::components::sprite::Sprite;
 use aberredengine::components::tilemap::TileMap;
 use aberredengine::components::zindex::ZIndex;
 use aberredengine::events::spawnmap::SpawnMapRequested;
 use aberredengine::resources::appstate::AppState;
-use aberredengine::resources::mapdata::{MapData, TextureEntry, load_map, save_map};
+use aberredengine::resources::mapdata::{EntityDef, MapData, TextureEntry, load_map, save_map};
 use aberredengine::resources::texturestore::TextureStore;
 use aberredengine::resources::worldsignals::WorldSignals;
 use aberredengine::systems::RaylibAccess;
@@ -17,9 +18,9 @@ use log::{info, warn};
 
 use crate::components::map_entity::MapEntity;
 use crate::systems::entity_selector::clear_selector_state;
-use crate::systems::utils::to_relative;
+use crate::systems::utils::{sprite_to_entry, to_relative};
 
-const GROUP_TILES: &str = "tiles";
+pub const GROUP_TILES: &str = "tiles";
 const GROUP_TILES_TEMPLATES: &str = "tiles-templates";
 pub const GROUP_TILEMAP_ROOTS: &str = "tilemap-roots";
 
@@ -79,6 +80,12 @@ pub fn load_map_observer(
         &mut app_state,
         map.clone(),
     );
+    for tex in &map.textures {
+        commands.trigger(AddTextureRequested {
+            key: tex.key.clone(),
+            path: tex.path.clone(),
+        });
+    }
     commands.trigger(SpawnMapRequested { map });
     info!("load_map_observer: loaded map from '{}'", path);
 }
@@ -93,12 +100,17 @@ type MapEntitiesQuery<'w, 's> = Query<
         Option<&'static Group>,
         Option<&'static Rotation>,
         Option<&'static Scale>,
+        Option<&'static Sprite>,
     ),
     With<MapEntity>,
 >;
 
 fn sync_map_entities(map_data: &mut MapData, entities: &MapEntitiesQuery) {
-    for (tilemap, pos, z, group, rot, scale) in entities.iter() {
+    // Plain-entity defs are rebuilt from ECS state on every sync; only tilemap defs
+    // are kept between syncs (matched by path).
+    map_data.entities.retain(|e| e.tilemap_path.is_some());
+
+    for (tilemap, pos, z, group, rot, scale, sprite) in entities.iter() {
         if let Some(tilemap) = tilemap {
             let path = to_relative(&tilemap.path);
             if let Some(def) = map_data
@@ -112,8 +124,17 @@ fn sync_map_entities(map_data: &mut MapData, entities: &MapEntitiesQuery) {
                 def.rotation_deg = rot.map(|r| r.degrees);
                 def.scale = scale.map(|s| [s.scale.x, s.scale.y]);
             }
+        } else {
+            map_data.entities.push(EntityDef {
+                position: pos.map(|p| [p.pos.x, p.pos.y]),
+                z_index: z.map(|z| z.0),
+                group: group.map(|g| g.0.clone()),
+                rotation_deg: rot.map(|r| r.degrees),
+                scale: scale.map(|s| [s.scale.x, s.scale.y]),
+                sprite: sprite.map(sprite_to_entry),
+                tilemap_path: None,
+            });
         }
-        // Future: handle plain (non-tilemap) entities here
     }
 }
 
@@ -186,6 +207,9 @@ pub fn add_texture_observer(
 ) {
     let key = &trigger.event().key;
     let path = &trigger.event().path;
+    if texture_store.map.contains_key(key.as_str()) {
+        return;
+    }
     let (rl, th) = (&mut *raylib.rl, &*raylib.th);
     match rl.load_texture(th, path) {
         Ok(texture) => {

@@ -69,6 +69,7 @@ pub(crate) struct PendingEditState {
     pub remove_phase:        bool,
     pub remove_persistent:   bool,
     pub remove_tilemap:        bool,
+    pub bake_tilemap:          bool,
     pub select_tilemap_parent: bool,
     // Add component
     pub add_component:       Option<ComponentKind>,
@@ -98,6 +99,7 @@ impl PendingEditState {
             || self.remove_phase
             || self.remove_persistent
             || self.remove_tilemap
+            || self.bake_tilemap
             || self.select_tilemap_parent
             || self.add_component.is_some()
     }

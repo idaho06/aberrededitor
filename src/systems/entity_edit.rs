@@ -1,12 +1,14 @@
 use super::entity_inspector::InspectEntityRequested;
 use crate::editor_types::ComponentKind;
 use crate::systems::entity_selector::clear_selector_state;
-use crate::systems::utils::tilemap_stem;
+use crate::systems::utils::{tilemap_stem, tilemap_tex_path, sprite_to_entry};
 use aberredengine::bevy_ecs;
+use aberredengine::bevy_ecs::hierarchy::{ChildOf, Children};
 use aberredengine::bevy_ecs::prelude::{Commands, Entity, Event, On, Query, Res, ResMut};
 use aberredengine::resources::appstate::AppState;
 use aberredengine::components::animation::Animation;
 use aberredengine::components::boxcollider::BoxCollider;
+use aberredengine::components::globaltransform2d::GlobalTransform2D;
 use aberredengine::components::group::Group;
 use aberredengine::components::mapposition::MapPosition;
 use aberredengine::components::persistent::Persistent;
@@ -19,11 +21,14 @@ use aberredengine::components::timer::Timer;
 use aberredengine::components::ttl::Ttl;
 use aberredengine::components::zindex::ZIndex;
 use aberredengine::raylib::prelude::Vector2;
-use aberredengine::resources::mapdata::MapData;
+use aberredengine::resources::mapdata::{EntityDef, MapData, TextureEntry};
 use aberredengine::resources::texturestore::TextureStore;
 use aberredengine::resources::worldsignals::WorldSignals;
-use log::{debug, warn};
+use log::{debug, info, warn};
 use std::sync::Arc;
+
+use crate::components::map_entity::MapEntity;
+use crate::systems::map_ops::GROUP_TILES;
 
 #[derive(Event)]
 pub struct UpdateMapPositionRequested {
@@ -111,6 +116,8 @@ pub struct RemovePhaseRequested        { pub entity: Entity }
 pub struct RemovePersistentRequested   { pub entity: Entity }
 #[derive(Event)]
 pub struct RemoveTileMapRequested      { pub entity: Entity }
+#[derive(Event)]
+pub struct BakeTilemapRequested        { pub entity: Entity }
 
 #[derive(Event)]
 pub struct AddComponentRequested {
@@ -398,4 +405,81 @@ pub fn remove_tilemap_observer(
 
     commands.entity(entity).despawn();
     clear_selector_state(&mut world_signals, &mut app_state);
+}
+
+pub fn bake_tilemap_observer(
+    trigger: On<BakeTilemapRequested>,
+    mut commands: Commands,
+    root_query: Query<(&TileMap, Option<&Children>)>,
+    child_query: Query<(
+        Option<&Group>,
+        Option<&Sprite>,
+        Option<&ZIndex>,
+        Option<&GlobalTransform2D>,
+    )>,
+    mut map_data: ResMut<MapData>,
+    mut world_signals: ResMut<WorldSignals>,
+    mut app_state: ResMut<AppState>,
+) {
+    let root = trigger.event().entity;
+    let Ok((tilemap, maybe_children)) = root_query.get(root) else {
+        warn!("bake_tilemap_observer: root entity has no TileMap");
+        return;
+    };
+    let tilemap_path = tilemap.path.clone();
+    let stem = tilemap_stem(&tilemap_path);
+
+    if let Some(children) = maybe_children {
+        for &child in children.iter() {
+            let Ok((group, sprite, zidx, gt)) = child_query.get(child) else {
+                continue;
+            };
+
+            let is_tiles_group = group.map(|g| g.name() == GROUP_TILES).unwrap_or(false);
+            if !is_tiles_group {
+                commands.entity(child).despawn();
+                continue;
+            }
+
+            let Some(gt) = gt else {
+                warn!("bake_tilemap_observer: tile child missing GlobalTransform2D, skipping");
+                continue;
+            };
+
+            map_data.entities.push(EntityDef {
+                position: Some([gt.position.x, gt.position.y]),
+                z_index: zidx.map(|z| z.0),
+                group: group.map(|g| g.0.clone()),
+                rotation_deg: Some(gt.rotation_degrees),
+                scale: Some([gt.scale.x, gt.scale.y]),
+                sprite: sprite.map(sprite_to_entry),
+                tilemap_path: None,
+            });
+
+            commands
+                .entity(child)
+                .insert(MapEntity)
+                .insert(MapPosition::new(gt.position.x, gt.position.y))
+                .insert(Rotation { degrees: gt.rotation_degrees })
+                .insert(Scale::new(gt.scale.x, gt.scale.y))
+                .remove::<ChildOf>();
+        }
+    }
+
+    map_data
+        .entities
+        .retain(|e| e.tilemap_path.as_deref() != Some(&tilemap_path));
+
+    // Register the tilemap's texture so it's saved with the map and reloaded next time.
+    // Tilemap textures are normally tracked only in TextureStore, not in MapData.textures.
+    if !map_data.textures.iter().any(|e| e.key == stem) {
+        map_data.textures.push(TextureEntry {
+            key: stem.to_string(),
+            path: tilemap_tex_path(&tilemap_path, stem),
+        });
+    }
+
+    commands.entity(root).despawn();
+    clear_selector_state(&mut world_signals, &mut app_state);
+    info!("bake_tilemap_observer: baked tilemap '{}'", stem);
 }

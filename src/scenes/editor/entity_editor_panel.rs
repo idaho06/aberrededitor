@@ -311,6 +311,8 @@ pub(super) fn draw_entity_editor(
                 ui.separator();
                 ui.text("TileMap");
                 ui.same_line();
+                if ui.button("Bake##tilemap") { p.bake_tilemap = true; }
+                ui.same_line();
                 if ui.button("Del##tilemap") { p.remove_tilemap = true; }
                 ui.group(|| ui.text_disabled(format!("  path: {}", path)));
             }

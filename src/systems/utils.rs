@@ -1,6 +1,8 @@
 use aberredengine::bevy_ecs::prelude::Entity;
 use aberredengine::components::group::Group;
 use aberredengine::components::persistent::Persistent;
+use aberredengine::components::sprite::Sprite;
+use aberredengine::resources::mapdata::SpriteEntry;
 
 /// Build a display label for an entity: `Entity #<id> [group] [Persistent]`.
 pub fn entity_label(entity: Entity, group: Option<&Group>, persistent: Option<&Persistent>) -> String {
@@ -11,6 +13,24 @@ pub fn entity_label(entity: Entity, group: Option<&Group>, persistent: Option<&P
 
 pub fn display_group_name(group: &str) -> &str {
     if group.is_empty() { "(empty)" } else { group }
+}
+
+/// Converts a `Sprite` component to its `SpriteEntry` serialization form.
+pub fn sprite_to_entry(s: &Sprite) -> SpriteEntry {
+    SpriteEntry {
+        texture_key: s.tex_key.to_string(),
+        width: s.width,
+        height: s.height,
+        offset: Some([s.offset.x, s.offset.y]),
+        origin: Some([s.origin.x, s.origin.y]),
+        flip_h: s.flip_h,
+        flip_v: s.flip_v,
+    }
+}
+
+/// Returns the relative path to a tilemap's texture PNG: `<dir>/<stem>.png`.
+pub fn tilemap_tex_path(dir: &str, stem: &str) -> String {
+    to_relative(&format!("{}/{}.png", dir, stem))
 }
 
 /// Returns the directory name (stem) of a tilemap path.

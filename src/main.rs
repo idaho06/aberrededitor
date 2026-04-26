@@ -44,6 +44,7 @@ fn main() {
         .add_observer(systems::entity_edit::remove_phase_observer)
         .add_observer(systems::entity_edit::remove_persistent_observer)
         .add_observer(systems::entity_edit::remove_tilemap_observer)
+        .add_observer(systems::entity_edit::bake_tilemap_observer)
         .add_observer(systems::entity_edit::add_component_observer)
         .add_observer(systems::entity_selector::entity_pick_observer)
         .add_observer(systems::entity_selector::select_entity_observer)
@@ -54,6 +55,7 @@ fn main() {
         .add_system(systems::editor_camera::editor_camera_system)
         .add_system(systems::group_selector::update_group_cache)
         .add_system(systems::tilemap_load::on_tilemap_added)
+        .add_system(systems::tilemap_load::tag_plain_map_entities)
         .add_system(systems::template_selector::update_template_cache)
         .add_system(scenes::editor::entity_editor_selection_change_system)
         .add_scene(

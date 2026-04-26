@@ -3,13 +3,13 @@ use super::state::clear_entity_editor_pending;
 use crate::editor_types::ComponentSnapshot;
 use crate::signals as sig;
 use crate::systems::entity_edit::{
-    AddComponentRequested, RemoveAnimationRequested, RemoveBoxColliderRequested,
-    RemoveGroupRequested, RemoveMapPositionRequested, RemovePhaseRequested,
-    RemovePersistentRequested, RemoveRotationRequested, RemoveScaleRequested,
-    RemoveSpriteRequested, RemoveTileMapRequested, RemoveTimerRequested, RemoveTtlRequested,
-    RemoveZIndexRequested, UpdateAnimationRequested, UpdateBoxColliderRequested,
-    UpdateGroupRequested, UpdateMapPositionRequested, UpdateRotationRequested,
-    UpdateScaleRequested, UpdateSpriteRequested, UpdateZIndexRequested,
+    AddComponentRequested, BakeTilemapRequested, RemoveAnimationRequested,
+    RemoveBoxColliderRequested, RemoveGroupRequested, RemoveMapPositionRequested,
+    RemovePhaseRequested, RemovePersistentRequested, RemoveRotationRequested,
+    RemoveScaleRequested, RemoveSpriteRequested, RemoveTileMapRequested, RemoveTimerRequested,
+    RemoveTtlRequested, RemoveZIndexRequested, UpdateAnimationRequested,
+    UpdateBoxColliderRequested, UpdateGroupRequested, UpdateMapPositionRequested,
+    UpdateRotationRequested, UpdateScaleRequested, UpdateSpriteRequested, UpdateZIndexRequested,
 };
 use crate::systems::entity_inspector::InspectEntityRequested;
 use aberredengine::bevy_ecs::prelude::Entity;
@@ -83,6 +83,7 @@ pub(super) fn consume_entity_editor_commits(ctx: &mut GameCtx) {
     if p.remove_phase      { ctx.commands.trigger(RemovePhaseRequested      { entity }); }
     if p.remove_persistent { ctx.commands.trigger(RemovePersistentRequested { entity }); }
     if p.remove_tilemap    { ctx.commands.trigger(RemoveTileMapRequested    { entity }); }
+    if p.bake_tilemap      { ctx.commands.trigger(BakeTilemapRequested      { entity }); }
     if p.select_tilemap_parent
         && let Some(parent_bits) = snapshot.tilemap_parent
     {
