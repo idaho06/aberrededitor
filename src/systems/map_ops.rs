@@ -1,6 +1,6 @@
 use crate::signals as sig;
 use aberredengine::bevy_ecs;
-use aberredengine::bevy_ecs::prelude::{Commands, Entity, Event, On, Query, ResMut, With};
+use aberredengine::bevy_ecs::prelude::{Commands, Entity, Event, On, Query, Res, ResMut, With};
 use aberredengine::components::group::Group;
 use aberredengine::components::mapposition::MapPosition;
 use aberredengine::components::rotation::Rotation;
@@ -94,6 +94,7 @@ type MapEntitiesQuery<'w, 's> = Query<
     'w,
     's,
     (
+        Entity,
         Option<&'static TileMap>,
         Option<&'static MapPosition>,
         Option<&'static ZIndex>,
@@ -105,12 +106,25 @@ type MapEntitiesQuery<'w, 's> = Query<
     With<MapEntity>,
 >;
 
-fn sync_map_entities(map_data: &mut MapData, entities: &MapEntitiesQuery) {
+fn sync_map_entities(map_data: &mut MapData, entities: &MapEntitiesQuery, world_signals: &WorldSignals) {
     // Plain-entity defs are rebuilt from ECS state on every sync; only tilemap defs
     // are kept between syncs (matched by path).
     map_data.entities.retain(|e| e.tilemap_path.is_some());
 
-    for (tilemap, pos, z, group, rot, scale, sprite) in entities.iter() {
+    // Build reverse lookup once: entity → user-registered key (filter internal keys).
+    let user_keys: Vec<(Entity, &str)> = world_signals
+        .entities
+        .iter()
+        .filter(|(k, _)| !sig::EDITOR_INTERNAL_ENTITY_KEYS.contains(&k.as_str()))
+        .map(|(k, e)| (*e, k.as_str()))
+        .collect();
+
+    for (entity, tilemap, pos, z, group, rot, scale, sprite) in entities.iter() {
+        let registered_as = user_keys
+            .iter()
+            .find(|(e, _)| *e == entity)
+            .map(|(_, k)| k.to_string());
+
         if let Some(tilemap) = tilemap {
             let path = to_relative(&tilemap.path);
             if let Some(def) = map_data
@@ -123,6 +137,7 @@ fn sync_map_entities(map_data: &mut MapData, entities: &MapEntitiesQuery) {
                 def.group = group.map(|g| g.0.clone());
                 def.rotation_deg = rot.map(|r| r.degrees);
                 def.scale = scale.map(|s| [s.scale.x, s.scale.y]);
+                def.registered_as = registered_as;
             }
         } else {
             map_data.entities.push(EntityDef {
@@ -133,6 +148,7 @@ fn sync_map_entities(map_data: &mut MapData, entities: &MapEntitiesQuery) {
                 scale: scale.map(|s| [s.scale.x, s.scale.y]),
                 sprite: sprite.map(sprite_to_entry),
                 tilemap_path: None,
+                registered_as,
             });
         }
     }
@@ -142,8 +158,9 @@ pub fn save_map_observer(
     trigger: On<SaveMapRequested>,
     mut map_data: ResMut<MapData>,
     map_entities: MapEntitiesQuery,
+    world_signals: Res<WorldSignals>,
 ) {
-    sync_map_entities(&mut map_data, &map_entities);
+    sync_map_entities(&mut map_data, &map_entities, &world_signals);
 
     let path = &trigger.event().path;
     if let Err(e) = save_map(path, &map_data) {
@@ -163,6 +180,10 @@ fn reset_editor_map(
     map_data: MapData,
 ) {
     clear_map_entities(commands, groups);
+    // Drop all user entity registrations; internal editor keys are retained.
+    world_signals
+        .entities
+        .retain(|k, _| sig::EDITOR_INTERNAL_ENTITY_KEYS.contains(&k.as_str()));
     commands.insert_resource(map_data);
     clear_selector_state(world_signals, app_state);
 }
@@ -295,7 +316,7 @@ pub fn preview_mapdata_observer(
     map_entities: MapEntitiesQuery,
     mut world_signals: ResMut<WorldSignals>,
 ) {
-    sync_map_entities(&mut map_data, &map_entities);
+    sync_map_entities(&mut map_data, &map_entities, &world_signals);
     match serde_json::to_string_pretty(&*map_data) {
         Ok(json) => {
             world_signals.set_string(sig::MAPDATA_PREVIEW_JSON, json.as_str());

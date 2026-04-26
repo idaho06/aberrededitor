@@ -70,3 +70,11 @@ pub const UI_ENTITY_EDITOR_OPEN: &str = "ui:entity_editor:open";
 // ---- Template browser ----
 pub const UI_TEMPLATE_BROWSER_OPEN: &str = "ui:template_browser:open";
 pub const TEMPLATE_SELECT_ENTITY: &str = "gui:template_browser:select_entity";
+
+/// All `WorldSignals.entities` keys that are used internally by the editor.
+/// These are excluded from `EntityDef.registered_as` when saving a map.
+pub const EDITOR_INTERNAL_ENTITY_KEYS: &[&str] = &[
+    EDITOR_CAMERA,
+    ES_SELECTED_ENTITY,
+    TEMPLATE_SELECT_ENTITY,
+];

@@ -120,6 +120,19 @@ pub struct RemoveTileMapRequested      { pub entity: Entity }
 pub struct BakeTilemapRequested        { pub entity: Entity }
 
 #[derive(Event)]
+pub struct RegisterEntityRequested {
+    pub entity:  Entity,
+    pub key:     String,
+    pub old_key: Option<String>,
+}
+
+#[derive(Event)]
+pub struct UnregisterEntityRequested {
+    pub entity: Entity,
+    pub key:    String,
+}
+
+#[derive(Event)]
 pub struct AddComponentRequested {
     pub entity: Entity,
     pub kind:   ComponentKind,
@@ -407,16 +420,14 @@ pub fn remove_tilemap_observer(
     clear_selector_state(&mut world_signals, &mut app_state);
 }
 
+type TileChildQuery<'w, 's> =
+    Query<'w, 's, (Option<&'static Group>, Option<&'static Sprite>, Option<&'static ZIndex>, Option<&'static GlobalTransform2D>)>;
+
 pub fn bake_tilemap_observer(
     trigger: On<BakeTilemapRequested>,
     mut commands: Commands,
     root_query: Query<(&TileMap, Option<&Children>)>,
-    child_query: Query<(
-        Option<&Group>,
-        Option<&Sprite>,
-        Option<&ZIndex>,
-        Option<&GlobalTransform2D>,
-    )>,
+    child_query: TileChildQuery,
     mut map_data: ResMut<MapData>,
     mut world_signals: ResMut<WorldSignals>,
     mut app_state: ResMut<AppState>,
@@ -454,6 +465,7 @@ pub fn bake_tilemap_observer(
                 scale: Some([gt.scale.x, gt.scale.y]),
                 sprite: sprite.map(sprite_to_entry),
                 tilemap_path: None,
+                registered_as: None,
             });
 
             commands
@@ -482,4 +494,36 @@ pub fn bake_tilemap_observer(
     commands.entity(root).despawn();
     clear_selector_state(&mut world_signals, &mut app_state);
     info!("bake_tilemap_observer: baked tilemap '{}'", stem);
+}
+
+pub fn register_entity_observer(
+    trigger: On<RegisterEntityRequested>,
+    mut world_signals: ResMut<WorldSignals>,
+    mut commands: Commands,
+) {
+    let ev = trigger.event();
+    if ev.key.is_empty() {
+        return;
+    }
+    if let Some(ref old) = ev.old_key {
+        world_signals.remove_entity(old.as_str());
+    }
+    world_signals.set_entity(ev.key.clone(), ev.entity);
+    debug!(
+        "register_entity_observer: registered entity {} as '{}'",
+        ev.entity.to_bits(),
+        ev.key
+    );
+    refresh_inspector(&mut commands, ev.entity);
+}
+
+pub fn unregister_entity_observer(
+    trigger: On<UnregisterEntityRequested>,
+    mut world_signals: ResMut<WorldSignals>,
+    mut commands: Commands,
+) {
+    let ev = trigger.event();
+    world_signals.remove_entity(ev.key.as_str());
+    debug!("unregister_entity_observer: removed key '{}'", ev.key);
+    refresh_inspector(&mut commands, ev.entity);
 }

@@ -50,8 +50,11 @@ pub fn tilemap_load_observer(
 /// Tags plain entities (no TileMap, no ChildOf) that just gained MapPosition —
 /// these are baked tile entities being re-spawned from a saved map file.
 /// The engine's spawn_entity has no way to insert MapEntity directly.
+type PlainMapPositionQuery<'w, 's> =
+    Query<'w, 's, Entity, (Added<MapPosition>, Without<TileMap>, Without<ChildOf>)>;
+
 pub fn tag_plain_map_entities(
-    query: Query<Entity, (Added<MapPosition>, Without<TileMap>, Without<ChildOf>)>,
+    query: PlainMapPositionQuery,
     mut commands: Commands,
 ) {
     for entity in query.iter() {

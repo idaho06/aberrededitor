@@ -3,13 +3,14 @@ use super::state::clear_entity_editor_pending;
 use crate::editor_types::ComponentSnapshot;
 use crate::signals as sig;
 use crate::systems::entity_edit::{
-    AddComponentRequested, BakeTilemapRequested, RemoveAnimationRequested,
-    RemoveBoxColliderRequested, RemoveGroupRequested, RemoveMapPositionRequested,
-    RemovePhaseRequested, RemovePersistentRequested, RemoveRotationRequested,
-    RemoveScaleRequested, RemoveSpriteRequested, RemoveTileMapRequested, RemoveTimerRequested,
-    RemoveTtlRequested, RemoveZIndexRequested, UpdateAnimationRequested,
-    UpdateBoxColliderRequested, UpdateGroupRequested, UpdateMapPositionRequested,
-    UpdateRotationRequested, UpdateScaleRequested, UpdateSpriteRequested, UpdateZIndexRequested,
+    AddComponentRequested, BakeTilemapRequested, RegisterEntityRequested,
+    RemoveAnimationRequested, RemoveBoxColliderRequested, RemoveGroupRequested,
+    RemoveMapPositionRequested, RemovePhaseRequested, RemovePersistentRequested,
+    RemoveRotationRequested, RemoveScaleRequested, RemoveSpriteRequested,
+    RemoveTileMapRequested, RemoveTimerRequested, RemoveTtlRequested, RemoveZIndexRequested,
+    UnregisterEntityRequested, UpdateAnimationRequested, UpdateBoxColliderRequested,
+    UpdateGroupRequested, UpdateMapPositionRequested, UpdateRotationRequested,
+    UpdateScaleRequested, UpdateSpriteRequested, UpdateZIndexRequested,
 };
 use crate::systems::entity_inspector::InspectEntityRequested;
 use aberredengine::bevy_ecs::prelude::Entity;
@@ -89,6 +90,19 @@ pub(super) fn consume_entity_editor_commits(ctx: &mut GameCtx) {
     {
         let parent = Entity::from_bits(parent_bits);
         ctx.commands.trigger(InspectEntityRequested { entity: parent });
+    }
+    if p.commit_registration
+        && let Some(ref key) = p.pending_register_key
+        && !key.is_empty()
+    {
+        let old_key = snapshot.world_signal_keys.first().cloned();
+        ctx.commands
+            .trigger(RegisterEntityRequested { entity, key: key.clone(), old_key });
+    }
+    if p.remove_registration
+        && let Some(key) = snapshot.world_signal_keys.first().cloned()
+    {
+        ctx.commands.trigger(UnregisterEntityRequested { entity, key });
     }
     if let Some(kind) = p.add_component {
         ctx.commands.trigger(AddComponentRequested { entity, kind });

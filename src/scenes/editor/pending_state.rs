@@ -71,6 +71,10 @@ pub(crate) struct PendingEditState {
     pub remove_tilemap:        bool,
     pub bake_tilemap:          bool,
     pub select_tilemap_parent: bool,
+    // Registration
+    pub pending_register_key: Option<String>,
+    pub commit_registration:  bool,
+    pub remove_registration:  bool,
     // Add component
     pub add_component:       Option<ComponentKind>,
     pub add_combo_selection: usize,
@@ -101,6 +105,8 @@ impl PendingEditState {
             || self.remove_tilemap
             || self.bake_tilemap
             || self.select_tilemap_parent
+            || self.commit_registration
+            || self.remove_registration
             || self.add_component.is_some()
     }
 }

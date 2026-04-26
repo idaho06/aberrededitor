@@ -68,7 +68,7 @@ pub fn entity_inspect_observer(
     let world_signal_keys: Vec<String> = signals
         .entities
         .iter()
-        .filter(|(_, e)| **e == entity)
+        .filter(|(k, e)| **e == entity && !sig::EDITOR_INTERNAL_ENTITY_KEYS.contains(&k.as_str()))
         .map(|(k, _)| k.clone())
         .collect();
 

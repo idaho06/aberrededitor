@@ -32,14 +32,38 @@ pub(super) fn draw_entity_editor(
             };
 
             ui.text(format!("Entity #{}", snap.entity_bits & 0xFFFF_FFFF));
-            if snap.world_signal_keys.is_empty() {
-                ui.text_disabled("  Not in WorldSignals");
-            } else {
-                ui.text_disabled(format!("  Keys: {}", snap.world_signal_keys.join(", ")));
-            }
             ui.separator();
 
             let mut p = mutex.lock().unwrap();
+
+            // Named slot in WorldSignals.entities (not a real ECS component)
+            let current_key = snap.world_signal_keys.first().cloned();
+            if p.pending_register_key.is_none() {
+                if let Some(ref key) = current_key {
+                    ui.text_disabled(format!("  Key: {}", key));
+                    ui.same_line();
+                    if ui.button("Edit##reg") { p.pending_register_key = Some(key.clone()); }
+                    ui.same_line();
+                    if ui.button("Del##reg") { p.remove_registration = true; }
+                } else {
+                    ui.text_disabled("  Not registered");
+                    ui.same_line();
+                    if ui.button("+##reg") {
+                        p.pending_register_key = Some(format!("entity_{:08x}", snap.entity_bits & 0xFFFF_FFFF));
+                    }
+                }
+            } else {
+                let fallback = current_key.as_deref().unwrap_or("");
+                {
+                    let ps = &mut *p;
+                    draw_text_buffer_input(ui, "##reg_key", &mut ps.pending_register_key, &mut ps.commit_registration, fallback);
+                }
+                ui.same_line();
+                if ui.button("OK##reg") { p.commit_registration = true; }
+                ui.same_line();
+                if ui.button("X##reg") { p.pending_register_key = None; }
+            }
+            ui.separator();
 
             // If this entity is a tile child of a TileMap root, show a navigation button.
             if snap.tilemap_parent.is_some() {
