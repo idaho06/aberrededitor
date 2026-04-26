@@ -40,6 +40,11 @@ pub struct SelectGroupRequested {
     pub group: String,
 }
 
+#[derive(Event)]
+pub struct SelectRegisteredEntityRequested {
+    pub key: String,
+}
+
 // ---------------------------------------------------------------------------
 // Cache resource
 // ---------------------------------------------------------------------------
@@ -50,6 +55,7 @@ pub enum SelectorSource {
     None,
     Click { x: f32, y: f32 },
     Group { display_name: String },
+    Registry { key: String },
 }
 
 #[derive(Default)]
@@ -306,6 +312,95 @@ pub fn select_group_observer(
     }
 }
 
+#[allow(clippy::type_complexity)]
+pub fn select_registered_entity_observer(
+    trigger: On<SelectRegisteredEntityRequested>,
+    query: Query<(
+        Option<&MapPosition>,
+        Option<&BoxCollider>,
+        Option<&Sprite>,
+        Option<&Rotation>,
+        Option<&Scale>,
+        Option<&ZIndex>,
+        Option<&GlobalTransform2D>,
+        Option<&Group>,
+        Option<&Persistent>,
+    )>,
+    mut world_signals: ResMut<WorldSignals>,
+    mut app_state: ResMut<AppState>,
+    mut commands: Commands,
+) {
+    let key = trigger.event().key.as_str();
+    let Some(entity) = world_signals.entities.get(key).copied() else {
+        warn!(
+            "select_registered_entity_observer: key '{}' not found in WorldSignals.entities",
+            key
+        );
+        return;
+    };
+
+    let Ok((
+        maybe_pos,
+        maybe_collider,
+        maybe_sprite,
+        maybe_rot,
+        maybe_scale,
+        maybe_zindex,
+        maybe_gt,
+        maybe_group,
+        maybe_persistent,
+    )) = query.get(entity)
+    else {
+        world_signals.remove_entity(key);
+        warn!(
+            "select_registered_entity_observer: entity {} for key '{}' is unavailable; removed stale registration",
+            entity.to_bits(),
+            key
+        );
+        return;
+    };
+
+    let label = entity_label(entity, maybe_group, maybe_persistent);
+    let zindex = maybe_zindex.map_or(0.0, |z| z.0);
+    let corners = compute_group_corners(
+        maybe_pos,
+        maybe_collider,
+        maybe_sprite,
+        maybe_scale,
+        maybe_rot,
+        maybe_gt,
+    );
+
+    {
+        let mutex = app_state
+            .get::<RenderableSelectorMutex>()
+            .expect("RenderableSelectorMutex not in AppState");
+        let mut cache = mutex.lock().unwrap();
+        populate_selector_cache(
+            &mut cache,
+            vec![PickResult {
+                entity,
+                label: label.clone(),
+                zindex,
+                corners,
+            }],
+            SelectorSource::Registry {
+                key: key.to_owned(),
+            },
+        );
+    }
+
+    world_signals.set_flag(sig::UI_ENTITY_SELECTOR_OPEN);
+    apply_selection(
+        entity,
+        &label,
+        corners,
+        &mut world_signals,
+        &mut app_state,
+        &mut commands,
+    );
+}
+
 // ---------------------------------------------------------------------------
 // Selection resolve observer
 // ---------------------------------------------------------------------------
@@ -524,6 +619,7 @@ pub fn clear_selector_state(world_signals: &mut WorldSignals, app_state: &mut Ap
         *m.lock().unwrap() = GroupListCache::default();
     }
     world_signals.clear_integer(sig::ES_SELECTED_ROW);
+    world_signals.remove_string(sig::ENTITY_REGISTRY_SELECTED_KEY);
     world_signals.remove_string(sig::GROUPS_SELECTED_GROUP);
     clear_active_selection(world_signals, app_state);
 }

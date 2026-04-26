@@ -64,6 +64,10 @@ pub const ES_SELECTED_ENTITY: &str = "editor:selected_entity";
 pub const UI_GROUPS_WINDOW_OPEN: &str = "ui:groups_window:open";
 pub const GROUPS_SELECTED_GROUP: &str = "gui:groups:selected_group";
 
+// ---- Entity registry window ----
+pub const UI_ENTITY_REGISTRY_OPEN: &str = "ui:entity_registry:open";
+pub const ENTITY_REGISTRY_SELECTED_KEY: &str = "gui:entity_registry:selected_key";
+
 // ---- Entity editor / inspector ----
 pub const UI_ENTITY_EDITOR_OPEN: &str = "ui:entity_editor:open";
 
@@ -78,3 +82,7 @@ pub const EDITOR_INTERNAL_ENTITY_KEYS: &[&str] = &[
     ES_SELECTED_ENTITY,
     TEMPLATE_SELECT_ENTITY,
 ];
+
+pub fn is_user_entity_key(key: &str) -> bool {
+    !EDITOR_INTERNAL_ENTITY_KEYS.contains(&key)
+}

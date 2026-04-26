@@ -1,5 +1,6 @@
 mod commit;
 mod entity_editor_panel;
+mod entity_registry_panel;
 mod entity_selector_panel;
 mod groups_panel;
 mod lifecycle;

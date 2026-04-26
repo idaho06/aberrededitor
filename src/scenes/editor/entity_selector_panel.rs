@@ -50,6 +50,11 @@ pub(super) fn draw_entity_selector(
                     ui.separator();
                     Some("No entities found in this group.")
                 }
+                SelectorSource::Registry { key } => {
+                    ui.text_disabled(format!("Registry: {}", key));
+                    ui.separator();
+                    Some("Registered entity is not available.")
+                }
             };
 
             if let Some(empty_msg) = empty_msg {

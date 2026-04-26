@@ -115,7 +115,7 @@ fn sync_map_entities(map_data: &mut MapData, entities: &MapEntitiesQuery, world_
     let user_keys: Vec<(Entity, &str)> = world_signals
         .entities
         .iter()
-        .filter(|(k, _)| !sig::EDITOR_INTERNAL_ENTITY_KEYS.contains(&k.as_str()))
+        .filter(|(k, _)| sig::is_user_entity_key(k))
         .map(|(k, e)| (*e, k.as_str()))
         .collect();
 
@@ -183,7 +183,7 @@ fn reset_editor_map(
     // Drop all user entity registrations; internal editor keys are retained.
     world_signals
         .entities
-        .retain(|k, _| sig::EDITOR_INTERNAL_ENTITY_KEYS.contains(&k.as_str()));
+        .retain(|k, _| !sig::is_user_entity_key(k));
     commands.insert_resource(map_data);
     clear_selector_state(world_signals, app_state);
 }

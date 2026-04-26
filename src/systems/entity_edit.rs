@@ -385,6 +385,25 @@ fn refresh_inspector(commands: &mut Commands, entity: Entity) {
     commands.trigger(InspectEntityRequested { entity });
 }
 
+fn remove_entity_registrations(world_signals: &mut WorldSignals, entity: Entity) {
+    let keys_to_remove: Vec<String> = world_signals
+        .entities
+        .iter()
+        .filter(|(_, e)| **e == entity)
+        .map(|(k, _)| k.clone())
+        .collect();
+    for key in &keys_to_remove {
+        world_signals.remove_entity(key);
+    }
+    if !keys_to_remove.is_empty() {
+        debug!(
+            "remove_entity_registrations: removed keys [{}] for entity {}",
+            keys_to_remove.join(", "),
+            entity.to_bits()
+        );
+    }
+}
+
 fn warn_missing_component(observer: &str, entity: Entity, component: &str) {
     warn!(
         "{}: entity {} missing {}",
@@ -416,6 +435,7 @@ pub fn remove_tilemap_observer(
         );
     }
 
+    remove_entity_registrations(&mut world_signals, entity);
     commands.entity(entity).despawn();
     clear_selector_state(&mut world_signals, &mut app_state);
 }
@@ -448,6 +468,7 @@ pub fn bake_tilemap_observer(
 
             let is_tiles_group = group.map(|g| g.name() == GROUP_TILES).unwrap_or(false);
             if !is_tiles_group {
+                remove_entity_registrations(&mut world_signals, child);
                 commands.entity(child).despawn();
                 continue;
             }
@@ -491,6 +512,7 @@ pub fn bake_tilemap_observer(
         });
     }
 
+    remove_entity_registrations(&mut world_signals, root);
     commands.entity(root).despawn();
     clear_selector_state(&mut world_signals, &mut app_state);
     info!("bake_tilemap_observer: baked tilemap '{}'", stem);
