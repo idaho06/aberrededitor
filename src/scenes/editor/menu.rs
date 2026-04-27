@@ -87,6 +87,12 @@ pub(super) fn draw_menu_bar(ui: &imgui::Ui, signals: &mut WorldSignals) -> bool 
             }
         }
 
+        if let Some(_entity) = ui.begin_menu("Entity")
+            && ui.menu_item("Add")
+        {
+            signals.set_flag(sig::ACTION_ENTITY_ADD);
+        }
+
         if let Some(_help) = ui.begin_menu("Help")
             && ui.menu_item("About")
         {

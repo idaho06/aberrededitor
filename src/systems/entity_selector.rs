@@ -586,7 +586,7 @@ fn clear_active_selection(world_signals: &mut WorldSignals, app_state: &mut AppS
     app_state.remove::<ComponentSnapshot>();
 }
 
-fn apply_selection(
+pub(crate) fn apply_selection(
     entity: Entity,
     label: &str,
     corners: Option<[[f32; 2]; 4]>,

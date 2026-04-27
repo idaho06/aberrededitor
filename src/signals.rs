@@ -38,6 +38,9 @@ pub const ACTION_VIEW_RESET_ZOOM: &str = "gui:action:view:reset_zoom";
 pub const ACTION_VIEW_TOGGLE_DEBUG: &str = "gui:action:view:toggle_debug";
 pub const ACTION_VIEW_PREVIEW_MAPDATA: &str = "gui:action:view:preview_mapdata";
 
+// ---- Entity menu actions ----
+pub const ACTION_ENTITY_ADD: &str = "gui:action:entity:add";
+
 // ---- Texture editor UI state ----
 pub const UI_TEXTURE_EDITOR_OPEN: &str = "ui:texture_editor:open";
 pub const TEX_ADD_KEY_BUF: &str = "gui:texture_editor:add_key_buf";

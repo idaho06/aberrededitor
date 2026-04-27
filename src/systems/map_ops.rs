@@ -22,7 +22,6 @@ use crate::systems::entity_selector::clear_selector_state;
 use crate::systems::utils::{sprite_to_entry, to_relative};
 
 pub const GROUP_TILES: &str = "tiles";
-const GROUP_TILES_TEMPLATES: &str = "tiles-templates";
 pub const GROUP_TILEMAP_ROOTS: &str = "tilemap-roots";
 
 // ---------------------------------------------------------------------------
@@ -45,13 +44,13 @@ pub struct SaveMapRequested {
 pub fn new_map_observer(
     _trigger: On<NewMapRequested>,
     mut commands: Commands,
-    groups: Query<(Entity, &Group)>,
+    map_entities: Query<Entity, With<MapEntity>>,
     mut world_signals: ResMut<WorldSignals>,
     mut app_state: ResMut<AppState>,
 ) {
     reset_editor_map(
         &mut commands,
-        &groups,
+        &map_entities,
         &mut world_signals,
         &mut app_state,
         MapData::default(),
@@ -62,7 +61,7 @@ pub fn new_map_observer(
 pub fn load_map_observer(
     trigger: On<LoadMapRequested>,
     mut commands: Commands,
-    groups: Query<(Entity, &Group)>,
+    map_entities: Query<Entity, With<MapEntity>>,
     mut world_signals: ResMut<WorldSignals>,
     mut app_state: ResMut<AppState>,
 ) {
@@ -76,7 +75,7 @@ pub fn load_map_observer(
     };
     reset_editor_map(
         &mut commands,
-        &groups,
+        &map_entities,
         &mut world_signals,
         &mut app_state,
         map.clone(),
@@ -180,12 +179,12 @@ pub fn save_map_observer(
 /// clears entity selector state. Called by both new-map and load-map paths.
 fn reset_editor_map(
     commands: &mut Commands,
-    groups: &Query<(Entity, &Group)>,
+    map_entities: &Query<Entity, With<MapEntity>>,
     world_signals: &mut WorldSignals,
     app_state: &mut AppState,
     map_data: MapData,
 ) {
-    clear_map_entities(commands, groups);
+    clear_map_entities(commands, map_entities);
     // Drop all user entity registrations; internal editor keys are retained.
     world_signals
         .entities
@@ -194,14 +193,9 @@ fn reset_editor_map(
     clear_selector_state(world_signals, app_state);
 }
 
-fn clear_map_entities(commands: &mut Commands, groups: &Query<(Entity, &Group)>) {
-    for (entity, group) in groups.iter() {
-        if group.name() == GROUP_TILES
-            || group.name() == GROUP_TILES_TEMPLATES
-            || group.name() == GROUP_TILEMAP_ROOTS
-        {
-            commands.entity(entity).despawn();
-        }
+fn clear_map_entities(commands: &mut Commands, map_entities: &Query<Entity, With<MapEntity>>) {
+    for entity in map_entities.iter() {
+        commands.entity(entity).despawn();
     }
 }
 

@@ -1,7 +1,7 @@
 use super::entity_inspector::InspectEntityRequested;
 use crate::editor_types::ComponentKind;
-use crate::systems::entity_selector::clear_selector_state;
-use crate::systems::utils::{tilemap_stem, tilemap_tex_path, sprite_to_entry};
+use crate::systems::entity_selector::{apply_selection, clear_selector_state};
+use crate::systems::utils::{entity_label, tilemap_stem, tilemap_tex_path, sprite_to_entry};
 use aberredengine::bevy_ecs;
 use aberredengine::bevy_ecs::hierarchy::{ChildOf, Children};
 use aberredengine::bevy_ecs::prelude::{Commands, Entity, Event, On, Query, Res, ResMut};
@@ -150,6 +150,12 @@ pub struct UnregisterEntityRequested {
 pub struct AddComponentRequested {
     pub entity: Entity,
     pub kind:   ComponentKind,
+}
+
+#[derive(Event)]
+pub struct CreateBlankEntityRequested {
+    pub x: f32,
+    pub y: f32,
 }
 
 macro_rules! component_edit_observer {
@@ -415,6 +421,32 @@ pub fn add_component_observer(
         entity.to_bits()
     );
     refresh_inspector(&mut commands, entity);
+}
+
+pub fn create_blank_entity_observer(
+    trigger: On<CreateBlankEntityRequested>,
+    mut commands: Commands,
+    mut world_signals: ResMut<WorldSignals>,
+    mut app_state: ResMut<AppState>,
+) {
+    let event = trigger.event();
+    let entity = commands
+        .spawn((MapEntity, MapPosition::new(event.x, event.y)))
+        .id();
+    apply_selection(
+        entity,
+        &entity_label(entity, None, None),
+        None,
+        &mut world_signals,
+        &mut app_state,
+        &mut commands,
+    );
+    debug!(
+        "create_blank_entity_observer: spawned entity {} at ({:.3}, {:.3})",
+        entity.to_bits(),
+        event.x,
+        event.y
+    );
 }
 
 fn refresh_inspector(commands: &mut Commands, entity: Entity) {
