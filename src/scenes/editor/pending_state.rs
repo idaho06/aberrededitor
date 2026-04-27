@@ -55,6 +55,9 @@ pub(crate) struct PendingEditState {
     pub anim_frame_index: Option<i32>,
     pub anim_elapsed:     Option<f32>,
     pub commit_animation: bool,
+    // Tint
+    pub tint_color:          Option<[f32; 4]>,
+    pub commit_tint:         bool,
     // Remove flags
     pub remove_map_position: bool,
     pub remove_z:            bool,
@@ -68,6 +71,7 @@ pub(crate) struct PendingEditState {
     pub remove_timer:        bool,
     pub remove_phase:        bool,
     pub remove_persistent:   bool,
+    pub remove_tint:         bool,
     pub remove_tilemap:        bool,
     pub bake_tilemap:          bool,
     pub select_tilemap_parent: bool,
@@ -102,6 +106,8 @@ impl PendingEditState {
             || self.remove_timer
             || self.remove_phase
             || self.remove_persistent
+            || self.commit_tint
+            || self.remove_tint
             || self.remove_tilemap
             || self.bake_tilemap
             || self.select_tilemap_parent

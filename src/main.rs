@@ -43,6 +43,8 @@ fn main() {
         .add_observer(systems::entity_edit::remove_timer_observer)
         .add_observer(systems::entity_edit::remove_phase_observer)
         .add_observer(systems::entity_edit::remove_persistent_observer)
+        .add_observer(systems::entity_edit::update_tint_observer)
+        .add_observer(systems::entity_edit::remove_tint_observer)
         .add_observer(systems::entity_edit::remove_tilemap_observer)
         .add_observer(systems::entity_edit::bake_tilemap_observer)
         .add_observer(systems::entity_edit::register_entity_observer)

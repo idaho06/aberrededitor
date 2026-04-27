@@ -16,6 +16,7 @@ pub enum ComponentKind {
     Animation,
     Ttl,
     Persistent,
+    Tint,
 }
 
 // ---------------------------------------------------------------------------
@@ -67,6 +68,14 @@ pub struct TimerSnapshot {
 }
 
 #[derive(Clone)]
+pub struct TintSnapshot {
+    pub r: u8,
+    pub g: u8,
+    pub b: u8,
+    pub a: u8,
+}
+
+#[derive(Clone)]
 pub struct PhaseSnapshot {
     pub current: String,
     pub previous: Option<String>,
@@ -95,4 +104,5 @@ pub struct ComponentSnapshot {
     pub tilemap_path: Option<String>,
     /// `u64` bits because `Entity` cannot cross the `AppState` boundary.
     pub tilemap_parent: Option<u64>,
+    pub tint: Option<TintSnapshot>,
 }

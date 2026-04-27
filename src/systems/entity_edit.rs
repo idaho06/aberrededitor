@@ -18,9 +18,10 @@ use aberredengine::components::scale::Scale;
 use aberredengine::components::sprite::Sprite;
 use aberredengine::components::tilemap::TileMap;
 use aberredengine::components::timer::Timer;
+use aberredengine::components::tint::Tint;
 use aberredengine::components::ttl::Ttl;
 use aberredengine::components::zindex::ZIndex;
-use aberredengine::raylib::prelude::Vector2;
+use aberredengine::raylib::prelude::{Color, Vector2};
 use aberredengine::resources::mapdata::{EntityDef, MapData, TextureEntry};
 use aberredengine::resources::texturestore::TextureStore;
 use aberredengine::resources::worldsignals::WorldSignals;
@@ -117,7 +118,18 @@ pub struct RemovePersistentRequested   { pub entity: Entity }
 #[derive(Event)]
 pub struct RemoveTileMapRequested      { pub entity: Entity }
 #[derive(Event)]
+pub struct RemoveTintRequested         { pub entity: Entity }
+#[derive(Event)]
 pub struct BakeTilemapRequested        { pub entity: Entity }
+
+#[derive(Event)]
+pub struct UpdateTintRequested {
+    pub entity: Entity,
+    pub r: u8,
+    pub g: u8,
+    pub b: u8,
+    pub a: u8,
+}
 
 #[derive(Event)]
 pub struct RegisterEntityRequested {
@@ -322,6 +334,25 @@ component_remove_observer!(remove_ttl_observer,          RemoveTtlRequested,    
 component_remove_observer!(remove_timer_observer,        RemoveTimerRequested,        Timer,       "Timer");
 component_remove_observer!(remove_phase_observer,        RemovePhaseRequested,        Phase,       "Phase");
 component_remove_observer!(remove_persistent_observer,   RemovePersistentRequested,   Persistent,  "Persistent");
+component_remove_observer!(remove_tint_observer,         RemoveTintRequested,         Tint,        "Tint");
+
+component_edit_observer!(
+    update_tint_observer,
+    UpdateTintRequested,
+    Tint,
+    "Tint",
+    |tint, event, entity| {
+        tint.color = Color::new(event.r, event.g, event.b, event.a);
+        debug!(
+            "update_tint_observer: updated entity {} tint -> ({}, {}, {}, {})",
+            entity.to_bits(),
+            event.r,
+            event.g,
+            event.b,
+            event.a
+        );
+    }
+);
 
 pub fn add_component_observer(
     trigger: On<AddComponentRequested>,
@@ -371,6 +402,9 @@ pub fn add_component_observer(
         }
         ComponentKind::Persistent => {
             commands.entity(entity).insert(Persistent);
+        }
+        ComponentKind::Tint => {
+            commands.entity(entity).insert(Tint::default());
         }
     }
     debug!(
@@ -487,6 +521,7 @@ pub fn bake_tilemap_observer(
                 sprite: sprite.map(sprite_to_entry),
                 tilemap_path: None,
                 registered_as: None,
+                tint: None,
             });
 
             commands

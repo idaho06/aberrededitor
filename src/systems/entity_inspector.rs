@@ -1,6 +1,6 @@
 use crate::editor_types::{
     AnimationSnapshot, ColliderSnapshot, ComponentSnapshot, PhaseSnapshot, SpriteSnapshot,
-    TimerSnapshot, TtlSnapshot,
+    TimerSnapshot, TintSnapshot, TtlSnapshot,
 };
 use crate::signals as sig;
 use aberredengine::bevy_ecs;
@@ -17,6 +17,7 @@ use aberredengine::components::scale::Scale;
 use aberredengine::components::sprite::Sprite;
 use aberredengine::components::tilemap::TileMap;
 use aberredengine::components::timer::Timer;
+use aberredengine::components::tint::Tint;
 use aberredengine::components::ttl::Ttl;
 use aberredengine::components::zindex::ZIndex;
 use aberredengine::resources::appstate::AppState;
@@ -53,13 +54,14 @@ pub fn entity_inspect_observer(
         Option<&Persistent>,
         Option<&TileMap>,
         Option<&ChildOf>,
+        Option<&Tint>,
     )>,
     tilemap_roots: Query<(), With<TileMap>>,
     mut signals: ResMut<WorldSignals>,
     mut app_state: ResMut<AppState>,
 ) {
     let entity = trigger.event().entity;
-    let Ok((pos, z, sprite, collider, group, rot, scale, animation, ttl, timer, phase, persistent, tilemap, child_of)) =
+    let Ok((pos, z, sprite, collider, group, rot, scale, animation, ttl, timer, phase, persistent, tilemap, child_of, tint)) =
         query.get(entity)
     else {
         return;
@@ -121,6 +123,12 @@ pub fn entity_inspect_observer(
         tilemap_path: tilemap.map(|t| t.path.clone()),
         tilemap_parent: child_of.and_then(|c| {
             tilemap_roots.get(c.0).ok().map(|_| c.0.to_bits())
+        }),
+        tint: tint.map(|t| TintSnapshot {
+            r: t.color.r,
+            g: t.color.g,
+            b: t.color.b,
+            a: t.color.a,
         }),
     };
 

@@ -7,10 +7,11 @@ use crate::systems::entity_edit::{
     RemoveAnimationRequested, RemoveBoxColliderRequested, RemoveGroupRequested,
     RemoveMapPositionRequested, RemovePhaseRequested, RemovePersistentRequested,
     RemoveRotationRequested, RemoveScaleRequested, RemoveSpriteRequested,
-    RemoveTileMapRequested, RemoveTimerRequested, RemoveTtlRequested, RemoveZIndexRequested,
-    UnregisterEntityRequested, UpdateAnimationRequested, UpdateBoxColliderRequested,
-    UpdateGroupRequested, UpdateMapPositionRequested, UpdateRotationRequested,
-    UpdateScaleRequested, UpdateSpriteRequested, UpdateZIndexRequested,
+    RemoveTileMapRequested, RemoveTimerRequested, RemoveTintRequested, RemoveTtlRequested,
+    RemoveZIndexRequested, UnregisterEntityRequested, UpdateAnimationRequested,
+    UpdateBoxColliderRequested, UpdateGroupRequested, UpdateMapPositionRequested,
+    UpdateRotationRequested, UpdateScaleRequested, UpdateSpriteRequested, UpdateTintRequested,
+    UpdateZIndexRequested,
 };
 use crate::systems::entity_inspector::InspectEntityRequested;
 use aberredengine::bevy_ecs::prelude::Entity;
@@ -83,6 +84,11 @@ pub(super) fn consume_entity_editor_commits(ctx: &mut GameCtx) {
     if p.remove_timer      { ctx.commands.trigger(RemoveTimerRequested      { entity }); }
     if p.remove_phase      { ctx.commands.trigger(RemovePhaseRequested      { entity }); }
     if p.remove_persistent { ctx.commands.trigger(RemovePersistentRequested { entity }); }
+    if p.remove_tint {
+        ctx.commands.trigger(RemoveTintRequested { entity });
+    } else if p.commit_tint {
+        consume_tint_commit(ctx, entity, &snapshot, &p);
+    }
     if p.remove_tilemap    { ctx.commands.trigger(RemoveTileMapRequested    { entity }); }
     if p.bake_tilemap      { ctx.commands.trigger(BakeTilemapRequested      { entity }); }
     if p.select_tilemap_parent
@@ -307,4 +313,33 @@ fn selected_entity_and_snapshot(
     let entity = signals.get_entity(sig::ES_SELECTED_ENTITY).copied()?;
     let snapshot = app_state.get::<ComponentSnapshot>()?.clone();
     (snapshot.entity_bits == entity.to_bits()).then_some((entity, snapshot))
+}
+
+fn consume_tint_commit(
+    ctx: &mut GameCtx,
+    entity: Entity,
+    snapshot: &ComponentSnapshot,
+    p: &PendingEditState,
+) {
+    let Some(ref tint) = snapshot.tint else {
+        warn!(
+            "consume_tint_commit: snapshot missing Tint for entity {}",
+            entity.to_bits()
+        );
+        return;
+    };
+    let base = [
+        tint.r as f32 / 255.0,
+        tint.g as f32 / 255.0,
+        tint.b as f32 / 255.0,
+        tint.a as f32 / 255.0,
+    ];
+    let [r, g, b, a] = p.tint_color.unwrap_or(base);
+    ctx.commands.trigger(UpdateTintRequested {
+        entity,
+        r: (r * 255.0).round() as u8,
+        g: (g * 255.0).round() as u8,
+        b: (b * 255.0).round() as u8,
+        a: (a * 255.0).round() as u8,
+    });
 }

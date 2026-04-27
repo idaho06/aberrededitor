@@ -7,6 +7,7 @@ use aberredengine::components::rotation::Rotation;
 use aberredengine::components::scale::Scale;
 use aberredengine::components::sprite::Sprite;
 use aberredengine::components::tilemap::TileMap;
+use aberredengine::components::tint::Tint;
 use aberredengine::components::zindex::ZIndex;
 use aberredengine::events::spawnmap::SpawnMapRequested;
 use aberredengine::resources::appstate::AppState;
@@ -102,6 +103,7 @@ type MapEntitiesQuery<'w, 's> = Query<
         Option<&'static Rotation>,
         Option<&'static Scale>,
         Option<&'static Sprite>,
+        Option<&'static Tint>,
     ),
     With<MapEntity>,
 >;
@@ -119,11 +121,13 @@ fn sync_map_entities(map_data: &mut MapData, entities: &MapEntitiesQuery, world_
         .map(|(k, e)| (*e, k.as_str()))
         .collect();
 
-    for (entity, tilemap, pos, z, group, rot, scale, sprite) in entities.iter() {
+    for (entity, tilemap, pos, z, group, rot, scale, sprite, tint) in entities.iter() {
         let registered_as = user_keys
             .iter()
             .find(|(e, _)| *e == entity)
             .map(|(_, k)| k.to_string());
+
+        let tint_arr = tint.map(|t| [t.color.r, t.color.g, t.color.b, t.color.a]);
 
         if let Some(tilemap) = tilemap {
             let path = to_relative(&tilemap.path);
@@ -138,6 +142,7 @@ fn sync_map_entities(map_data: &mut MapData, entities: &MapEntitiesQuery, world_
                 def.rotation_deg = rot.map(|r| r.degrees);
                 def.scale = scale.map(|s| [s.scale.x, s.scale.y]);
                 def.registered_as = registered_as;
+                def.tint = tint_arr;
             }
         } else {
             map_data.entities.push(EntityDef {
@@ -149,6 +154,7 @@ fn sync_map_entities(map_data: &mut MapData, entities: &MapEntitiesQuery, world_
                 sprite: sprite.map(sprite_to_entry),
                 tilemap_path: None,
                 registered_as,
+                tint: tint_arr,
             });
         }
     }

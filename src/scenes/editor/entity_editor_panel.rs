@@ -86,6 +86,7 @@ pub(super) fn draw_entity_editor(
                 (snap.animation.is_none(),    "Animation",   ComponentKind::Animation),
                 (snap.ttl.is_none(),          "Ttl",         ComponentKind::Ttl),
                 (!snap.persistent,            "Persistent",  ComponentKind::Persistent),
+                (snap.tint.is_none(),         "Tint",        ComponentKind::Tint),
             ]
             .into_iter()
             .filter_map(|(absent, label, kind)| absent.then_some((label, kind)))
@@ -339,6 +340,23 @@ pub(super) fn draw_entity_editor(
                 ui.same_line();
                 if ui.button("Del##tilemap") { p.remove_tilemap = true; }
                 ui.group(|| ui.text_disabled(format!("  path: {}", path)));
+            }
+            if let Some(ref tint_snap) = snap.tint {
+                ui.separator();
+                ui.text("Tint");
+                ui.same_line();
+                if ui.button("Del##tint") { p.remove_tint = true; }
+                let mut color = p.tint_color.unwrap_or([
+                    tint_snap.r as f32 / 255.0,
+                    tint_snap.g as f32 / 255.0,
+                    tint_snap.b as f32 / 255.0,
+                    tint_snap.a as f32 / 255.0,
+                ]);
+                ui.color_edit4("##tint_color", &mut color);
+                if ui.is_item_deactivated_after_edit() {
+                    p.tint_color = Some(color);
+                    p.commit_tint = true;
+                }
             }
 
             });
