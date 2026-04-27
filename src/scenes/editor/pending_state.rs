@@ -72,6 +72,7 @@ pub(crate) struct PendingEditState {
     pub remove_phase:        bool,
     pub remove_persistent:   bool,
     pub remove_tint:         bool,
+    pub remove_entity:       bool,
     pub remove_tilemap:        bool,
     pub bake_tilemap:          bool,
     pub select_tilemap_parent: bool,
@@ -108,6 +109,7 @@ impl PendingEditState {
             || self.remove_persistent
             || self.commit_tint
             || self.remove_tint
+            || self.remove_entity
             || self.remove_tilemap
             || self.bake_tilemap
             || self.select_tilemap_parent

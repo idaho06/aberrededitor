@@ -1,4 +1,4 @@
-use super::entity_editor_panel::draw_entity_editor;
+use super::entity_editor_panel::{draw_entity_delete_modal, draw_entity_editor};
 use super::entity_registry_panel::draw_entity_registry;
 use super::entity_selector_panel::draw_entity_selector;
 use super::groups_panel::draw_groups_window;
@@ -95,7 +95,7 @@ pub fn editor_gui(
     draw_groups_window(ui, signals, app_state);
     draw_entity_registry(ui, signals);
     draw_entity_selector(ui, signals, app_state);
-    draw_entity_editor(ui, signals, textures, app_state);
+    let open_delete_popup = draw_entity_editor(ui, signals, textures, app_state);
     draw_template_browser(ui, signals, app_state);
 
     if open_rename_popup {
@@ -107,9 +107,13 @@ pub fn editor_gui(
     if open_about {
         ui.open_popup("About");
     }
+    if open_delete_popup {
+        ui.open_popup("Delete Entity##entity_editor");
+    }
 
     draw_texture_modals(ui, signals);
     draw_about_modal(ui);
+    draw_entity_delete_modal(ui, app_state);
     draw_selection_outline(ui, signals, app_state);
 }
 

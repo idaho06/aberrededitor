@@ -12,15 +12,16 @@ pub(super) fn draw_entity_editor(
     signals: &mut WorldSignals,
     textures: &TextureStore,
     app_state: &AppState,
-) {
+) -> bool {
     if !signals.has_flag(sig::UI_ENTITY_EDITOR_OPEN) {
-        return;
+        return false;
     }
 
     let Some(mutex) = app_state.get::<PendingMutex>() else {
-        return;
+        return false;
     };
 
+    let mut open_delete_popup = false;
     let mut window_open = true;
     ui.window("Entity Inspector")
         .size([380.0, 420.0], imgui::Condition::FirstUseEver)
@@ -32,6 +33,11 @@ pub(super) fn draw_entity_editor(
             };
 
             ui.text(format!("Entity #{}", snap.entity_bits & 0xFFFF_FFFF));
+            ui.separator();
+
+            if ui.button("Delete Entity") {
+                open_delete_popup = true;
+            }
             ui.separator();
 
             let mut p = mutex.lock().unwrap();
@@ -365,4 +371,36 @@ pub(super) fn draw_entity_editor(
     if !window_open {
         signals.take_flag(sig::UI_ENTITY_EDITOR_OPEN);
     }
+    open_delete_popup
+}
+
+pub(super) fn draw_entity_delete_modal(ui: &imgui::Ui, app_state: &AppState) {
+    let entity_id = app_state
+        .get::<ComponentSnapshot>()
+        .map(|s| s.entity_bits & 0xFFFF_FFFF)
+        .unwrap_or(0);
+
+    ui.modal_popup_config("Delete Entity##entity_editor")
+        .always_auto_resize(true)
+        .resizable(false)
+        .movable(false)
+        .build(|| {
+            ui.text(format!(
+                "Are you sure you want to despawn entity #{}?",
+                entity_id
+            ));
+            ui.spacing();
+            ui.separator();
+            if ui.button("Yes##delete_yes") {
+                if let Some(mutex) = app_state.get::<PendingMutex>() {
+                    let mut p = mutex.lock().unwrap();
+                    p.remove_entity = true;
+                }
+                ui.close_current_popup();
+            }
+            ui.same_line();
+            if ui.button("No##delete_no") {
+                ui.close_current_popup();
+            }
+        });
 }

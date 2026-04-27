@@ -120,6 +120,8 @@ pub struct RemoveTileMapRequested      { pub entity: Entity }
 #[derive(Event)]
 pub struct RemoveTintRequested         { pub entity: Entity }
 #[derive(Event)]
+pub struct RemoveEntityRequested       { pub entity: Entity }
+#[derive(Event)]
 pub struct BakeTilemapRequested        { pub entity: Entity }
 
 #[derive(Event)]
@@ -469,6 +471,18 @@ pub fn remove_tilemap_observer(
         );
     }
 
+    remove_entity_registrations(&mut world_signals, entity);
+    commands.entity(entity).despawn();
+    clear_selector_state(&mut world_signals, &mut app_state);
+}
+
+pub fn remove_entity_observer(
+    trigger: On<RemoveEntityRequested>,
+    mut commands: Commands,
+    mut world_signals: ResMut<WorldSignals>,
+    mut app_state: ResMut<AppState>,
+) {
+    let entity = trigger.event().entity;
     remove_entity_registrations(&mut world_signals, entity);
     commands.entity(entity).despawn();
     clear_selector_state(&mut world_signals, &mut app_state);
