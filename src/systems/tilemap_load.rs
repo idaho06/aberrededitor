@@ -1,6 +1,7 @@
 use aberredengine::bevy_ecs;
 use aberredengine::bevy_ecs::hierarchy::ChildOf;
 use aberredengine::bevy_ecs::prelude::{Added, Commands, Entity, Event, On, Query, ResMut, Without};
+use aberredengine::components::cameratarget::CameraTarget;
 use aberredengine::components::group::Group;
 use aberredengine::components::mapposition::MapPosition;
 use aberredengine::components::tilemap::TileMap;
@@ -51,7 +52,7 @@ pub fn tilemap_load_observer(
 /// these are baked tile entities being re-spawned from a saved map file.
 /// The engine's spawn_entity has no way to insert MapEntity directly.
 type PlainMapPositionQuery<'w, 's> =
-    Query<'w, 's, Entity, (Added<MapPosition>, Without<TileMap>, Without<ChildOf>)>;
+    Query<'w, 's, Entity, (Added<MapPosition>, Without<TileMap>, Without<ChildOf>, Without<CameraTarget>)>;
 
 pub fn tag_plain_map_entities(
     query: PlainMapPositionQuery,
