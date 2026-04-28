@@ -158,6 +158,13 @@ pub struct CreateBlankEntityRequested {
     pub y: f32,
 }
 
+#[derive(Event)]
+pub struct CloneEntityRequested {
+    pub entity: Entity,
+    pub x: f32,
+    pub y: f32,
+}
+
 macro_rules! component_edit_observer {
     (
         $fn_name:ident,
@@ -444,6 +451,36 @@ pub fn create_blank_entity_observer(
     debug!(
         "create_blank_entity_observer: spawned entity {} at ({:.3}, {:.3})",
         entity.to_bits(),
+        event.x,
+        event.y
+    );
+}
+
+pub fn clone_entity_observer(
+    trigger: On<CloneEntityRequested>,
+    mut commands: Commands,
+    source_query: Query<(Option<&Group>, Option<&Persistent>)>,
+    mut world_signals: ResMut<WorldSignals>,
+    mut app_state: ResMut<AppState>,
+) {
+    let event = trigger.event();
+    let mut src = commands.entity(event.entity);
+    let mut ec = src.clone_and_spawn();
+    ec.insert(MapPosition::new(event.x, event.y));
+    let cloned = ec.id();
+    let (group, persistent) = source_query.get(event.entity).unwrap_or((None, None));
+    apply_selection(
+        cloned,
+        &entity_label(cloned, group, persistent),
+        None,
+        &mut world_signals,
+        &mut app_state,
+        &mut commands,
+    );
+    debug!(
+        "clone_entity_observer: cloned entity {} → {} at ({:.3}, {:.3})",
+        event.entity.to_bits(),
+        cloned.to_bits(),
         event.x,
         event.y
     );

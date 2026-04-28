@@ -3,7 +3,7 @@ use super::state::clear_entity_editor_pending;
 use crate::editor_types::ComponentSnapshot;
 use crate::signals as sig;
 use crate::systems::entity_edit::{
-    AddComponentRequested, BakeTilemapRequested, RegisterEntityRequested,
+    AddComponentRequested, BakeTilemapRequested, CloneEntityRequested, RegisterEntityRequested,
     RemoveAnimationRequested, RemoveBoxColliderRequested, RemoveEntityRequested,
     RemoveGroupRequested, RemoveMapPositionRequested, RemovePhaseRequested,
     RemovePersistentRequested, RemoveRotationRequested, RemoveScaleRequested,
@@ -42,6 +42,14 @@ pub(super) fn consume_entity_editor_commits(ctx: &mut GameCtx) {
 
     if p.remove_entity {
         ctx.commands.trigger(RemoveEntityRequested { entity });
+        clear_entity_editor_pending(&ctx.app_state);
+        return;
+    }
+
+    if p.clone_entity {
+        let x = ctx.world_signals.get_scalar(sig::CAM_TARGET_X).unwrap_or(0.0);
+        let y = ctx.world_signals.get_scalar(sig::CAM_TARGET_Y).unwrap_or(0.0);
+        ctx.commands.trigger(CloneEntityRequested { entity, x, y });
         clear_entity_editor_pending(&ctx.app_state);
         return;
     }

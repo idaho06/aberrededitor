@@ -35,6 +35,10 @@ pub(super) fn draw_entity_editor(
             ui.text(format!("Entity #{}", snap.entity_bits & 0xFFFF_FFFF));
             ui.separator();
 
+            if ui.button("Clone Entity") {
+                mutex.lock().unwrap().clone_entity = true;
+            }
+            ui.same_line();
             if ui.button("Delete Entity") {
                 open_delete_popup = true;
             }
