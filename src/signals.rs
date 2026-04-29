@@ -53,6 +53,17 @@ pub const ACTION_TEXTURE_ADD_BROWSE: &str = "gui:action:texture:add_browse";
 pub const ACTION_TEXTURE_RENAME: &str = "gui:action:texture:rename";
 pub const ACTION_TEXTURE_REMOVE: &str = "gui:action:texture:remove";
 
+// ---- Font store editor ----
+pub const UI_FONT_STORE_OPEN: &str = "ui:font_store:open";
+pub const FONT_ADD_KEY_BUF: &str = "gui:font_store:add_key_buf";
+pub const FONT_ADD_SIZE_BUF: &str = "gui:font_store:add_size_buf";
+pub const FONT_RENAME_SRC: &str = "gui:font_store:rename_src";
+pub const FONT_RENAME_BUF: &str = "gui:font_store:rename_buf";
+pub const FONT_REMOVE_KEY: &str = "gui:font_store:remove_key";
+pub const ACTION_FONT_ADD_BROWSE: &str = "gui:action:font:add_browse";
+pub const ACTION_FONT_RENAME: &str = "gui:action:font:rename";
+pub const ACTION_FONT_REMOVE: &str = "gui:action:font:remove";
+
 // ---- Map data preview ----
 pub const MAPDATA_PREVIEW_JSON: &str = "gui:mapdata_preview_json";
 pub const UI_PREVIEW_MAPDATA_OPEN: &str = "gui:view:preview_mapdata_open";

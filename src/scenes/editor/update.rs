@@ -7,6 +7,7 @@ use super::template_browser_panel::draw_template_browser;
 use super::overlay::draw_selection_outline;
 use super::commit::consume_entity_editor_commits;
 use super::texture_panel::{draw_texture_editor, draw_texture_modals};
+use super::font_panel::{draw_font_editor, draw_font_modals};
 use crate::signals as sig;
 use crate::systems::entity_edit::CreateBlankEntityRequested;
 use crate::systems::entity_selector::SelectGroupRequested;
@@ -24,6 +25,7 @@ use aberredengine::events::switchdebug::SwitchDebugEvent;
 use aberredengine::imgui;
 use aberredengine::resources::appstate::AppState;
 use aberredengine::resources::input::InputState;
+use aberredengine::resources::fontstore::FontStore;
 use aberredengine::resources::texturestore::TextureStore;
 use aberredengine::resources::worldsignals::WorldSignals;
 use aberredengine::systems::GameCtx;
@@ -70,6 +72,7 @@ pub fn editor_update(ctx: &mut GameCtx, _dt: f32, input: &InputState) {
     handle_entity_actions(ctx);
     handle_file_actions(ctx);
     handle_texture_actions(ctx);
+    handle_font_actions(ctx);
     handle_view_actions(ctx);
 }
 
@@ -77,6 +80,7 @@ pub fn editor_gui(
     ui: &imgui::Ui,
     signals: &mut WorldSignals,
     textures: &TextureStore,
+    fonts: &FontStore,
     app_state: &AppState,
 ) {
     // Publish ImGui mouse-capture state so editor_update can suppress world picks next frame.
@@ -93,6 +97,7 @@ pub fn editor_gui(
 
     let open_about = draw_menu_bar(ui, signals);
     let (open_rename_popup, open_remove_popup) = draw_texture_editor(ui, signals, textures);
+    let (open_font_rename, open_font_remove) = draw_font_editor(ui, signals, fonts);
     draw_map_preview(ui, signals);
     draw_groups_window(ui, signals, app_state);
     draw_entity_registry(ui, signals);
@@ -106,6 +111,12 @@ pub fn editor_gui(
     if open_remove_popup {
         ui.open_popup("Remove Texture##texture_editor");
     }
+    if open_font_rename {
+        ui.open_popup("Rename Key##font_store");
+    }
+    if open_font_remove {
+        ui.open_popup("Remove Font##font_store");
+    }
     if open_about {
         ui.open_popup("About");
     }
@@ -114,6 +125,7 @@ pub fn editor_gui(
     }
 
     draw_texture_modals(ui, signals);
+    draw_font_modals(ui, signals);
     draw_about_modal(ui);
     draw_entity_delete_modal(ui, app_state);
     draw_selection_outline(ui, signals, app_state);
@@ -214,6 +226,57 @@ fn handle_texture_actions(ctx: &mut GameCtx) {
             ctx.commands.trigger(AddTextureRequested {
                 key,
                 path: to_relative(&path.display().to_string()),
+            });
+        }
+    }
+}
+
+fn handle_font_actions(ctx: &mut GameCtx) {
+    use crate::systems::map_ops::{AddFontRequested, RenameFontKeyRequested, RemoveFontRequested};
+
+    if ctx.world_signals.take_flag(sig::ACTION_FONT_RENAME) {
+        let old_key = ctx
+            .world_signals
+            .get_string(sig::FONT_RENAME_SRC)
+            .map(|s| s.to_owned());
+        let new_key = ctx
+            .world_signals
+            .get_string(sig::FONT_RENAME_BUF)
+            .map(|s| s.to_owned());
+        if let (Some(old_key), Some(new_key)) = (old_key, new_key) {
+            ctx.commands
+                .trigger(RenameFontKeyRequested { old_key, new_key });
+        }
+    }
+
+    if ctx.world_signals.take_flag(sig::ACTION_FONT_REMOVE)
+        && let Some(key) = ctx
+            .world_signals
+            .get_string(sig::FONT_REMOVE_KEY)
+            .map(|s| s.to_owned())
+    {
+        ctx.commands.trigger(RemoveFontRequested { key });
+    }
+
+    if ctx.world_signals.take_flag(sig::ACTION_FONT_ADD_BROWSE) {
+        let key = ctx
+            .world_signals
+            .get_string(sig::FONT_ADD_KEY_BUF)
+            .map(|s| s.to_owned())
+            .unwrap_or_default();
+        let font_size = ctx
+            .world_signals
+            .get_scalar(sig::FONT_ADD_SIZE_BUF)
+            .unwrap_or(32.0);
+        if !key.is_empty()
+            && let Some(path) = rfd::FileDialog::new()
+                .add_filter("Font", &["ttf", "otf"])
+                .pick_file()
+        {
+            ctx.commands.trigger(AddFontRequested {
+                key,
+                path: to_relative(&path.display().to_string()),
+                font_size,
             });
         }
     }

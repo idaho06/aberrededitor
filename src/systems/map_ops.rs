@@ -1,6 +1,6 @@
 use crate::signals as sig;
 use aberredengine::bevy_ecs;
-use aberredengine::bevy_ecs::prelude::{Commands, Entity, Event, On, Query, Res, ResMut, With};
+use aberredengine::bevy_ecs::prelude::{Commands, Entity, Event, NonSendMut, On, Query, Res, ResMut, With};
 use aberredengine::components::group::Group;
 use aberredengine::components::mapposition::MapPosition;
 use aberredengine::components::rotation::Rotation;
@@ -11,7 +11,9 @@ use aberredengine::components::tint::Tint;
 use aberredengine::components::zindex::ZIndex;
 use aberredengine::events::spawnmap::SpawnMapRequested;
 use aberredengine::resources::appstate::AppState;
-use aberredengine::resources::mapdata::{EntityDef, MapData, TextureEntry, load_map, save_map};
+use aberredengine::resources::fontstore::FontStore;
+use aberredengine::resources::mapdata::{EntityDef, FontEntry, MapData, TextureEntry, load_map, save_map};
+use aberredengine::systems::mapspawn::load_font_with_mipmaps;
 use aberredengine::resources::texturestore::TextureStore;
 use aberredengine::resources::worldsignals::WorldSignals;
 use aberredengine::systems::RaylibAccess;
@@ -47,7 +49,12 @@ pub fn new_map_observer(
     map_entities: Query<Entity, With<MapEntity>>,
     mut world_signals: ResMut<WorldSignals>,
     mut app_state: ResMut<AppState>,
+    mut texture_store: ResMut<TextureStore>,
+    mut font_store: NonSendMut<FontStore>,
 ) {
+    texture_store.map.clear();
+    texture_store.paths.clear();
+    font_store.clear();
     reset_editor_map(
         &mut commands,
         &map_entities,
@@ -64,6 +71,8 @@ pub fn load_map_observer(
     map_entities: Query<Entity, With<MapEntity>>,
     mut world_signals: ResMut<WorldSignals>,
     mut app_state: ResMut<AppState>,
+    mut texture_store: ResMut<TextureStore>,
+    mut font_store: NonSendMut<FontStore>,
 ) {
     let path = &trigger.event().path;
     let map = match load_map(path) {
@@ -73,6 +82,9 @@ pub fn load_map_observer(
             return;
         }
     };
+    texture_store.map.clear();
+    texture_store.paths.clear();
+    font_store.clear();
     reset_editor_map(
         &mut commands,
         &map_entities,
@@ -84,6 +96,13 @@ pub fn load_map_observer(
         commands.trigger(AddTextureRequested {
             key: tex.key.clone(),
             path: tex.path.clone(),
+        });
+    }
+    for font in &map.fonts {
+        commands.trigger(AddFontRequested {
+            key: font.key.clone(),
+            path: font.path.clone(),
+            font_size: font.font_size,
         });
     }
     commands.trigger(SpawnMapRequested { map });
@@ -301,6 +320,85 @@ pub fn remove_texture_observer(
     texture_store.paths.remove(key.as_str());
     map_data.textures.retain(|e| e.key != *key);
     info!("remove_texture_observer: removed '{}'", key);
+}
+
+// ---------------------------------------------------------------------------
+// Font store events
+// ---------------------------------------------------------------------------
+
+#[derive(Event)]
+pub struct AddFontRequested {
+    pub key: String,
+    pub path: String,
+    pub font_size: f32,
+}
+
+#[derive(Event)]
+pub struct RenameFontKeyRequested {
+    pub old_key: String,
+    pub new_key: String,
+}
+
+#[derive(Event)]
+pub struct RemoveFontRequested {
+    pub key: String,
+}
+
+pub fn add_font_observer(
+    trigger: On<AddFontRequested>,
+    mut raylib: RaylibAccess,
+    mut font_store: NonSendMut<FontStore>,
+    mut map_data: ResMut<MapData>,
+) {
+    let key = &trigger.event().key;
+    let path = &trigger.event().path;
+    let font_size = trigger.event().font_size;
+    if font_store.meta.contains_key(key.as_str()) {
+        return;
+    }
+    let (rl, th) = (&mut *raylib.rl, &*raylib.th);
+    let font = load_font_with_mipmaps(rl, th, path, font_size as i32);
+    info!("add_font_observer: added '{}' from '{}'", key, path);
+    font_store.add_with_meta(key, font, path.clone(), font_size);
+    if !map_data.fonts.iter().any(|e| e.key == *key) {
+        map_data.fonts.push(FontEntry {
+            key: key.clone(),
+            path: path.clone(),
+            font_size,
+        });
+    }
+}
+
+pub fn rename_font_key_observer(
+    trigger: On<RenameFontKeyRequested>,
+    mut font_store: NonSendMut<FontStore>,
+    mut map_data: ResMut<MapData>,
+) {
+    let old_key = &trigger.event().old_key;
+    let new_key = &trigger.event().new_key;
+    if old_key == new_key {
+        return;
+    }
+    if font_store.meta.contains_key(new_key.as_str()) {
+        warn!("rename_font_key_observer: key '{}' already exists, skipping", new_key);
+        return;
+    }
+    font_store.rename(old_key.as_str(), new_key.clone());
+    if let Some(entry) = map_data.fonts.iter_mut().find(|e| e.key == *old_key) {
+        entry.key = new_key.clone();
+    }
+    info!("rename_font_key_observer: '{}' -> '{}'", old_key, new_key);
+}
+
+pub fn remove_font_observer(
+    trigger: On<RemoveFontRequested>,
+    mut font_store: NonSendMut<FontStore>,
+    mut map_data: ResMut<MapData>,
+) {
+    let key = &trigger.event().key;
+    font_store.remove(key.as_str());
+    map_data.fonts.retain(|e| e.key != *key);
+    info!("remove_font_observer: removed '{}'", key);
 }
 
 // ---------------------------------------------------------------------------
