@@ -25,8 +25,12 @@ pub type TemplateSelectorMutex = std::sync::Mutex<TemplateSelectorCache>;
 // Per-frame system
 // ---------------------------------------------------------------------------
 
-type TemplateQuery<'w, 's> =
-    Query<'w, 's, (Entity, Option<&'static Group>, Option<&'static Persistent>), Or<(Without<MapPosition>, Without<ZIndex>)>>;
+type TemplateQuery<'w, 's> = Query<
+    'w,
+    's,
+    (Entity, Option<&'static Group>, Option<&'static Persistent>),
+    Or<(Without<MapPosition>, Without<ZIndex>)>,
+>;
 
 pub fn update_template_cache(
     app_state: ResMut<AppState>,

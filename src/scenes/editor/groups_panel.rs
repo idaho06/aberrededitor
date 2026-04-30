@@ -5,11 +5,7 @@ use aberredengine::imgui;
 use aberredengine::resources::appstate::AppState;
 use aberredengine::resources::worldsignals::WorldSignals;
 
-pub(super) fn draw_groups_window(
-    ui: &imgui::Ui,
-    signals: &mut WorldSignals,
-    app_state: &AppState,
-) {
+pub(super) fn draw_groups_window(ui: &imgui::Ui, signals: &mut WorldSignals, app_state: &AppState) {
     if !signals.has_flag(sig::UI_GROUPS_WINDOW_OPEN) {
         return;
     }
@@ -38,7 +34,8 @@ pub(super) fn draw_groups_window(
                 ui.text_disabled("No grouped entities found.");
             } else {
                 for (index, entry) in entries.iter().enumerate() {
-                    let row_text = format!("{} ({})", display_group_name(&entry.raw_name), entry.count);
+                    let row_text =
+                        format!("{} ({})", display_group_name(&entry.raw_name), entry.count);
                     let _id = ui.push_id_usize(index);
                     if ui.selectable_config(&row_text).build() {
                         selected_group = Some(entry.raw_name.clone());

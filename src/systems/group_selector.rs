@@ -1,5 +1,5 @@
 use crate::signals as sig;
-use aberredengine::bevy_ecs::prelude::{Added, Changed, Or, Query, Res, ResMut, RemovedComponents};
+use aberredengine::bevy_ecs::prelude::{Added, Changed, Or, Query, RemovedComponents, Res, ResMut};
 use aberredengine::components::group::Group;
 use aberredengine::resources::appstate::AppState;
 use aberredengine::resources::worldsignals::WorldSignals;
@@ -20,7 +20,10 @@ pub struct GroupListCache {
 
 impl Default for GroupListCache {
     fn default() -> Self {
-        Self { entries: Vec::new(), dirty: true }
+        Self {
+            entries: Vec::new(),
+            dirty: true,
+        }
     }
 }
 
@@ -61,7 +64,11 @@ pub fn update_group_cache(
     }
 
     cache.entries.clear();
-    cache.entries.extend(counts.into_iter().map(|(raw_name, count)| GroupEntry { raw_name, count }));
+    cache.entries.extend(
+        counts
+            .into_iter()
+            .map(|(raw_name, count)| GroupEntry { raw_name, count }),
+    );
     cache.entries.sort_by(|a, b| {
         display_group_name(&a.raw_name)
             .cmp(display_group_name(&b.raw_name))

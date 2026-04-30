@@ -47,11 +47,17 @@ pub fn sync_render_size_to_window(
     }
 
     let (rl, th) = (&mut *raylib.rl, &*raylib.th);
-    if render_target.recreate(rl, th, new_width, new_height).is_err() {
+    if render_target
+        .recreate(rl, th, new_width, new_height)
+        .is_err()
+    {
         return;
     }
 
-    debug!("sync_render_size_to_window: resized render target to {}x{}", new_width, new_height);
+    debug!(
+        "sync_render_size_to_window: resized render target to {}x{}",
+        new_width, new_height
+    );
 
     screen_size.w = new_width as i32;
     screen_size.h = new_height as i32;

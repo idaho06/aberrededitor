@@ -1,6 +1,9 @@
+use crate::components::serialized_lua_setup::SerializedLuaSetup;
 use crate::signals as sig;
 use aberredengine::bevy_ecs;
-use aberredengine::bevy_ecs::prelude::{Commands, Entity, Event, NonSendMut, On, Query, Res, ResMut, With};
+use aberredengine::bevy_ecs::prelude::{
+    Commands, Entity, Event, NonSendMut, On, Query, Res, ResMut, With,
+};
 use aberredengine::components::group::Group;
 use aberredengine::components::mapposition::MapPosition;
 use aberredengine::components::rotation::Rotation;
@@ -9,18 +12,22 @@ use aberredengine::components::sprite::Sprite;
 use aberredengine::components::tilemap::TileMap;
 use aberredengine::components::tint::Tint;
 use aberredengine::components::zindex::ZIndex;
+use aberredengine::components::dynamictext::DynamicText;
 use aberredengine::events::spawnmap::SpawnMapRequested;
 use aberredengine::resources::appstate::AppState;
 use aberredengine::resources::fontstore::FontStore;
-use aberredengine::resources::mapdata::{EntityDef, FontEntry, MapData, TextureEntry, load_map, save_map};
-use aberredengine::systems::mapspawn::load_font_with_mipmaps;
+use aberredengine::resources::mapdata::{
+    DynamicTextEntry, EntityDef, FontEntry, MapData, TextureEntry, load_map, save_map,
+};
 use aberredengine::resources::texturestore::TextureStore;
 use aberredengine::resources::worldsignals::WorldSignals;
 use aberredengine::systems::RaylibAccess;
+use aberredengine::systems::mapspawn::load_font_with_mipmaps;
 use log::{info, warn};
 
 use crate::components::map_entity::MapEntity;
 use crate::systems::entity_selector::clear_selector_state;
+use crate::systems::tilemap_load::PendingLuaSetupLoadMutex;
 use crate::systems::utils::{sprite_to_entry, to_relative};
 
 pub const GROUP_TILES: &str = "tiles";
@@ -92,6 +99,9 @@ pub fn load_map_observer(
         &mut app_state,
         map.clone(),
     );
+    if let Some(mutex) = app_state.get::<PendingLuaSetupLoadMutex>() {
+        mutex.lock().unwrap().reset_from_map(&map);
+    }
     for tex in &map.textures {
         commands.trigger(AddTextureRequested {
             key: tex.key.clone(),
@@ -122,11 +132,17 @@ type MapEntitiesQuery<'w, 's> = Query<
         Option<&'static Scale>,
         Option<&'static Sprite>,
         Option<&'static Tint>,
+        Option<&'static SerializedLuaSetup>,
+        Option<&'static DynamicText>,
     ),
     With<MapEntity>,
 >;
 
-fn sync_map_entities(map_data: &mut MapData, entities: &MapEntitiesQuery, world_signals: &WorldSignals) {
+fn sync_map_entities(
+    map_data: &mut MapData,
+    entities: &MapEntitiesQuery,
+    world_signals: &WorldSignals,
+) {
     // Plain-entity defs are rebuilt from ECS state on every sync; only tilemap defs
     // are kept between syncs (matched by path).
     map_data.entities.retain(|e| e.tilemap_path.is_some());
@@ -139,13 +155,22 @@ fn sync_map_entities(map_data: &mut MapData, entities: &MapEntitiesQuery, world_
         .map(|(k, e)| (*e, k.as_str()))
         .collect();
 
-    for (entity, tilemap, pos, z, group, rot, scale, sprite, tint) in entities.iter() {
+    for (entity, tilemap, pos, z, group, rot, scale, sprite, tint, lua_setup, dynamic_text) in
+        entities.iter()
+    {
         let registered_as = user_keys
             .iter()
             .find(|(e, _)| *e == entity)
             .map(|(_, k)| k.to_string());
 
         let tint_arr = tint.map(|t| [t.color.r, t.color.g, t.color.b, t.color.a]);
+        let lua_setup_callback = lua_setup.map(|l| l.callback.clone());
+        let dynamic_text_entry = dynamic_text.map(|d| DynamicTextEntry {
+            text: d.text.to_string(),
+            font_key: d.font.to_string(),
+            font_size: d.font_size,
+            color: [d.color.r, d.color.g, d.color.b, d.color.a],
+        });
 
         if let Some(tilemap) = tilemap {
             let path = to_relative(&tilemap.path);
@@ -161,6 +186,8 @@ fn sync_map_entities(map_data: &mut MapData, entities: &MapEntitiesQuery, world_
                 def.scale = scale.map(|s| [s.scale.x, s.scale.y]);
                 def.registered_as = registered_as;
                 def.tint = tint_arr;
+                def.lua_setup = lua_setup_callback;
+                def.dynamic_text = dynamic_text_entry.clone();
             }
         } else {
             map_data.entities.push(EntityDef {
@@ -170,9 +197,11 @@ fn sync_map_entities(map_data: &mut MapData, entities: &MapEntitiesQuery, world_
                 rotation_deg: rot.map(|r| r.degrees),
                 scale: scale.map(|s| [s.scale.x, s.scale.y]),
                 sprite: sprite.map(sprite_to_entry),
-                tilemap_path: None,
                 registered_as,
                 tint: tint_arr,
+                lua_setup: lua_setup_callback,
+                dynamic_text: dynamic_text_entry,
+                ..Default::default()
             });
         }
     }
@@ -208,6 +237,9 @@ fn reset_editor_map(
     world_signals
         .entities
         .retain(|k, _| !sig::is_user_entity_key(k));
+    if let Some(mutex) = app_state.get::<PendingLuaSetupLoadMutex>() {
+        mutex.lock().unwrap().clear();
+    }
     commands.insert_resource(map_data);
     clear_selector_state(world_signals, app_state);
 }
@@ -380,7 +412,10 @@ pub fn rename_font_key_observer(
         return;
     }
     if font_store.meta.contains_key(new_key.as_str()) {
-        warn!("rename_font_key_observer: key '{}' already exists, skipping", new_key);
+        warn!(
+            "rename_font_key_observer: key '{}' already exists, skipping",
+            new_key
+        );
         return;
     }
     font_store.rename(old_key.as_str(), new_key.clone());

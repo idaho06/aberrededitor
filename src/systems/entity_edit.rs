@@ -1,13 +1,14 @@
 use super::entity_inspector::InspectEntityRequested;
+use crate::components::serialized_lua_setup::SerializedLuaSetup;
 use crate::editor_types::ComponentKind;
 use crate::systems::entity_selector::{apply_selection, clear_selector_state};
-use crate::systems::utils::{entity_label, tilemap_stem, tilemap_tex_path, sprite_to_entry};
+use crate::systems::utils::{entity_label, sprite_to_entry, tilemap_stem, tilemap_tex_path};
 use aberredengine::bevy_ecs;
 use aberredengine::bevy_ecs::hierarchy::{ChildOf, Children};
-use aberredengine::bevy_ecs::prelude::{Commands, Entity, Event, On, Query, Res, ResMut};
-use aberredengine::resources::appstate::AppState;
+use aberredengine::bevy_ecs::prelude::{Commands, Entity, Event, NonSend, On, Query, Res, ResMut};
 use aberredengine::components::animation::Animation;
 use aberredengine::components::boxcollider::BoxCollider;
+use aberredengine::components::dynamictext::DynamicText;
 use aberredengine::components::globaltransform2d::GlobalTransform2D;
 use aberredengine::components::group::Group;
 use aberredengine::components::mapposition::MapPosition;
@@ -22,6 +23,8 @@ use aberredengine::components::tint::Tint;
 use aberredengine::components::ttl::Ttl;
 use aberredengine::components::zindex::ZIndex;
 use aberredengine::raylib::prelude::{Color, Vector2};
+use aberredengine::resources::appstate::AppState;
+use aberredengine::resources::fontstore::FontStore;
 use aberredengine::resources::mapdata::{EntityDef, MapData, TextureEntry};
 use aberredengine::resources::texturestore::TextureStore;
 use aberredengine::resources::worldsignals::WorldSignals;
@@ -92,37 +95,77 @@ pub struct UpdateAnimationRequested {
 }
 
 #[derive(Event)]
-pub struct RemoveMapPositionRequested  { pub entity: Entity }
+pub struct RemoveMapPositionRequested {
+    pub entity: Entity,
+}
 #[derive(Event)]
-pub struct RemoveZIndexRequested       { pub entity: Entity }
+pub struct RemoveZIndexRequested {
+    pub entity: Entity,
+}
 #[derive(Event)]
-pub struct RemoveGroupRequested        { pub entity: Entity }
+pub struct RemoveGroupRequested {
+    pub entity: Entity,
+}
 #[derive(Event)]
-pub struct RemoveSpriteRequested       { pub entity: Entity }
+pub struct RemoveSpriteRequested {
+    pub entity: Entity,
+}
 #[derive(Event)]
-pub struct RemoveBoxColliderRequested  { pub entity: Entity }
+pub struct RemoveBoxColliderRequested {
+    pub entity: Entity,
+}
 #[derive(Event)]
-pub struct RemoveRotationRequested     { pub entity: Entity }
+pub struct RemoveRotationRequested {
+    pub entity: Entity,
+}
 #[derive(Event)]
-pub struct RemoveScaleRequested        { pub entity: Entity }
+pub struct RemoveScaleRequested {
+    pub entity: Entity,
+}
 #[derive(Event)]
-pub struct RemoveAnimationRequested    { pub entity: Entity }
+pub struct RemoveAnimationRequested {
+    pub entity: Entity,
+}
 #[derive(Event)]
-pub struct RemoveTtlRequested          { pub entity: Entity }
+pub struct RemoveTtlRequested {
+    pub entity: Entity,
+}
 #[derive(Event)]
-pub struct RemoveTimerRequested        { pub entity: Entity }
+pub struct RemoveTimerRequested {
+    pub entity: Entity,
+}
 #[derive(Event)]
-pub struct RemovePhaseRequested        { pub entity: Entity }
+pub struct RemovePhaseRequested {
+    pub entity: Entity,
+}
 #[derive(Event)]
-pub struct RemovePersistentRequested   { pub entity: Entity }
+pub struct RemovePersistentRequested {
+    pub entity: Entity,
+}
 #[derive(Event)]
-pub struct RemoveTileMapRequested      { pub entity: Entity }
+pub struct RemoveTileMapRequested {
+    pub entity: Entity,
+}
 #[derive(Event)]
-pub struct RemoveTintRequested         { pub entity: Entity }
+pub struct RemoveTintRequested {
+    pub entity: Entity,
+}
 #[derive(Event)]
-pub struct RemoveEntityRequested       { pub entity: Entity }
+pub struct RemoveLuaSetupRequested {
+    pub entity: Entity,
+}
 #[derive(Event)]
-pub struct BakeTilemapRequested        { pub entity: Entity }
+pub struct RemoveDynamicTextRequested {
+    pub entity: Entity,
+}
+#[derive(Event)]
+pub struct RemoveEntityRequested {
+    pub entity: Entity,
+}
+#[derive(Event)]
+pub struct BakeTilemapRequested {
+    pub entity: Entity,
+}
 
 #[derive(Event)]
 pub struct UpdateTintRequested {
@@ -134,22 +177,40 @@ pub struct UpdateTintRequested {
 }
 
 #[derive(Event)]
+pub struct UpdateDynamicTextRequested {
+    pub entity: Entity,
+    pub text: String,
+    pub font_key: String,
+    pub font_size: f32,
+    pub r: u8,
+    pub g: u8,
+    pub b: u8,
+    pub a: u8,
+}
+
+#[derive(Event)]
+pub struct UpdateLuaSetupRequested {
+    pub entity: Entity,
+    pub callback: String,
+}
+
+#[derive(Event)]
 pub struct RegisterEntityRequested {
-    pub entity:  Entity,
-    pub key:     String,
+    pub entity: Entity,
+    pub key: String,
     pub old_key: Option<String>,
 }
 
 #[derive(Event)]
 pub struct UnregisterEntityRequested {
     pub entity: Entity,
-    pub key:    String,
+    pub key: String,
 }
 
 #[derive(Event)]
 pub struct AddComponentRequested {
     pub entity: Entity,
-    pub kind:   ComponentKind,
+    pub kind: ComponentKind,
 }
 
 #[derive(Event)]
@@ -329,7 +390,12 @@ macro_rules! component_remove_observer {
             let entity = trigger.event().entity;
             commands.entity(entity).remove::<$component>();
             debug!(
-                concat!(stringify!($fn_name), ": removed ", $component_name, " from entity {}"),
+                concat!(
+                    stringify!($fn_name),
+                    ": removed ",
+                    $component_name,
+                    " from entity {}"
+                ),
                 entity.to_bits()
             );
             refresh_inspector(&mut commands, entity);
@@ -337,19 +403,66 @@ macro_rules! component_remove_observer {
     };
 }
 
-component_remove_observer!(remove_map_position_observer, RemoveMapPositionRequested, MapPosition, "MapPosition");
-component_remove_observer!(remove_z_index_observer,      RemoveZIndexRequested,      ZIndex,      "ZIndex");
-component_remove_observer!(remove_group_observer,        RemoveGroupRequested,        Group,       "Group");
-component_remove_observer!(remove_sprite_observer,       RemoveSpriteRequested,       Sprite,      "Sprite");
-component_remove_observer!(remove_box_collider_observer, RemoveBoxColliderRequested,  BoxCollider, "BoxCollider");
-component_remove_observer!(remove_rotation_observer,     RemoveRotationRequested,     Rotation,    "Rotation");
-component_remove_observer!(remove_scale_observer,        RemoveScaleRequested,        Scale,       "Scale");
-component_remove_observer!(remove_animation_observer,    RemoveAnimationRequested,    Animation,   "Animation");
-component_remove_observer!(remove_ttl_observer,          RemoveTtlRequested,          Ttl,         "Ttl");
-component_remove_observer!(remove_timer_observer,        RemoveTimerRequested,        Timer,       "Timer");
-component_remove_observer!(remove_phase_observer,        RemovePhaseRequested,        Phase,       "Phase");
-component_remove_observer!(remove_persistent_observer,   RemovePersistentRequested,   Persistent,  "Persistent");
-component_remove_observer!(remove_tint_observer,         RemoveTintRequested,         Tint,        "Tint");
+component_remove_observer!(
+    remove_map_position_observer,
+    RemoveMapPositionRequested,
+    MapPosition,
+    "MapPosition"
+);
+component_remove_observer!(
+    remove_z_index_observer,
+    RemoveZIndexRequested,
+    ZIndex,
+    "ZIndex"
+);
+component_remove_observer!(remove_group_observer, RemoveGroupRequested, Group, "Group");
+component_remove_observer!(
+    remove_sprite_observer,
+    RemoveSpriteRequested,
+    Sprite,
+    "Sprite"
+);
+component_remove_observer!(
+    remove_box_collider_observer,
+    RemoveBoxColliderRequested,
+    BoxCollider,
+    "BoxCollider"
+);
+component_remove_observer!(
+    remove_rotation_observer,
+    RemoveRotationRequested,
+    Rotation,
+    "Rotation"
+);
+component_remove_observer!(remove_scale_observer, RemoveScaleRequested, Scale, "Scale");
+component_remove_observer!(
+    remove_animation_observer,
+    RemoveAnimationRequested,
+    Animation,
+    "Animation"
+);
+component_remove_observer!(remove_ttl_observer, RemoveTtlRequested, Ttl, "Ttl");
+component_remove_observer!(remove_timer_observer, RemoveTimerRequested, Timer, "Timer");
+component_remove_observer!(remove_phase_observer, RemovePhaseRequested, Phase, "Phase");
+component_remove_observer!(
+    remove_persistent_observer,
+    RemovePersistentRequested,
+    Persistent,
+    "Persistent"
+);
+component_remove_observer!(remove_tint_observer, RemoveTintRequested, Tint, "Tint");
+component_remove_observer!(
+    remove_lua_setup_observer,
+    RemoveLuaSetupRequested,
+    SerializedLuaSetup,
+    "LuaSetup"
+);
+component_remove_observer!(
+    remove_dynamic_text_observer,
+    RemoveDynamicTextRequested,
+    DynamicText,
+    "DynamicText"
+);
 
 component_edit_observer!(
     update_tint_observer,
@@ -369,9 +482,44 @@ component_edit_observer!(
     }
 );
 
+component_edit_observer!(
+    update_lua_setup_observer,
+    UpdateLuaSetupRequested,
+    SerializedLuaSetup,
+    "LuaSetup",
+    |lua_setup, event, entity| {
+        lua_setup.callback = event.callback.clone();
+        debug!(
+            "update_lua_setup_observer: updated entity {} callback '{}'",
+            entity.to_bits(),
+            event.callback
+        );
+    }
+);
+
+component_edit_observer!(
+    update_dynamic_text_observer,
+    UpdateDynamicTextRequested,
+    DynamicText,
+    "DynamicText",
+    |dt, event, entity| {
+        dt.text = Arc::from(event.text.as_str());
+        dt.font = Arc::from(event.font_key.as_str());
+        dt.font_size = event.font_size;
+        dt.color = Color::new(event.r, event.g, event.b, event.a);
+        debug!(
+            "update_dynamic_text_observer: updated entity {} text='{}' font='{}'",
+            entity.to_bits(),
+            event.text,
+            event.font_key
+        );
+    }
+);
+
 pub fn add_component_observer(
     trigger: On<AddComponentRequested>,
     textures: Res<TextureStore>,
+    fonts: NonSend<FontStore>,
     mut commands: Commands,
 ) {
     let event = trigger.event();
@@ -393,9 +541,8 @@ pub fn add_component_observer(
             commands.entity(entity).insert(Scale::default());
         }
         ComponentKind::Sprite => {
-            let tex_key: Arc<str> = Arc::from(
-                textures.map.keys().min().map(|k| k.as_str()).unwrap_or(""),
-            );
+            let tex_key: Arc<str> =
+                Arc::from(textures.map.keys().min().map(|k| k.as_str()).unwrap_or(""));
             commands.entity(entity).insert(Sprite {
                 tex_key,
                 width: 32.0,
@@ -420,6 +567,21 @@ pub fn add_component_observer(
         }
         ComponentKind::Tint => {
             commands.entity(entity).insert(Tint::default());
+        }
+        ComponentKind::LuaSetup => {
+            commands.entity(entity).insert(SerializedLuaSetup::new(""));
+        }
+        ComponentKind::DynamicText => {
+            let font_key = fonts
+                .meta
+                .keys()
+                .min()
+                .map(|k| k.as_str())
+                .unwrap_or("")
+                .to_owned();
+            commands
+                .entity(entity)
+                .insert(DynamicText::new("", font_key, 16.0, Color::WHITE));
         }
     }
     debug!(
@@ -530,8 +692,11 @@ pub fn remove_tilemap_observer(
     let entity = trigger.event().entity;
 
     if let Ok(tilemap) = tilemap_query.get(entity) {
+        let tilemap_path = crate::systems::utils::to_relative(&tilemap.path);
         let stem = tilemap_stem(&tilemap.path).to_owned();
-        map_data.entities.retain(|e| e.tilemap_path.as_deref() != Some(&tilemap.path));
+        map_data
+            .entities
+            .retain(|e| e.tilemap_path.as_deref() != Some(tilemap_path.as_str()));
         texture_store.paths.remove(&stem);
         debug!(
             "remove_tilemap_observer: removed tilemap '{}' (entity {})",
@@ -557,8 +722,16 @@ pub fn remove_entity_observer(
     clear_selector_state(&mut world_signals, &mut app_state);
 }
 
-type TileChildQuery<'w, 's> =
-    Query<'w, 's, (Option<&'static Group>, Option<&'static Sprite>, Option<&'static ZIndex>, Option<&'static GlobalTransform2D>)>;
+type TileChildQuery<'w, 's> = Query<
+    'w,
+    's,
+    (
+        Option<&'static Group>,
+        Option<&'static Sprite>,
+        Option<&'static ZIndex>,
+        Option<&'static GlobalTransform2D>,
+    ),
+>;
 
 pub fn bake_tilemap_observer(
     trigger: On<BakeTilemapRequested>,
@@ -574,7 +747,7 @@ pub fn bake_tilemap_observer(
         warn!("bake_tilemap_observer: root entity has no TileMap");
         return;
     };
-    let tilemap_path = tilemap.path.clone();
+    let tilemap_path = crate::systems::utils::to_relative(&tilemap.path);
     let stem = tilemap_stem(&tilemap_path);
 
     if let Some(children) = maybe_children {
@@ -602,16 +775,16 @@ pub fn bake_tilemap_observer(
                 rotation_deg: Some(gt.rotation_degrees),
                 scale: Some([gt.scale.x, gt.scale.y]),
                 sprite: sprite.map(sprite_to_entry),
-                tilemap_path: None,
-                registered_as: None,
-                tint: None,
+                ..Default::default()
             });
 
             commands
                 .entity(child)
                 .insert(MapEntity)
                 .insert(MapPosition::new(gt.position.x, gt.position.y))
-                .insert(Rotation { degrees: gt.rotation_degrees })
+                .insert(Rotation {
+                    degrees: gt.rotation_degrees,
+                })
                 .insert(Scale::new(gt.scale.x, gt.scale.y))
                 .remove::<ChildOf>();
         }

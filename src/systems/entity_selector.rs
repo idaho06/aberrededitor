@@ -1,11 +1,12 @@
 use super::entity_inspector::InspectEntityRequested;
+use super::group_selector::{GroupListCache, GroupListMutex};
+use super::utils::{display_group_name, entity_label};
 use crate::editor_types::{ComponentSnapshot, SelectionCorners};
 use crate::signals as sig;
 use aberredengine::bevy_ecs;
 use aberredengine::bevy_ecs::prelude::{Commands, Entity, Event, On, Query, ResMut};
-use super::utils::{display_group_name, entity_label};
-use super::group_selector::{GroupListCache, GroupListMutex};
 use aberredengine::components::boxcollider::BoxCollider;
+use aberredengine::components::dynamictext::DynamicText;
 use aberredengine::components::globaltransform2d::GlobalTransform2D;
 use aberredengine::components::group::Group;
 use aberredengine::components::mapposition::MapPosition;
@@ -18,7 +19,7 @@ use aberredengine::raylib::prelude::Vector2;
 use aberredengine::resources::appstate::AppState;
 use aberredengine::resources::worldsignals::WorldSignals;
 use aberredengine::systems::render::geometry::{compute_sprite_geometry, resolve_world_transform};
-use log::warn;
+use log::{debug, warn};
 
 // ---------------------------------------------------------------------------
 // Events
@@ -53,9 +54,16 @@ pub struct SelectRegisteredEntityRequested {
 pub enum SelectorSource {
     #[default]
     None,
-    Click { x: f32, y: f32 },
-    Group { display_name: String },
-    Registry { key: String },
+    Click {
+        x: f32,
+        y: f32,
+    },
+    Group {
+        display_name: String,
+    },
+    Registry {
+        key: String,
+    },
 }
 
 #[derive(Default)]
@@ -93,6 +101,7 @@ pub fn entity_pick_observer(
         &MapPosition,
         Option<&BoxCollider>,
         Option<&Sprite>,
+        Option<&DynamicText>,
         Option<&Rotation>,
         Option<&Scale>,
         Option<&ZIndex>,
@@ -118,6 +127,7 @@ pub fn entity_pick_observer(
         pos,
         maybe_collider,
         maybe_sprite,
+        maybe_dynamic_text,
         maybe_rot,
         maybe_scale,
         maybe_zindex,
@@ -144,6 +154,23 @@ pub fn entity_pick_observer(
                 resolved_scale.as_ref(),
                 resolved_rot.as_ref(),
             )
+        } else if let Some(dynamic_text) = maybe_dynamic_text {
+            let hit = point_in_dynamic_text(click, &resolved_pos, dynamic_text);
+            if hit {
+                let size = dynamic_text.size();
+                debug!(
+                    "entity_pick_observer: DynamicText hit entity {} click=({:.2}, {:.2}) rect=({:.2}, {:.2}, {:.2}, {:.2}) text='{}'",
+                    entity.to_bits(),
+                    click.x,
+                    click.y,
+                    resolved_pos.pos.x,
+                    resolved_pos.pos.y,
+                    size.x,
+                    size.y,
+                    dynamic_text.text,
+                );
+            }
+            hit
         } else {
             false
         };
@@ -155,6 +182,7 @@ pub fn entity_pick_observer(
                 &resolved_pos,
                 maybe_collider,
                 maybe_sprite,
+                maybe_dynamic_text,
                 resolved_scale.as_ref(),
                 resolved_rot.as_ref(),
             );
@@ -176,7 +204,9 @@ pub fn entity_pick_observer(
     });
 
     let (is_empty, top_hit) = {
-        let mutex = app_state.get::<RenderableSelectorMutex>().expect("RenderableSelectorMutex not in AppState");
+        let mutex = app_state
+            .get::<RenderableSelectorMutex>()
+            .expect("RenderableSelectorMutex not in AppState");
         let mut cache = mutex.lock().unwrap();
         populate_selector_cache(
             &mut cache,
@@ -186,13 +216,10 @@ pub fn entity_pick_observer(
                 y: click_y,
             },
         );
-        let top = cache.hits.first().map(|&e| {
-            (
-                e,
-                cache.labels[0].clone(),
-                cache.corner_sets[0],
-            )
-        });
+        let top = cache
+            .hits
+            .first()
+            .map(|&e| (e, cache.labels[0].clone(), cache.corner_sets[0]));
         (cache.hits.is_empty(), top)
     };
 
@@ -221,6 +248,7 @@ pub fn select_group_observer(
         Option<&MapPosition>,
         Option<&BoxCollider>,
         Option<&Sprite>,
+        Option<&DynamicText>,
         Option<&Rotation>,
         Option<&Scale>,
         Option<&ZIndex>,
@@ -240,6 +268,7 @@ pub fn select_group_observer(
         maybe_pos,
         maybe_collider,
         maybe_sprite,
+        maybe_dynamic_text,
         maybe_rot,
         maybe_scale,
         maybe_zindex,
@@ -261,6 +290,7 @@ pub fn select_group_observer(
                 maybe_pos,
                 maybe_collider,
                 maybe_sprite,
+                maybe_dynamic_text,
                 maybe_scale,
                 maybe_rot,
                 maybe_gt,
@@ -286,13 +316,10 @@ pub fn select_group_observer(
                 display_name: display_group_name(&trigger.event().group).to_owned(),
             },
         );
-        let top = cache.hits.first().map(|&entity| {
-            (
-                entity,
-                cache.labels[0].clone(),
-                cache.corner_sets[0],
-            )
-        });
+        let top = cache
+            .hits
+            .first()
+            .map(|&entity| (entity, cache.labels[0].clone(), cache.corner_sets[0]));
         (cache.hits.is_empty(), top)
     };
 
@@ -319,6 +346,7 @@ pub fn select_registered_entity_observer(
         Option<&MapPosition>,
         Option<&BoxCollider>,
         Option<&Sprite>,
+        Option<&DynamicText>,
         Option<&Rotation>,
         Option<&Scale>,
         Option<&ZIndex>,
@@ -343,6 +371,7 @@ pub fn select_registered_entity_observer(
         maybe_pos,
         maybe_collider,
         maybe_sprite,
+        maybe_dynamic_text,
         maybe_rot,
         maybe_scale,
         maybe_zindex,
@@ -366,6 +395,7 @@ pub fn select_registered_entity_observer(
         maybe_pos,
         maybe_collider,
         maybe_sprite,
+        maybe_dynamic_text,
         maybe_scale,
         maybe_rot,
         maybe_gt,
@@ -413,13 +443,19 @@ pub fn select_entity_observer(
 ) {
     let index = trigger.event().index;
     let hit = {
-        let mutex = app_state.get::<RenderableSelectorMutex>().expect("RenderableSelectorMutex not in AppState");
+        let mutex = app_state
+            .get::<RenderableSelectorMutex>()
+            .expect("RenderableSelectorMutex not in AppState");
         let cache = mutex.lock().unwrap();
-        cache.hits.get(index).map(|&entity| {
-            let label = cache.labels.get(index).cloned();
-            let corners = cache.corner_sets.get(index).copied().flatten();
-            (entity, label, corners)
-        }).ok_or(cache.hits.len())
+        cache
+            .hits
+            .get(index)
+            .map(|&entity| {
+                let label = cache.labels.get(index).cloned();
+                let corners = cache.corner_sets.get(index).copied().flatten();
+                (entity, label, corners)
+            })
+            .ok_or(cache.hits.len())
     };
     match hit {
         Ok((entity, label, corners)) => {
@@ -457,6 +493,7 @@ fn compute_corners(
     pos: &MapPosition,
     maybe_collider: Option<&BoxCollider>,
     maybe_sprite: Option<&Sprite>,
+    maybe_dynamic_text: Option<&DynamicText>,
     scale: Option<&Scale>,
     rot: Option<&Rotation>,
 ) -> [[f32; 2]; 4] {
@@ -486,6 +523,15 @@ fn compute_corners(
             corners[i] = [ax + lx * cos_a - ly * sin_a, ay + lx * sin_a + ly * cos_a];
         }
         corners
+    } else if let Some(dynamic_text) = maybe_dynamic_text {
+        let p = pos.pos;
+        let size = dynamic_text.size();
+        [
+            [p.x, p.y],
+            [p.x + size.x, p.y],
+            [p.x + size.x, p.y + size.y],
+            [p.x, p.y + size.y],
+        ]
     } else {
         // No pickable bounds — degenerate quad
         let p = pos.pos;
@@ -532,16 +578,25 @@ fn point_in_sprite(
     }
 }
 
+fn point_in_dynamic_text(click: Vector2, pos: &MapPosition, dynamic_text: &DynamicText) -> bool {
+    let size = dynamic_text.size();
+    click.x >= pos.pos.x
+        && click.x <= pos.pos.x + size.x
+        && click.y >= pos.pos.y
+        && click.y <= pos.pos.y + size.y
+}
+
 fn compute_group_corners(
     maybe_pos: Option<&MapPosition>,
     maybe_collider: Option<&BoxCollider>,
     maybe_sprite: Option<&Sprite>,
+    maybe_dynamic_text: Option<&DynamicText>,
     maybe_scale: Option<&Scale>,
     maybe_rot: Option<&Rotation>,
     maybe_gt: Option<&GlobalTransform2D>,
 ) -> Option<[[f32; 2]; 4]> {
     let pos = maybe_pos?;
-    if maybe_collider.is_none() && maybe_sprite.is_none() {
+    if maybe_collider.is_none() && maybe_sprite.is_none() && maybe_dynamic_text.is_none() {
         return None;
     }
 
@@ -555,6 +610,7 @@ fn compute_group_corners(
         &resolved_pos,
         maybe_collider,
         maybe_sprite,
+        maybe_dynamic_text,
         resolved_scale.as_ref(),
         resolved_rot.as_ref(),
     ))

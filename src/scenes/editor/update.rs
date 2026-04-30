@@ -1,18 +1,17 @@
+use super::commit::consume_entity_editor_commits;
 use super::entity_editor_panel::{draw_entity_delete_modal, draw_entity_editor};
 use super::entity_registry_panel::draw_entity_registry;
 use super::entity_selector_panel::draw_entity_selector;
+use super::font_panel::{draw_font_editor, draw_font_modals};
 use super::groups_panel::draw_groups_window;
 use super::menu::{draw_about_modal, draw_menu_bar};
-use super::template_browser_panel::draw_template_browser;
 use super::overlay::draw_selection_outline;
-use super::commit::consume_entity_editor_commits;
+use super::template_browser_panel::draw_template_browser;
 use super::texture_panel::{draw_texture_editor, draw_texture_modals};
-use super::font_panel::{draw_font_editor, draw_font_modals};
 use crate::signals as sig;
 use crate::systems::entity_edit::CreateBlankEntityRequested;
-use crate::systems::entity_selector::SelectGroupRequested;
-use crate::systems::utils::to_relative;
 use crate::systems::entity_inspector::InspectEntityRequested;
+use crate::systems::entity_selector::SelectGroupRequested;
 use crate::systems::entity_selector::{
     PickEntitiesAtPointRequested, SelectEntityRequested, SelectRegisteredEntityRequested,
 };
@@ -21,11 +20,12 @@ use crate::systems::map_ops::{
     RemoveTextureRequested, RenameTextureKeyRequested, SaveMapRequested,
 };
 use crate::systems::tilemap_load::LoadTilemapRequested;
+use crate::systems::utils::to_relative;
 use aberredengine::events::switchdebug::SwitchDebugEvent;
 use aberredengine::imgui;
 use aberredengine::resources::appstate::AppState;
-use aberredengine::resources::input::InputState;
 use aberredengine::resources::fontstore::FontStore;
+use aberredengine::resources::input::InputState;
 use aberredengine::resources::texturestore::TextureStore;
 use aberredengine::resources::worldsignals::WorldSignals;
 use aberredengine::systems::GameCtx;
@@ -60,11 +60,13 @@ pub fn editor_update(ctx: &mut GameCtx, _dt: f32, input: &InputState) {
         .remove_string(sig::ENTITY_REGISTRY_SELECTED_KEY)
         .map(|s| s.to_owned())
     {
-        ctx.commands.trigger(SelectRegisteredEntityRequested { key });
+        ctx.commands
+            .trigger(SelectRegisteredEntityRequested { key });
     }
 
     if let Some(entity) = ctx.world_signals.remove_entity(sig::TEMPLATE_SELECT_ENTITY) {
-        ctx.world_signals.set_entity(sig::ES_SELECTED_ENTITY, entity);
+        ctx.world_signals
+            .set_entity(sig::ES_SELECTED_ENTITY, entity);
         ctx.commands.trigger(InspectEntityRequested { entity });
     }
 
@@ -102,7 +104,7 @@ pub fn editor_gui(
     draw_groups_window(ui, signals, app_state);
     draw_entity_registry(ui, signals);
     draw_entity_selector(ui, signals, app_state);
-    let open_delete_popup = draw_entity_editor(ui, signals, textures, app_state);
+    let open_delete_popup = draw_entity_editor(ui, signals, textures, fonts, app_state);
     draw_template_browser(ui, signals, app_state);
 
     if open_rename_popup {
@@ -181,8 +183,14 @@ fn handle_file_actions(ctx: &mut GameCtx) {
 
 fn handle_entity_actions(ctx: &mut GameCtx) {
     if ctx.world_signals.take_flag(sig::ACTION_ENTITY_ADD) {
-        let x = ctx.world_signals.get_scalar(sig::CAM_TARGET_X).unwrap_or(0.0);
-        let y = ctx.world_signals.get_scalar(sig::CAM_TARGET_Y).unwrap_or(0.0);
+        let x = ctx
+            .world_signals
+            .get_scalar(sig::CAM_TARGET_X)
+            .unwrap_or(0.0);
+        let y = ctx
+            .world_signals
+            .get_scalar(sig::CAM_TARGET_Y)
+            .unwrap_or(0.0);
         ctx.commands.trigger(CreateBlankEntityRequested { x, y });
     }
 }
@@ -232,7 +240,7 @@ fn handle_texture_actions(ctx: &mut GameCtx) {
 }
 
 fn handle_font_actions(ctx: &mut GameCtx) {
-    use crate::systems::map_ops::{AddFontRequested, RenameFontKeyRequested, RemoveFontRequested};
+    use crate::systems::map_ops::{AddFontRequested, RemoveFontRequested, RenameFontKeyRequested};
 
     if ctx.world_signals.take_flag(sig::ACTION_FONT_RENAME) {
         let old_key = ctx

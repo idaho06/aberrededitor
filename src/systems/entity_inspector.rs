@@ -1,6 +1,7 @@
+use crate::components::serialized_lua_setup::SerializedLuaSetup;
 use crate::editor_types::{
-    AnimationSnapshot, ColliderSnapshot, ComponentSnapshot, PhaseSnapshot, SpriteSnapshot,
-    TimerSnapshot, TintSnapshot, TtlSnapshot,
+    AnimationSnapshot, ColliderSnapshot, ComponentSnapshot, DynamicTextSnapshot, PhaseSnapshot,
+    SpriteSnapshot, TimerSnapshot, TintSnapshot, TtlSnapshot,
 };
 use crate::signals as sig;
 use aberredengine::bevy_ecs;
@@ -8,6 +9,7 @@ use aberredengine::bevy_ecs::hierarchy::ChildOf;
 use aberredengine::bevy_ecs::prelude::{Entity, Event, On, Query, ResMut, With};
 use aberredengine::components::animation::Animation;
 use aberredengine::components::boxcollider::BoxCollider;
+use aberredengine::components::dynamictext::DynamicText;
 use aberredengine::components::group::Group;
 use aberredengine::components::mapposition::MapPosition;
 use aberredengine::components::persistent::Persistent;
@@ -40,29 +42,37 @@ pub struct InspectEntityRequested {
 pub fn entity_inspect_observer(
     trigger: On<InspectEntityRequested>,
     query: Query<(
-        Option<&MapPosition>,
-        Option<&ZIndex>,
-        Option<&Sprite>,
-        Option<&BoxCollider>,
-        Option<&Group>,
-        Option<&Rotation>,
-        Option<&Scale>,
-        Option<&Animation>,
-        Option<&Ttl>,
-        Option<&Timer>,
-        Option<&Phase>,
-        Option<&Persistent>,
-        Option<&TileMap>,
-        Option<&ChildOf>,
-        Option<&Tint>,
+        (
+            Option<&MapPosition>,
+            Option<&ZIndex>,
+            Option<&Sprite>,
+            Option<&BoxCollider>,
+            Option<&Group>,
+            Option<&Rotation>,
+            Option<&Scale>,
+            Option<&Animation>,
+        ),
+        (
+            Option<&Ttl>,
+            Option<&Timer>,
+            Option<&Phase>,
+            Option<&Persistent>,
+            Option<&TileMap>,
+            Option<&ChildOf>,
+            Option<&Tint>,
+            Option<&SerializedLuaSetup>,
+            Option<&DynamicText>,
+        ),
     )>,
     tilemap_roots: Query<(), With<TileMap>>,
     mut signals: ResMut<WorldSignals>,
     mut app_state: ResMut<AppState>,
 ) {
     let entity = trigger.event().entity;
-    let Ok((pos, z, sprite, collider, group, rot, scale, animation, ttl, timer, phase, persistent, tilemap, child_of, tint)) =
-        query.get(entity)
+    let Ok((
+        (pos, z, sprite, collider, group, rot, scale, animation),
+        (ttl, timer, phase, persistent, tilemap, child_of, tint, lua_setup, dynamic_text),
+    )) = query.get(entity)
     else {
         return;
     };
@@ -121,14 +131,22 @@ pub fn entity_inspect_observer(
         }),
         persistent: persistent.is_some(),
         tilemap_path: tilemap.map(|t| t.path.clone()),
-        tilemap_parent: child_of.and_then(|c| {
-            tilemap_roots.get(c.0).ok().map(|_| c.0.to_bits())
-        }),
+        tilemap_parent: child_of.and_then(|c| tilemap_roots.get(c.0).ok().map(|_| c.0.to_bits())),
         tint: tint.map(|t| TintSnapshot {
             r: t.color.r,
             g: t.color.g,
             b: t.color.b,
             a: t.color.a,
+        }),
+        lua_setup: lua_setup.map(|l| l.callback.clone()),
+        dynamic_text: dynamic_text.map(|d| DynamicTextSnapshot {
+            text: d.text.to_string(),
+            font_key: d.font.to_string(),
+            font_size: d.font_size,
+            r: d.color.r,
+            g: d.color.g,
+            b: d.color.b,
+            a: d.color.a,
         }),
     };
 

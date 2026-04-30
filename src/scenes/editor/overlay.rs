@@ -4,11 +4,7 @@ use aberredengine::imgui;
 use aberredengine::resources::appstate::AppState;
 use aberredengine::resources::worldsignals::WorldSignals;
 
-pub(super) fn draw_selection_outline(
-    ui: &imgui::Ui,
-    signals: &WorldSignals,
-    app_state: &AppState,
-) {
+pub(super) fn draw_selection_outline(ui: &imgui::Ui, signals: &WorldSignals, app_state: &AppState) {
     let Some(corners) = app_state.get::<SelectionCorners>() else {
         return;
     };
@@ -28,7 +24,9 @@ pub(super) fn draw_selection_outline(
         [rx * lb_scale + lb_x, ry * lb_scale + lb_y]
     };
 
-    let points = corners.0.map(|[world_x, world_y]| to_screen(world_x, world_y));
+    let points = corners
+        .0
+        .map(|[world_x, world_y]| to_screen(world_x, world_y));
 
     let color = [1.0_f32, 0.85, 0.0, 1.0];
     let draw_list = ui.get_background_draw_list();

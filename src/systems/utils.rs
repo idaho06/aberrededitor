@@ -5,10 +5,23 @@ use aberredengine::components::sprite::Sprite;
 use aberredengine::resources::mapdata::SpriteEntry;
 
 /// Build a display label for an entity: `Entity #<id> [group] [Persistent]`.
-pub fn entity_label(entity: Entity, group: Option<&Group>, persistent: Option<&Persistent>) -> String {
+pub fn entity_label(
+    entity: Entity,
+    group: Option<&Group>,
+    persistent: Option<&Persistent>,
+) -> String {
     let group_suffix = group.map(|g| format!(" [{}]", g.0)).unwrap_or_default();
-    let persistent_tag = if persistent.is_some() { " [Persistent]" } else { "" };
-    format!("Entity #{}{}{}", entity.index(), group_suffix, persistent_tag)
+    let persistent_tag = if persistent.is_some() {
+        " [Persistent]"
+    } else {
+        ""
+    };
+    format!(
+        "Entity #{}{}{}",
+        entity.index(),
+        group_suffix,
+        persistent_tag
+    )
 }
 
 pub fn display_group_name(group: &str) -> &str {

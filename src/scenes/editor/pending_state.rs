@@ -15,74 +15,85 @@ use std::sync::Mutex;
 #[derive(Default, Clone)]
 pub(crate) struct PendingEditState {
     // MapPosition
-    pub pos_x:            Option<f32>,
-    pub pos_y:            Option<f32>,
-    pub commit_position:  bool,
+    pub pos_x: Option<f32>,
+    pub pos_y: Option<f32>,
+    pub commit_position: bool,
     // ZIndex
-    pub z_index:          Option<f32>,
-    pub commit_z:         bool,
+    pub z_index: Option<f32>,
+    pub commit_z: bool,
     // Group
-    pub group:            Option<String>,
-    pub commit_group:     bool,
+    pub group: Option<String>,
+    pub commit_group: bool,
     // Rotation
-    pub rotation_deg:     Option<f32>,
-    pub commit_rotation:  bool,
+    pub rotation_deg: Option<f32>,
+    pub commit_rotation: bool,
     // Scale
-    pub scale_x:          Option<f32>,
-    pub scale_y:          Option<f32>,
-    pub commit_scale:     bool,
+    pub scale_x: Option<f32>,
+    pub scale_y: Option<f32>,
+    pub commit_scale: bool,
     // Sprite
-    pub sprite_tex_key:   Option<String>,
-    pub sprite_width:     Option<f32>,
-    pub sprite_height:    Option<f32>,
-    pub sprite_off_x:     Option<f32>,
-    pub sprite_off_y:     Option<f32>,
-    pub sprite_org_x:     Option<f32>,
-    pub sprite_org_y:     Option<f32>,
-    pub sprite_flip_h:    Option<bool>,
-    pub sprite_flip_v:    Option<bool>,
-    pub commit_sprite:    bool,
+    pub sprite_tex_key: Option<String>,
+    pub sprite_width: Option<f32>,
+    pub sprite_height: Option<f32>,
+    pub sprite_off_x: Option<f32>,
+    pub sprite_off_y: Option<f32>,
+    pub sprite_org_x: Option<f32>,
+    pub sprite_org_y: Option<f32>,
+    pub sprite_flip_h: Option<bool>,
+    pub sprite_flip_v: Option<bool>,
+    pub commit_sprite: bool,
     // BoxCollider
-    pub box_size_x:       Option<f32>,
-    pub box_size_y:       Option<f32>,
-    pub box_off_x:        Option<f32>,
-    pub box_off_y:        Option<f32>,
-    pub box_org_x:        Option<f32>,
-    pub box_org_y:        Option<f32>,
-    pub commit_collider:  bool,
+    pub box_size_x: Option<f32>,
+    pub box_size_y: Option<f32>,
+    pub box_off_x: Option<f32>,
+    pub box_off_y: Option<f32>,
+    pub box_org_x: Option<f32>,
+    pub box_org_y: Option<f32>,
+    pub commit_collider: bool,
     // Animation
-    pub anim_key:         Option<String>,
+    pub anim_key: Option<String>,
     pub anim_frame_index: Option<i32>,
-    pub anim_elapsed:     Option<f32>,
+    pub anim_elapsed: Option<f32>,
     pub commit_animation: bool,
     // Tint
-    pub tint_color:          Option<[f32; 4]>,
-    pub commit_tint:         bool,
+    pub tint_color: Option<[f32; 4]>,
+    pub commit_tint: bool,
+    // LuaSetup
+    pub lua_setup_callback: Option<String>,
+    pub commit_lua_setup: bool,
+    // DynamicText
+    pub dynamic_text_text: Option<String>,
+    pub dynamic_text_font_key: Option<String>,
+    pub dynamic_text_font_size: Option<f32>,
+    pub dynamic_text_color: Option<[f32; 4]>,
+    pub commit_dynamic_text: bool,
     // Remove flags
     pub remove_map_position: bool,
-    pub remove_z:            bool,
-    pub remove_group:        bool,
-    pub remove_sprite:       bool,
-    pub remove_collider:     bool,
-    pub remove_rotation:     bool,
-    pub remove_scale:        bool,
-    pub remove_animation:    bool,
-    pub remove_ttl:          bool,
-    pub remove_timer:        bool,
-    pub remove_phase:        bool,
-    pub remove_persistent:   bool,
-    pub remove_tint:         bool,
-    pub remove_entity:       bool,
-    pub clone_entity:        bool,
-    pub remove_tilemap:        bool,
-    pub bake_tilemap:          bool,
+    pub remove_z: bool,
+    pub remove_group: bool,
+    pub remove_sprite: bool,
+    pub remove_collider: bool,
+    pub remove_rotation: bool,
+    pub remove_scale: bool,
+    pub remove_animation: bool,
+    pub remove_ttl: bool,
+    pub remove_timer: bool,
+    pub remove_phase: bool,
+    pub remove_persistent: bool,
+    pub remove_tint: bool,
+    pub remove_lua_setup: bool,
+    pub remove_dynamic_text: bool,
+    pub remove_entity: bool,
+    pub clone_entity: bool,
+    pub remove_tilemap: bool,
+    pub bake_tilemap: bool,
     pub select_tilemap_parent: bool,
     // Registration
     pub pending_register_key: Option<String>,
-    pub commit_registration:  bool,
-    pub remove_registration:  bool,
+    pub commit_registration: bool,
+    pub remove_registration: bool,
     // Add component
-    pub add_component:       Option<ComponentKind>,
+    pub add_component: Option<ComponentKind>,
     pub add_combo_selection: usize,
 }
 
@@ -110,6 +121,10 @@ impl PendingEditState {
             || self.remove_persistent
             || self.commit_tint
             || self.remove_tint
+            || self.commit_lua_setup
+            || self.remove_lua_setup
+            || self.commit_dynamic_text
+            || self.remove_dynamic_text
             || self.remove_entity
             || self.clone_entity
             || self.remove_tilemap

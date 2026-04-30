@@ -13,14 +13,16 @@ pub(super) fn draw_entity_selector(
         return;
     }
 
-    let snapshot = app_state.get::<RenderableSelectorMutex>().and_then(|mutex| {
-        let cache = mutex.lock().ok()?;
-        Some((
-            cache.source.clone(),
-            cache.labels.clone(),
-            cache.z_indices.clone(),
-        ))
-    });
+    let snapshot = app_state
+        .get::<RenderableSelectorMutex>()
+        .and_then(|mutex| {
+            let cache = mutex.lock().ok()?;
+            Some((
+                cache.source.clone(),
+                cache.labels.clone(),
+                cache.z_indices.clone(),
+            ))
+        });
 
     let mut window_open = true;
     let mut row_to_select: Option<i32> = None;
@@ -61,7 +63,8 @@ pub(super) fn draw_entity_selector(
                 if labels.is_empty() {
                     ui.text_disabled(empty_msg);
                 } else {
-                    for (index, (label, &zindex)) in labels.iter().zip(z_indices.iter()).enumerate() {
+                    for (index, (label, &zindex)) in labels.iter().zip(z_indices.iter()).enumerate()
+                    {
                         let row_text = format!("{} (z={:.1})", label, zindex);
                         let _id = ui.push_id_usize(index);
                         if ui.selectable_config(&row_text).build() {

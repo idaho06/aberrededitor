@@ -4,12 +4,13 @@ use crate::editor_types::ComponentSnapshot;
 use crate::signals as sig;
 use crate::systems::entity_edit::{
     AddComponentRequested, BakeTilemapRequested, CloneEntityRequested, RegisterEntityRequested,
-    RemoveAnimationRequested, RemoveBoxColliderRequested, RemoveEntityRequested,
-    RemoveGroupRequested, RemoveMapPositionRequested, RemovePhaseRequested,
-    RemovePersistentRequested, RemoveRotationRequested, RemoveScaleRequested,
-    RemoveSpriteRequested, RemoveTileMapRequested, RemoveTimerRequested, RemoveTintRequested,
-    RemoveTtlRequested, RemoveZIndexRequested, UnregisterEntityRequested,
-    UpdateAnimationRequested, UpdateBoxColliderRequested, UpdateGroupRequested,
+    RemoveAnimationRequested, RemoveBoxColliderRequested, RemoveDynamicTextRequested,
+    RemoveEntityRequested, RemoveGroupRequested, RemoveLuaSetupRequested,
+    RemoveMapPositionRequested, RemovePersistentRequested, RemovePhaseRequested,
+    RemoveRotationRequested, RemoveScaleRequested, RemoveSpriteRequested, RemoveTileMapRequested,
+    RemoveTimerRequested, RemoveTintRequested, RemoveTtlRequested, RemoveZIndexRequested,
+    UnregisterEntityRequested, UpdateAnimationRequested, UpdateBoxColliderRequested,
+    UpdateDynamicTextRequested, UpdateGroupRequested, UpdateLuaSetupRequested,
     UpdateMapPositionRequested, UpdateRotationRequested, UpdateScaleRequested,
     UpdateSpriteRequested, UpdateTintRequested, UpdateZIndexRequested,
 };
@@ -33,8 +34,7 @@ pub(super) fn consume_entity_editor_commits(ctx: &mut GameCtx) {
         guard.clone()
     };
 
-    let Some((entity, snapshot)) =
-        selected_entity_and_snapshot(&ctx.world_signals, &ctx.app_state)
+    let Some((entity, snapshot)) = selected_entity_and_snapshot(&ctx.world_signals, &ctx.app_state)
     else {
         clear_entity_editor_pending(&ctx.app_state);
         return;
@@ -47,8 +47,14 @@ pub(super) fn consume_entity_editor_commits(ctx: &mut GameCtx) {
     }
 
     if p.clone_entity {
-        let x = ctx.world_signals.get_scalar(sig::CAM_TARGET_X).unwrap_or(0.0);
-        let y = ctx.world_signals.get_scalar(sig::CAM_TARGET_Y).unwrap_or(0.0);
+        let x = ctx
+            .world_signals
+            .get_scalar(sig::CAM_TARGET_X)
+            .unwrap_or(0.0);
+        let y = ctx
+            .world_signals
+            .get_scalar(sig::CAM_TARGET_Y)
+            .unwrap_or(0.0);
         ctx.commands.trigger(CloneEntityRequested { entity, x, y });
         clear_entity_editor_pending(&ctx.app_state);
         return;
@@ -94,35 +100,62 @@ pub(super) fn consume_entity_editor_commits(ctx: &mut GameCtx) {
     } else if p.commit_animation {
         consume_animation_commit(ctx, entity, &snapshot, &p);
     }
-    if p.remove_ttl        { ctx.commands.trigger(RemoveTtlRequested        { entity }); }
-    if p.remove_timer      { ctx.commands.trigger(RemoveTimerRequested      { entity }); }
-    if p.remove_phase      { ctx.commands.trigger(RemovePhaseRequested      { entity }); }
-    if p.remove_persistent { ctx.commands.trigger(RemovePersistentRequested { entity }); }
+    if p.remove_ttl {
+        ctx.commands.trigger(RemoveTtlRequested { entity });
+    }
+    if p.remove_timer {
+        ctx.commands.trigger(RemoveTimerRequested { entity });
+    }
+    if p.remove_phase {
+        ctx.commands.trigger(RemovePhaseRequested { entity });
+    }
+    if p.remove_persistent {
+        ctx.commands.trigger(RemovePersistentRequested { entity });
+    }
     if p.remove_tint {
         ctx.commands.trigger(RemoveTintRequested { entity });
     } else if p.commit_tint {
         consume_tint_commit(ctx, entity, &snapshot, &p);
     }
-    if p.remove_tilemap    { ctx.commands.trigger(RemoveTileMapRequested    { entity }); }
-    if p.bake_tilemap      { ctx.commands.trigger(BakeTilemapRequested      { entity }); }
+    if p.remove_lua_setup {
+        ctx.commands.trigger(RemoveLuaSetupRequested { entity });
+    } else if p.commit_lua_setup {
+        consume_lua_setup_commit(ctx, entity, &snapshot, &p);
+    }
+    if p.remove_dynamic_text {
+        ctx.commands.trigger(RemoveDynamicTextRequested { entity });
+    } else if p.commit_dynamic_text {
+        consume_dynamic_text_commit(ctx, entity, &snapshot, &p);
+    }
+    if p.remove_tilemap {
+        ctx.commands.trigger(RemoveTileMapRequested { entity });
+    }
+    if p.bake_tilemap {
+        ctx.commands.trigger(BakeTilemapRequested { entity });
+    }
     if p.select_tilemap_parent
         && let Some(parent_bits) = snapshot.tilemap_parent
     {
         let parent = Entity::from_bits(parent_bits);
-        ctx.commands.trigger(InspectEntityRequested { entity: parent });
+        ctx.commands
+            .trigger(InspectEntityRequested { entity: parent });
     }
     if p.commit_registration
         && let Some(ref key) = p.pending_register_key
         && !key.is_empty()
     {
         let old_key = snapshot.world_signal_keys.first().cloned();
-        ctx.commands
-            .trigger(RegisterEntityRequested { entity, key: key.clone(), old_key });
+        ctx.commands.trigger(RegisterEntityRequested {
+            entity,
+            key: key.clone(),
+            old_key,
+        });
     }
     if p.remove_registration
         && let Some(key) = snapshot.world_signal_keys.first().cloned()
     {
-        ctx.commands.trigger(UnregisterEntityRequested { entity, key });
+        ctx.commands
+            .trigger(UnregisterEntityRequested { entity, key });
     }
     if let Some(kind) = p.add_component {
         ctx.commands.trigger(AddComponentRequested { entity, kind });
@@ -342,18 +375,66 @@ fn consume_tint_commit(
         );
         return;
     };
-    let base = [
-        tint.r as f32 / 255.0,
-        tint.g as f32 / 255.0,
-        tint.b as f32 / 255.0,
-        tint.a as f32 / 255.0,
-    ];
-    let [r, g, b, a] = p.tint_color.unwrap_or(base);
+    let [r, g, b, a] = p.tint_color.unwrap_or(tint.color_normalized());
     ctx.commands.trigger(UpdateTintRequested {
         entity,
         r: (r * 255.0).round() as u8,
         g: (g * 255.0).round() as u8,
         b: (b * 255.0).round() as u8,
         a: (a * 255.0).round() as u8,
+    });
+}
+
+fn consume_dynamic_text_commit(
+    ctx: &mut GameCtx,
+    entity: Entity,
+    snapshot: &ComponentSnapshot,
+    p: &PendingEditState,
+) {
+    let Some(ref dt) = snapshot.dynamic_text else {
+        warn!(
+            "consume_dynamic_text_commit: snapshot missing DynamicText for entity {}",
+            entity.to_bits()
+        );
+        return;
+    };
+    let [r, g, b, a] = p.dynamic_text_color.unwrap_or(dt.color_normalized());
+    ctx.commands.trigger(UpdateDynamicTextRequested {
+        entity,
+        text: p
+            .dynamic_text_text
+            .clone()
+            .unwrap_or_else(|| dt.text.clone()),
+        font_key: p
+            .dynamic_text_font_key
+            .clone()
+            .unwrap_or_else(|| dt.font_key.clone()),
+        font_size: p.dynamic_text_font_size.unwrap_or(dt.font_size),
+        r: (r * 255.0).round() as u8,
+        g: (g * 255.0).round() as u8,
+        b: (b * 255.0).round() as u8,
+        a: (a * 255.0).round() as u8,
+    });
+}
+
+fn consume_lua_setup_commit(
+    ctx: &mut GameCtx,
+    entity: Entity,
+    snapshot: &ComponentSnapshot,
+    p: &PendingEditState,
+) {
+    let Some(ref callback) = snapshot.lua_setup else {
+        warn!(
+            "consume_lua_setup_commit: snapshot missing LuaSetup for entity {}",
+            entity.to_bits()
+        );
+        return;
+    };
+    ctx.commands.trigger(UpdateLuaSetupRequested {
+        entity,
+        callback: p
+            .lua_setup_callback
+            .clone()
+            .unwrap_or_else(|| callback.clone()),
     });
 }

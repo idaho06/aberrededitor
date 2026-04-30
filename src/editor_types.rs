@@ -17,6 +17,8 @@ pub enum ComponentKind {
     Ttl,
     Persistent,
     Tint,
+    LuaSetup,
+    DynamicText,
 }
 
 // ---------------------------------------------------------------------------
@@ -75,6 +77,39 @@ pub struct TintSnapshot {
     pub a: u8,
 }
 
+impl TintSnapshot {
+    pub fn color_normalized(&self) -> [f32; 4] {
+        [
+            self.r as f32 / 255.0,
+            self.g as f32 / 255.0,
+            self.b as f32 / 255.0,
+            self.a as f32 / 255.0,
+        ]
+    }
+}
+
+#[derive(Clone)]
+pub struct DynamicTextSnapshot {
+    pub text: String,
+    pub font_key: String,
+    pub font_size: f32,
+    pub r: u8,
+    pub g: u8,
+    pub b: u8,
+    pub a: u8,
+}
+
+impl DynamicTextSnapshot {
+    pub fn color_normalized(&self) -> [f32; 4] {
+        [
+            self.r as f32 / 255.0,
+            self.g as f32 / 255.0,
+            self.b as f32 / 255.0,
+            self.a as f32 / 255.0,
+        ]
+    }
+}
+
 #[derive(Clone)]
 pub struct PhaseSnapshot {
     pub current: String,
@@ -105,4 +140,6 @@ pub struct ComponentSnapshot {
     /// `u64` bits because `Entity` cannot cross the `AppState` boundary.
     pub tilemap_parent: Option<u64>,
     pub tint: Option<TintSnapshot>,
+    pub lua_setup: Option<String>,
+    pub dynamic_text: Option<DynamicTextSnapshot>,
 }

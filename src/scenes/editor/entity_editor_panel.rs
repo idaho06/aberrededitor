@@ -1,9 +1,12 @@
 use super::pending_state::PendingMutex;
-use super::widgets::{draw_drag_float_input, draw_float_input, draw_int_input, draw_text_buffer_input};
+use super::widgets::{
+    draw_drag_float_input, draw_float_input, draw_int_input, draw_text_buffer_input,
+};
 use crate::editor_types::{ComponentKind, ComponentSnapshot};
 use crate::signals as sig;
 use aberredengine::imgui;
 use aberredengine::resources::appstate::AppState;
+use aberredengine::resources::fontstore::FontStore;
 use aberredengine::resources::texturestore::TextureStore;
 use aberredengine::resources::worldsignals::WorldSignals;
 
@@ -11,6 +14,7 @@ pub(super) fn draw_entity_editor(
     ui: &imgui::Ui,
     signals: &mut WorldSignals,
     textures: &TextureStore,
+    fonts: &FontStore,
     app_state: &AppState,
 ) -> bool {
     if !signals.has_flag(sig::UI_ENTITY_EDITOR_OPEN) {
@@ -52,26 +56,41 @@ pub(super) fn draw_entity_editor(
                 if let Some(ref key) = current_key {
                     ui.text_disabled(format!("  Key: {}", key));
                     ui.same_line();
-                    if ui.button("Edit##reg") { p.pending_register_key = Some(key.clone()); }
+                    if ui.button("Edit##reg") {
+                        p.pending_register_key = Some(key.clone());
+                    }
                     ui.same_line();
-                    if ui.button("Del##reg") { p.remove_registration = true; }
+                    if ui.button("Del##reg") {
+                        p.remove_registration = true;
+                    }
                 } else {
                     ui.text_disabled("  Not registered");
                     ui.same_line();
                     if ui.button("+##reg") {
-                        p.pending_register_key = Some(format!("entity_{:08x}", snap.entity_bits & 0xFFFF_FFFF));
+                        p.pending_register_key =
+                            Some(format!("entity_{:08x}", snap.entity_bits & 0xFFFF_FFFF));
                     }
                 }
             } else {
                 let fallback = current_key.as_deref().unwrap_or("");
                 {
                     let ps = &mut *p;
-                    draw_text_buffer_input(ui, "##reg_key", &mut ps.pending_register_key, &mut ps.commit_registration, fallback);
+                    draw_text_buffer_input(
+                        ui,
+                        "##reg_key",
+                        &mut ps.pending_register_key,
+                        &mut ps.commit_registration,
+                        fallback,
+                    );
                 }
                 ui.same_line();
-                if ui.button("OK##reg") { p.commit_registration = true; }
+                if ui.button("OK##reg") {
+                    p.commit_registration = true;
+                }
                 ui.same_line();
-                if ui.button("X##reg") { p.pending_register_key = None; }
+                if ui.button("X##reg") {
+                    p.pending_register_key = None;
+                }
             }
             ui.separator();
 
@@ -86,17 +105,43 @@ pub(super) fn draw_entity_editor(
             }
 
             let addable: Vec<(&str, ComponentKind)> = [
-                (snap.map_position.is_none(), "MapPosition", ComponentKind::MapPosition),
-                (snap.z_index.is_none(),      "ZIndex",      ComponentKind::ZIndex),
-                (snap.group.is_none(),        "Group",       ComponentKind::Group),
-                (snap.rotation_deg.is_none(), "Rotation",    ComponentKind::Rotation),
-                (snap.scale.is_none(),        "Scale",       ComponentKind::Scale),
-                (snap.sprite.is_none(),       "Sprite",      ComponentKind::Sprite),
-                (snap.box_collider.is_none(), "BoxCollider", ComponentKind::BoxCollider),
-                (snap.animation.is_none(),    "Animation",   ComponentKind::Animation),
-                (snap.ttl.is_none(),          "Ttl",         ComponentKind::Ttl),
-                (!snap.persistent,            "Persistent",  ComponentKind::Persistent),
-                (snap.tint.is_none(),         "Tint",        ComponentKind::Tint),
+                (
+                    snap.map_position.is_none(),
+                    "MapPosition",
+                    ComponentKind::MapPosition,
+                ),
+                (snap.z_index.is_none(), "ZIndex", ComponentKind::ZIndex),
+                (snap.group.is_none(), "Group", ComponentKind::Group),
+                (
+                    snap.rotation_deg.is_none(),
+                    "Rotation",
+                    ComponentKind::Rotation,
+                ),
+                (snap.scale.is_none(), "Scale", ComponentKind::Scale),
+                (snap.sprite.is_none(), "Sprite", ComponentKind::Sprite),
+                (
+                    snap.box_collider.is_none(),
+                    "BoxCollider",
+                    ComponentKind::BoxCollider,
+                ),
+                (
+                    snap.animation.is_none(),
+                    "Animation",
+                    ComponentKind::Animation,
+                ),
+                (snap.ttl.is_none(), "Ttl", ComponentKind::Ttl),
+                (!snap.persistent, "Persistent", ComponentKind::Persistent),
+                (snap.tint.is_none(), "Tint", ComponentKind::Tint),
+                (
+                    snap.lua_setup.is_none(),
+                    "LuaSetup",
+                    ComponentKind::LuaSetup,
+                ),
+                (
+                    snap.dynamic_text.is_none(),
+                    "DynamicText",
+                    ComponentKind::DynamicText,
+                ),
             ]
             .into_iter()
             .filter_map(|(absent, label, kind)| absent.then_some((label, kind)))
@@ -108,7 +153,11 @@ pub(super) fn draw_entity_editor(
                 p.add_combo_selection = p.add_combo_selection.min(addable.len() - 1);
                 let mut sel = p.add_combo_selection;
                 ui.set_next_item_width(-60.0);
-                ui.combo_simple_string("##add_combo", &mut sel, &addable.iter().map(|(l, _)| *l).collect::<Vec<_>>());
+                ui.combo_simple_string(
+                    "##add_combo",
+                    &mut sel,
+                    &addable.iter().map(|(l, _)| *l).collect::<Vec<_>>(),
+                );
                 p.add_combo_selection = sel;
                 ui.same_line();
                 if ui.button("Add##add_component") {
@@ -120,256 +169,474 @@ pub(super) fn draw_entity_editor(
             ui.child_window("##components_scroll")
                 .size([0.0, 0.0])
                 .build(|| {
-
-            if let Some([pos_x, pos_y]) = snap.map_position {
-                ui.text("MapPosition");
-                ui.same_line();
-                if ui.button("Del##map_position") { p.remove_map_position = true; }
-                if let Some(v) = draw_drag_float_input(ui, "x##map_position", p.pos_x.unwrap_or(pos_x), 1.0, 0.1) {
-                    p.pos_x = Some(v);
-                    p.commit_position = true;
-                }
-                if let Some(v) = draw_drag_float_input(ui, "y##map_position", p.pos_y.unwrap_or(pos_y), 1.0, 0.1) {
-                    p.pos_y = Some(v);
-                    p.commit_position = true;
-                }
-            }
-
-            if let Some(z) = snap.z_index {
-                ui.separator();
-                ui.text("ZIndex");
-                ui.same_line();
-                if ui.button("Del##zindex") { p.remove_z = true; }
-                if let Some(v) = draw_float_input(ui, "value##zindex", p.z_index.unwrap_or(z), 1.0) {
-                    p.z_index = Some(v);
-                    p.commit_z = true;
-                }
-            }
-            if let Some(ref group) = snap.group {
-                ui.separator();
-                ui.text("Group");
-                ui.same_line();
-                if ui.button("Del##group") { p.remove_group = true; }
-                ui.set_next_item_width(-1.0);
-                let mut committed = false;
-                draw_text_buffer_input(ui, "name##group", &mut p.group, &mut committed, group);
-                if committed {
-                    p.commit_group = true;
-                }
-            }
-            if let Some(ref sprite) = snap.sprite {
-                ui.separator();
-                ui.text("Sprite");
-                ui.same_line();
-                if ui.button("Del##sprite") { p.remove_sprite = true; }
-
-                let tex_key_current = p.sprite_tex_key.clone().unwrap_or_else(|| sprite.tex_key.clone());
-                let mut texture_keys: Vec<&str> =
-                    textures.map.keys().map(|key| key.as_str()).collect();
-                texture_keys.sort_unstable();
-                if texture_keys.is_empty() {
-                    ui.text_disabled("No textures loaded.");
-                } else {
-                    let mut current_tex = texture_keys
-                        .iter()
-                        .position(|key| *key == tex_key_current.as_str())
-                        .or_else(|| texture_keys.iter().position(|key| *key == sprite.tex_key.as_str()))
-                        .unwrap_or(0);
-                    if ui.combo_simple_string("tex_key##sprite", &mut current_tex, &texture_keys) {
-                        p.sprite_tex_key = Some(texture_keys[current_tex].to_owned());
-                        p.commit_sprite = true;
+                    if let Some([pos_x, pos_y]) = snap.map_position {
+                        ui.text("MapPosition");
+                        ui.same_line();
+                        if ui.button("Del##map_position") {
+                            p.remove_map_position = true;
+                        }
+                        if let Some(v) = draw_drag_float_input(
+                            ui,
+                            "x##map_position",
+                            p.pos_x.unwrap_or(pos_x),
+                            1.0,
+                            0.1,
+                        ) {
+                            p.pos_x = Some(v);
+                            p.commit_position = true;
+                        }
+                        if let Some(v) = draw_drag_float_input(
+                            ui,
+                            "y##map_position",
+                            p.pos_y.unwrap_or(pos_y),
+                            1.0,
+                            0.1,
+                        ) {
+                            p.pos_y = Some(v);
+                            p.commit_position = true;
+                        }
                     }
-                }
 
-                if let Some(v) = draw_float_input(ui, "width##sprite", p.sprite_width.unwrap_or(sprite.width), 1.0) {
-                    p.sprite_width = Some(v);
-                    p.commit_sprite = true;
-                }
-                if let Some(v) = draw_float_input(ui, "height##sprite", p.sprite_height.unwrap_or(sprite.height), 1.0) {
-                    p.sprite_height = Some(v);
-                    p.commit_sprite = true;
-                }
-                if let Some(v) = draw_float_input(ui, "offset x##sprite", p.sprite_off_x.unwrap_or(sprite.offset[0]), 1.0) {
-                    p.sprite_off_x = Some(v);
-                    p.commit_sprite = true;
-                }
-                if let Some(v) = draw_float_input(ui, "offset y##sprite", p.sprite_off_y.unwrap_or(sprite.offset[1]), 1.0) {
-                    p.sprite_off_y = Some(v);
-                    p.commit_sprite = true;
-                }
-                if let Some(v) = draw_float_input(ui, "origin x##sprite", p.sprite_org_x.unwrap_or(sprite.origin[0]), 1.0) {
-                    p.sprite_org_x = Some(v);
-                    p.commit_sprite = true;
-                }
-                if let Some(v) = draw_float_input(ui, "origin y##sprite", p.sprite_org_y.unwrap_or(sprite.origin[1]), 1.0) {
-                    p.sprite_org_y = Some(v);
-                    p.commit_sprite = true;
-                }
+                    if let Some(z) = snap.z_index {
+                        ui.separator();
+                        ui.text("ZIndex");
+                        ui.same_line();
+                        if ui.button("Del##zindex") {
+                            p.remove_z = true;
+                        }
+                        if let Some(v) =
+                            draw_float_input(ui, "value##zindex", p.z_index.unwrap_or(z), 1.0)
+                        {
+                            p.z_index = Some(v);
+                            p.commit_z = true;
+                        }
+                    }
+                    if let Some(ref group) = snap.group {
+                        ui.separator();
+                        ui.text("Group");
+                        ui.same_line();
+                        if ui.button("Del##group") {
+                            p.remove_group = true;
+                        }
+                        ui.set_next_item_width(-1.0);
+                        let mut committed = false;
+                        draw_text_buffer_input(
+                            ui,
+                            "name##group",
+                            &mut p.group,
+                            &mut committed,
+                            group,
+                        );
+                        if committed {
+                            p.commit_group = true;
+                        }
+                    }
+                    if let Some(ref sprite) = snap.sprite {
+                        ui.separator();
+                        ui.text("Sprite");
+                        ui.same_line();
+                        if ui.button("Del##sprite") {
+                            p.remove_sprite = true;
+                        }
 
-                let mut flip_h = p.sprite_flip_h.unwrap_or(sprite.flip_h);
-                if ui.checkbox("flip_h##sprite", &mut flip_h) {
-                    p.sprite_flip_h = Some(flip_h);
-                    p.commit_sprite = true;
-                }
+                        let tex_key_current = p
+                            .sprite_tex_key
+                            .clone()
+                            .unwrap_or_else(|| sprite.tex_key.clone());
+                        let mut texture_keys: Vec<&str> =
+                            textures.map.keys().map(|key| key.as_str()).collect();
+                        texture_keys.sort_unstable();
+                        if texture_keys.is_empty() {
+                            ui.text_disabled("No textures loaded.");
+                        } else {
+                            let mut current_tex = texture_keys
+                                .iter()
+                                .position(|key| *key == tex_key_current.as_str())
+                                .or_else(|| {
+                                    texture_keys
+                                        .iter()
+                                        .position(|key| *key == sprite.tex_key.as_str())
+                                })
+                                .unwrap_or(0);
+                            if ui.combo_simple_string(
+                                "tex_key##sprite",
+                                &mut current_tex,
+                                &texture_keys,
+                            ) {
+                                p.sprite_tex_key = Some(texture_keys[current_tex].to_owned());
+                                p.commit_sprite = true;
+                            }
+                        }
 
-                let mut flip_v = p.sprite_flip_v.unwrap_or(sprite.flip_v);
-                if ui.checkbox("flip_v##sprite", &mut flip_v) {
-                    p.sprite_flip_v = Some(flip_v);
-                    p.commit_sprite = true;
-                }
-            }
-            if let Some(ref collider) = snap.box_collider {
-                ui.separator();
-                ui.text("BoxCollider");
-                ui.same_line();
-                if ui.button("Del##collider") { p.remove_collider = true; }
-                if let Some(v) = draw_float_input(ui, "size x##collider", p.box_size_x.unwrap_or(collider.size[0]), 1.0) {
-                    p.box_size_x = Some(v);
-                    p.commit_collider = true;
-                }
-                if let Some(v) = draw_float_input(ui, "size y##collider", p.box_size_y.unwrap_or(collider.size[1]), 1.0) {
-                    p.box_size_y = Some(v);
-                    p.commit_collider = true;
-                }
-                if let Some(v) = draw_float_input(ui, "offset x##collider", p.box_off_x.unwrap_or(collider.offset[0]), 1.0) {
-                    p.box_off_x = Some(v);
-                    p.commit_collider = true;
-                }
-                if let Some(v) = draw_float_input(ui, "offset y##collider", p.box_off_y.unwrap_or(collider.offset[1]), 1.0) {
-                    p.box_off_y = Some(v);
-                    p.commit_collider = true;
-                }
-                if let Some(v) = draw_float_input(ui, "origin x##collider", p.box_org_x.unwrap_or(collider.origin[0]), 1.0) {
-                    p.box_org_x = Some(v);
-                    p.commit_collider = true;
-                }
-                if let Some(v) = draw_float_input(ui, "origin y##collider", p.box_org_y.unwrap_or(collider.origin[1]), 1.0) {
-                    p.box_org_y = Some(v);
-                    p.commit_collider = true;
-                }
-            }
-            if let Some(rotation_deg) = snap.rotation_deg {
-                ui.separator();
-                ui.text("Rotation");
-                ui.same_line();
-                if ui.button("Del##rotation") { p.remove_rotation = true; }
-                if let Some(v) = draw_float_input(ui, "degrees##rotation", p.rotation_deg.unwrap_or(rotation_deg), 1.0) {
-                    p.rotation_deg = Some(v);
-                    p.commit_rotation = true;
-                }
-            }
-            if let Some([scale_x, scale_y]) = snap.scale {
-                ui.separator();
-                ui.text("Scale");
-                ui.same_line();
-                if ui.button("Del##scale") { p.remove_scale = true; }
-                if let Some(v) = draw_float_input(ui, "x##scale", p.scale_x.unwrap_or(scale_x), 1.0) {
-                    p.scale_x = Some(v);
-                    p.commit_scale = true;
-                }
-                if let Some(v) = draw_float_input(ui, "y##scale", p.scale_y.unwrap_or(scale_y), 1.0) {
-                    p.scale_y = Some(v);
-                    p.commit_scale = true;
-                }
-            }
-            if let Some(ref animation) = snap.animation {
-                ui.separator();
-                ui.text("Animation");
-                ui.same_line();
-                if ui.button("Del##animation") { p.remove_animation = true; }
-                ui.set_next_item_width(-1.0);
-                let mut committed = false;
-                draw_text_buffer_input(ui, "key##animation", &mut p.anim_key, &mut committed, animation.animation_key.as_str());
-                if committed {
-                    p.commit_animation = true;
-                }
-                let frame_current = p.anim_frame_index.unwrap_or_else(|| i32::try_from(animation.frame_index).unwrap_or(i32::MAX));
-                if let Some(v) = draw_int_input(ui, "frame_index##animation", frame_current) {
-                    p.anim_frame_index = Some(v);
-                    p.commit_animation = true;
-                }
-                if let Some(v) = draw_float_input(ui, "elapsed_time##animation", p.anim_elapsed.unwrap_or(animation.elapsed_time), 1.0) {
-                    p.anim_elapsed = Some(v);
-                    p.commit_animation = true;
-                }
-            }
-            if let Some(ref ttl) = snap.ttl {
-                ui.separator();
-                ui.text("Ttl");
-                ui.same_line();
-                if ui.button("Del##ttl") { p.remove_ttl = true; }
-                ui.group(|| ui.text_disabled(format!("  remaining: {:.3}", ttl.remaining)));
-            }
-            if let Some(ref timer) = snap.timer {
-                ui.separator();
-                ui.text("Timer");
-                ui.same_line();
-                if ui.button("Del##timer") { p.remove_timer = true; }
-                ui.group(|| {
-                    ui.text_disabled(format!("  duration: {:.3}", timer.duration));
-                    ui.text_disabled(format!("  elapsed: {:.3}", timer.elapsed));
-                });
-            }
-            if let Some(ref phase) = snap.phase {
-                ui.separator();
-                ui.text("Phase");
-                ui.same_line();
-                if ui.button("Del##phase") { p.remove_phase = true; }
-                ui.group(|| {
-                    ui.text_disabled(format!("  current: {}", phase.current));
-                    ui.text_disabled(format!(
-                        "  previous: {}",
-                        phase.previous.as_deref().unwrap_or("(none)")
-                    ));
-                    ui.text_disabled(format!(
-                        "  next: {}",
-                        phase.next.as_deref().unwrap_or("(none)")
-                    ));
-                    ui.text_disabled(format!("  time_in_phase: {:.3}", phase.time_in_phase));
-                    if phase.phase_names.is_empty() {
-                        ui.text_disabled("  phase_names: (none)");
-                    } else {
-                        ui.text_disabled(format!(
-                            "  phase_names: {}",
-                            phase.phase_names.join(", ")
-                        ));
+                        if let Some(v) = draw_float_input(
+                            ui,
+                            "width##sprite",
+                            p.sprite_width.unwrap_or(sprite.width),
+                            1.0,
+                        ) {
+                            p.sprite_width = Some(v);
+                            p.commit_sprite = true;
+                        }
+                        if let Some(v) = draw_float_input(
+                            ui,
+                            "height##sprite",
+                            p.sprite_height.unwrap_or(sprite.height),
+                            1.0,
+                        ) {
+                            p.sprite_height = Some(v);
+                            p.commit_sprite = true;
+                        }
+                        if let Some(v) = draw_float_input(
+                            ui,
+                            "offset x##sprite",
+                            p.sprite_off_x.unwrap_or(sprite.offset[0]),
+                            1.0,
+                        ) {
+                            p.sprite_off_x = Some(v);
+                            p.commit_sprite = true;
+                        }
+                        if let Some(v) = draw_float_input(
+                            ui,
+                            "offset y##sprite",
+                            p.sprite_off_y.unwrap_or(sprite.offset[1]),
+                            1.0,
+                        ) {
+                            p.sprite_off_y = Some(v);
+                            p.commit_sprite = true;
+                        }
+                        if let Some(v) = draw_float_input(
+                            ui,
+                            "origin x##sprite",
+                            p.sprite_org_x.unwrap_or(sprite.origin[0]),
+                            1.0,
+                        ) {
+                            p.sprite_org_x = Some(v);
+                            p.commit_sprite = true;
+                        }
+                        if let Some(v) = draw_float_input(
+                            ui,
+                            "origin y##sprite",
+                            p.sprite_org_y.unwrap_or(sprite.origin[1]),
+                            1.0,
+                        ) {
+                            p.sprite_org_y = Some(v);
+                            p.commit_sprite = true;
+                        }
+
+                        let mut flip_h = p.sprite_flip_h.unwrap_or(sprite.flip_h);
+                        if ui.checkbox("flip_h##sprite", &mut flip_h) {
+                            p.sprite_flip_h = Some(flip_h);
+                            p.commit_sprite = true;
+                        }
+
+                        let mut flip_v = p.sprite_flip_v.unwrap_or(sprite.flip_v);
+                        if ui.checkbox("flip_v##sprite", &mut flip_v) {
+                            p.sprite_flip_v = Some(flip_v);
+                            p.commit_sprite = true;
+                        }
+                    }
+                    if let Some(ref collider) = snap.box_collider {
+                        ui.separator();
+                        ui.text("BoxCollider");
+                        ui.same_line();
+                        if ui.button("Del##collider") {
+                            p.remove_collider = true;
+                        }
+                        if let Some(v) = draw_float_input(
+                            ui,
+                            "size x##collider",
+                            p.box_size_x.unwrap_or(collider.size[0]),
+                            1.0,
+                        ) {
+                            p.box_size_x = Some(v);
+                            p.commit_collider = true;
+                        }
+                        if let Some(v) = draw_float_input(
+                            ui,
+                            "size y##collider",
+                            p.box_size_y.unwrap_or(collider.size[1]),
+                            1.0,
+                        ) {
+                            p.box_size_y = Some(v);
+                            p.commit_collider = true;
+                        }
+                        if let Some(v) = draw_float_input(
+                            ui,
+                            "offset x##collider",
+                            p.box_off_x.unwrap_or(collider.offset[0]),
+                            1.0,
+                        ) {
+                            p.box_off_x = Some(v);
+                            p.commit_collider = true;
+                        }
+                        if let Some(v) = draw_float_input(
+                            ui,
+                            "offset y##collider",
+                            p.box_off_y.unwrap_or(collider.offset[1]),
+                            1.0,
+                        ) {
+                            p.box_off_y = Some(v);
+                            p.commit_collider = true;
+                        }
+                        if let Some(v) = draw_float_input(
+                            ui,
+                            "origin x##collider",
+                            p.box_org_x.unwrap_or(collider.origin[0]),
+                            1.0,
+                        ) {
+                            p.box_org_x = Some(v);
+                            p.commit_collider = true;
+                        }
+                        if let Some(v) = draw_float_input(
+                            ui,
+                            "origin y##collider",
+                            p.box_org_y.unwrap_or(collider.origin[1]),
+                            1.0,
+                        ) {
+                            p.box_org_y = Some(v);
+                            p.commit_collider = true;
+                        }
+                    }
+                    if let Some(rotation_deg) = snap.rotation_deg {
+                        ui.separator();
+                        ui.text("Rotation");
+                        ui.same_line();
+                        if ui.button("Del##rotation") {
+                            p.remove_rotation = true;
+                        }
+                        if let Some(v) = draw_float_input(
+                            ui,
+                            "degrees##rotation",
+                            p.rotation_deg.unwrap_or(rotation_deg),
+                            1.0,
+                        ) {
+                            p.rotation_deg = Some(v);
+                            p.commit_rotation = true;
+                        }
+                    }
+                    if let Some([scale_x, scale_y]) = snap.scale {
+                        ui.separator();
+                        ui.text("Scale");
+                        ui.same_line();
+                        if ui.button("Del##scale") {
+                            p.remove_scale = true;
+                        }
+                        if let Some(v) =
+                            draw_float_input(ui, "x##scale", p.scale_x.unwrap_or(scale_x), 1.0)
+                        {
+                            p.scale_x = Some(v);
+                            p.commit_scale = true;
+                        }
+                        if let Some(v) =
+                            draw_float_input(ui, "y##scale", p.scale_y.unwrap_or(scale_y), 1.0)
+                        {
+                            p.scale_y = Some(v);
+                            p.commit_scale = true;
+                        }
+                    }
+                    if let Some(ref animation) = snap.animation {
+                        ui.separator();
+                        ui.text("Animation");
+                        ui.same_line();
+                        if ui.button("Del##animation") {
+                            p.remove_animation = true;
+                        }
+                        ui.set_next_item_width(-1.0);
+                        let mut committed = false;
+                        draw_text_buffer_input(
+                            ui,
+                            "key##animation",
+                            &mut p.anim_key,
+                            &mut committed,
+                            animation.animation_key.as_str(),
+                        );
+                        if committed {
+                            p.commit_animation = true;
+                        }
+                        let frame_current = p.anim_frame_index.unwrap_or_else(|| {
+                            i32::try_from(animation.frame_index).unwrap_or(i32::MAX)
+                        });
+                        if let Some(v) = draw_int_input(ui, "frame_index##animation", frame_current)
+                        {
+                            p.anim_frame_index = Some(v);
+                            p.commit_animation = true;
+                        }
+                        if let Some(v) = draw_float_input(
+                            ui,
+                            "elapsed_time##animation",
+                            p.anim_elapsed.unwrap_or(animation.elapsed_time),
+                            1.0,
+                        ) {
+                            p.anim_elapsed = Some(v);
+                            p.commit_animation = true;
+                        }
+                    }
+                    if let Some(ref ttl) = snap.ttl {
+                        ui.separator();
+                        ui.text("Ttl");
+                        ui.same_line();
+                        if ui.button("Del##ttl") {
+                            p.remove_ttl = true;
+                        }
+                        ui.group(|| ui.text_disabled(format!("  remaining: {:.3}", ttl.remaining)));
+                    }
+                    if let Some(ref timer) = snap.timer {
+                        ui.separator();
+                        ui.text("Timer");
+                        ui.same_line();
+                        if ui.button("Del##timer") {
+                            p.remove_timer = true;
+                        }
+                        ui.group(|| {
+                            ui.text_disabled(format!("  duration: {:.3}", timer.duration));
+                            ui.text_disabled(format!("  elapsed: {:.3}", timer.elapsed));
+                        });
+                    }
+                    if let Some(ref phase) = snap.phase {
+                        ui.separator();
+                        ui.text("Phase");
+                        ui.same_line();
+                        if ui.button("Del##phase") {
+                            p.remove_phase = true;
+                        }
+                        ui.group(|| {
+                            ui.text_disabled(format!("  current: {}", phase.current));
+                            ui.text_disabled(format!(
+                                "  previous: {}",
+                                phase.previous.as_deref().unwrap_or("(none)")
+                            ));
+                            ui.text_disabled(format!(
+                                "  next: {}",
+                                phase.next.as_deref().unwrap_or("(none)")
+                            ));
+                            ui.text_disabled(format!(
+                                "  time_in_phase: {:.3}",
+                                phase.time_in_phase
+                            ));
+                            if phase.phase_names.is_empty() {
+                                ui.text_disabled("  phase_names: (none)");
+                            } else {
+                                ui.text_disabled(format!(
+                                    "  phase_names: {}",
+                                    phase.phase_names.join(", ")
+                                ));
+                            }
+                        });
+                    }
+                    if snap.persistent {
+                        ui.separator();
+                        ui.text("Persistent");
+                        ui.same_line();
+                        if ui.button("Del##persistent") {
+                            p.remove_persistent = true;
+                        }
+                    }
+                    if let Some(ref path) = snap.tilemap_path {
+                        ui.separator();
+                        ui.text("TileMap");
+                        ui.same_line();
+                        if ui.button("Bake##tilemap") {
+                            p.bake_tilemap = true;
+                        }
+                        ui.same_line();
+                        if ui.button("Del##tilemap") {
+                            p.remove_tilemap = true;
+                        }
+                        ui.group(|| ui.text_disabled(format!("  path: {}", path)));
+                    }
+                    if let Some(ref tint_snap) = snap.tint {
+                        ui.separator();
+                        ui.text("Tint");
+                        ui.same_line();
+                        if ui.button("Del##tint") {
+                            p.remove_tint = true;
+                        }
+                        let mut color = p.tint_color.unwrap_or(tint_snap.color_normalized());
+                            if ui.color_edit4("##tint_color", &mut color) {
+                                p.tint_color = Some(color);
+                            }
+                        if ui.is_item_deactivated_after_edit() {
+                            p.commit_tint = true;
+                        }
+                    }
+                    if let Some(ref callback) = snap.lua_setup {
+                        ui.separator();
+                        ui.text("LuaSetup");
+                        ui.same_line();
+                        if ui.button("Del##luasetup") {
+                            p.remove_lua_setup = true;
+                        }
+                        let mut committed = false;
+                        draw_text_buffer_input(
+                            ui,
+                            "callback##luasetup",
+                            &mut p.lua_setup_callback,
+                            &mut committed,
+                            callback.as_str(),
+                        );
+                        if committed {
+                            p.commit_lua_setup = true;
+                        }
+                    }
+                    if let Some(ref dt) = snap.dynamic_text {
+                        ui.separator();
+                        ui.text("DynamicText");
+                        ui.same_line();
+                        if ui.button("Del##dynamictext") {
+                            p.remove_dynamic_text = true;
+                        }
+                        let mut committed = false;
+                        draw_text_buffer_input(
+                            ui,
+                            "text##dt",
+                            &mut p.dynamic_text_text,
+                            &mut committed,
+                            &dt.text,
+                        );
+                        if committed {
+                            p.commit_dynamic_text = true;
+                        }
+
+                        let font_key_current = p
+                            .dynamic_text_font_key
+                            .clone()
+                            .unwrap_or_else(|| dt.font_key.clone());
+                        let mut font_keys: Vec<&str> =
+                            fonts.meta.keys().map(|k| k.as_str()).collect();
+                        font_keys.sort_unstable();
+                        if font_keys.is_empty() {
+                            ui.text_disabled("No fonts loaded.");
+                        } else {
+                            let mut current_font = font_keys
+                                .iter()
+                                .position(|k| *k == font_key_current.as_str())
+                                .unwrap_or(0);
+                            if ui.combo_simple_string("font_key##dt", &mut current_font, &font_keys)
+                            {
+                                p.dynamic_text_font_key = Some(font_keys[current_font].to_owned());
+                                p.commit_dynamic_text = true;
+                            }
+                        }
+
+                        if let Some(v) = draw_float_input(
+                            ui,
+                            "font_size##dt",
+                            p.dynamic_text_font_size.unwrap_or(dt.font_size),
+                            1.0,
+                        ) {
+                            p.dynamic_text_font_size = Some(v);
+                            p.commit_dynamic_text = true;
+                        }
+
+                        let mut color = p.dynamic_text_color.unwrap_or(dt.color_normalized());
+                            if ui.color_edit4("##dt_color", &mut color) {
+                                p.dynamic_text_color = Some(color);
+                            }
+                        if ui.is_item_deactivated_after_edit() {
+                            p.commit_dynamic_text = true;
+                        }
                     }
                 });
-            }
-            if snap.persistent {
-                ui.separator();
-                ui.text("Persistent");
-                ui.same_line();
-                if ui.button("Del##persistent") { p.remove_persistent = true; }
-            }
-            if let Some(ref path) = snap.tilemap_path {
-                ui.separator();
-                ui.text("TileMap");
-                ui.same_line();
-                if ui.button("Bake##tilemap") { p.bake_tilemap = true; }
-                ui.same_line();
-                if ui.button("Del##tilemap") { p.remove_tilemap = true; }
-                ui.group(|| ui.text_disabled(format!("  path: {}", path)));
-            }
-            if let Some(ref tint_snap) = snap.tint {
-                ui.separator();
-                ui.text("Tint");
-                ui.same_line();
-                if ui.button("Del##tint") { p.remove_tint = true; }
-                let mut color = p.tint_color.unwrap_or([
-                    tint_snap.r as f32 / 255.0,
-                    tint_snap.g as f32 / 255.0,
-                    tint_snap.b as f32 / 255.0,
-                    tint_snap.a as f32 / 255.0,
-                ]);
-                ui.color_edit4("##tint_color", &mut color);
-                if ui.is_item_deactivated_after_edit() {
-                    p.tint_color = Some(color);
-                    p.commit_tint = true;
-                }
-            }
-
-            });
         });
 
     if !window_open {

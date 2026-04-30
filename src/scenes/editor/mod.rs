@@ -2,6 +2,7 @@ mod commit;
 mod entity_editor_panel;
 mod entity_registry_panel;
 mod entity_selector_panel;
+mod font_panel;
 mod groups_panel;
 mod lifecycle;
 mod menu;
@@ -10,7 +11,6 @@ pub(crate) mod pending_state;
 mod state;
 mod template_browser_panel;
 mod texture_panel;
-mod font_panel;
 mod update;
 mod widgets;
 

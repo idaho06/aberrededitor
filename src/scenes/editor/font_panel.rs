@@ -20,54 +20,52 @@ pub(super) fn draw_font_editor(
         .size([460.0, 520.0], imgui::Condition::FirstUseEver)
         .opened(&mut window_open)
         .build(|| {
-            ui.child_window("##font_list")
-                .size([0.0, -80.0])
-                .build(|| {
-                    let mut sorted_keys: Vec<&String> = fonts.meta.keys().collect();
-                    sorted_keys.sort();
+            ui.child_window("##font_list").size([0.0, -80.0]).build(|| {
+                let mut sorted_keys: Vec<&String> = fonts.meta.keys().collect();
+                sorted_keys.sort();
 
-                    if sorted_keys.is_empty() {
-                        ui.text_disabled("No fonts loaded.");
-                    }
+                if sorted_keys.is_empty() {
+                    ui.text_disabled("No fonts loaded.");
+                }
 
-                    for key in &sorted_keys {
-                        let Some(font) = fonts.get(key.as_str()) else {
-                            continue;
-                        };
-                        let Some(meta) = fonts.meta.get(key.as_str()) else {
-                            continue;
-                        };
+                for key in &sorted_keys {
+                    let Some(font) = fonts.get(key.as_str()) else {
+                        continue;
+                    };
+                    let Some(meta) = fonts.meta.get(key.as_str()) else {
+                        continue;
+                    };
 
-                        // rlImGui dereferences the pointer as a full ffi::Texture2D — passing .id crashes.
-                        let tex_id = imgui::TextureId::from(&font.texture as *const _ as usize);
-                        imgui::Image::new(tex_id, [64.0f32, 64.0]).build(ui);
+                    // rlImGui dereferences the pointer as a full ffi::Texture2D — passing .id crashes.
+                    let tex_id = imgui::TextureId::from(&font.texture as *const _ as usize);
+                    imgui::Image::new(tex_id, [64.0f32, 64.0]).build(ui);
+                    ui.same_line();
+
+                    let _id = ui.push_id(key.as_str());
+                    ui.group(|| {
+                        ui.text(key.as_str());
+                        let filename = std::path::Path::new(&meta.path)
+                            .file_name()
+                            .and_then(|n| n.to_str())
+                            .unwrap_or(meta.path.as_str());
+                        ui.text_disabled(filename);
+                        if ui.is_item_hovered() {
+                            ui.tooltip_text(meta.path.as_str());
+                        }
+                        ui.text_disabled(format!("size: {}", meta.font_size));
+                        if ui.small_button("Rename") {
+                            signals.set_string(sig::FONT_RENAME_SRC, key.as_str());
+                            signals.set_string(sig::FONT_RENAME_BUF, key.as_str());
+                            open_rename_popup = true;
+                        }
                         ui.same_line();
-
-                        let _id = ui.push_id(key.as_str());
-                        ui.group(|| {
-                            ui.text(key.as_str());
-                            let filename = std::path::Path::new(&meta.path)
-                                .file_name()
-                                .and_then(|n| n.to_str())
-                                .unwrap_or(meta.path.as_str());
-                            ui.text_disabled(filename);
-                            if ui.is_item_hovered() {
-                                ui.tooltip_text(meta.path.as_str());
-                            }
-                            ui.text_disabled(format!("size: {}", meta.font_size));
-                            if ui.small_button("Rename") {
-                                signals.set_string(sig::FONT_RENAME_SRC, key.as_str());
-                                signals.set_string(sig::FONT_RENAME_BUF, key.as_str());
-                                open_rename_popup = true;
-                            }
-                            ui.same_line();
-                            if ui.small_button("Remove") {
-                                signals.set_string(sig::FONT_REMOVE_KEY, key.as_str());
-                                open_remove_popup = true;
-                            }
-                        });
-                    }
-                });
+                        if ui.small_button("Remove") {
+                            signals.set_string(sig::FONT_REMOVE_KEY, key.as_str());
+                            open_remove_popup = true;
+                        }
+                    });
+                }
+            });
 
             ui.separator();
             ui.text("Add font");
@@ -89,9 +87,7 @@ pub(super) fn draw_font_editor(
 
             ui.text("Size:");
             ui.same_line();
-            let mut add_size = signals
-                .get_scalar(sig::FONT_ADD_SIZE_BUF)
-                .unwrap_or(32.0);
+            let mut add_size = signals.get_scalar(sig::FONT_ADD_SIZE_BUF).unwrap_or(32.0);
             ui.set_next_item_width(80.0);
             if ui
                 .input_float("##font_add_size", &mut add_size)
@@ -126,7 +122,10 @@ pub(super) fn draw_font_modals(ui: &imgui::Ui, signals: &mut WorldSignals) {
                 .get_string(sig::FONT_RENAME_BUF)
                 .cloned()
                 .unwrap_or_default();
-            if ui.input_text("New key##font_rename_input", &mut buf).build() {
+            if ui
+                .input_text("New key##font_rename_input", &mut buf)
+                .build()
+            {
                 signals.set_string(sig::FONT_RENAME_BUF, buf.as_str());
             }
 
