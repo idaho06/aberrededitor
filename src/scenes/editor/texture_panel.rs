@@ -1,3 +1,4 @@
+use super::texture_viewer_panel::open_texture_viewer;
 use crate::signals as sig;
 use aberredengine::imgui;
 use aberredengine::resources::texturestore::TextureStore;
@@ -39,6 +40,13 @@ pub(super) fn draw_texture_editor(
                         let tex_id = imgui::TextureId::from(tex as *const _ as usize);
 
                         imgui::Image::new(tex_id, [96.0f32, 96.0]).build(ui);
+                        if ui.is_item_clicked() {
+                            open_texture_viewer(
+                                signals,
+                                sig::TEXTURE_VIEWER_SOURCE_TEXTURE,
+                                key.as_str(),
+                            );
+                        }
                         ui.same_line();
 
                         let _id = ui.push_id(key.as_str());

@@ -8,6 +8,7 @@ use super::menu::{draw_about_modal, draw_menu_bar};
 use super::overlay::draw_selection_outline;
 use super::template_browser_panel::draw_template_browser;
 use super::texture_panel::{draw_texture_editor, draw_texture_modals};
+use super::texture_viewer_panel::draw_texture_viewer;
 use crate::signals as sig;
 use crate::systems::entity_edit::CreateBlankEntityRequested;
 use crate::systems::entity_inspector::InspectEntityRequested;
@@ -100,6 +101,7 @@ pub fn editor_gui(
     let open_about = draw_menu_bar(ui, signals);
     let (open_rename_popup, open_remove_popup) = draw_texture_editor(ui, signals, textures);
     let (open_font_rename, open_font_remove) = draw_font_editor(ui, signals, fonts);
+    draw_texture_viewer(ui, signals, textures, fonts);
     draw_map_preview(ui, signals);
     draw_groups_window(ui, signals, app_state);
     draw_entity_registry(ui, signals);

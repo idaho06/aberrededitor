@@ -1,3 +1,4 @@
+use super::texture_viewer_panel::open_texture_viewer;
 use crate::signals as sig;
 use aberredengine::imgui;
 use aberredengine::resources::fontstore::FontStore;
@@ -39,6 +40,13 @@ pub(super) fn draw_font_editor(
                     // rlImGui dereferences the pointer as a full ffi::Texture2D — passing .id crashes.
                     let tex_id = imgui::TextureId::from(&font.texture as *const _ as usize);
                     imgui::Image::new(tex_id, [64.0f32, 64.0]).build(ui);
+                    if ui.is_item_clicked() {
+                        open_texture_viewer(
+                            signals,
+                            sig::TEXTURE_VIEWER_SOURCE_FONT,
+                            key.as_str(),
+                        );
+                    }
                     ui.same_line();
 
                     let _id = ui.push_id(key.as_str());

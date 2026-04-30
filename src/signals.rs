@@ -64,6 +64,13 @@ pub const ACTION_FONT_ADD_BROWSE: &str = "gui:action:font:add_browse";
 pub const ACTION_FONT_RENAME: &str = "gui:action:font:rename";
 pub const ACTION_FONT_REMOVE: &str = "gui:action:font:remove";
 
+// ---- Shared texture viewer ----
+pub const UI_TEXTURE_VIEWER_OPEN: &str = "ui:texture_viewer:open";
+pub const TEXTURE_VIEWER_SOURCE_KIND: &str = "gui:texture_viewer:source_kind";
+pub const TEXTURE_VIEWER_SOURCE_KEY: &str = "gui:texture_viewer:source_key";
+pub const TEXTURE_VIEWER_SOURCE_TEXTURE: &str = "texture";
+pub const TEXTURE_VIEWER_SOURCE_FONT: &str = "font";
+
 // ---- Map data preview ----
 pub const MAPDATA_PREVIEW_JSON: &str = "gui:mapdata_preview_json";
 pub const UI_PREVIEW_MAPDATA_OPEN: &str = "gui:view:preview_mapdata_open";
