@@ -14,12 +14,16 @@ use aberredengine::components::tint::Tint;
 use aberredengine::components::zindex::ZIndex;
 use aberredengine::components::dynamictext::DynamicText;
 use aberredengine::events::spawnmap::SpawnMapRequested;
+use aberredengine::raylib::prelude::Vector2;
+use aberredengine::resources::animationstore::{AnimationResource, AnimationStore};
 use aberredengine::resources::appstate::AppState;
 use aberredengine::resources::fontstore::FontStore;
 use aberredengine::resources::mapdata::{
-    DynamicTextEntry, EntityDef, FontEntry, MapData, TextureEntry, load_map, save_map,
+    AnimationEntry, DynamicTextEntry, EntityDef, FontEntry, MapData, TextureEntry, load_map,
+    save_map,
 };
 use aberredengine::resources::texturestore::TextureStore;
+use std::sync::Arc;
 use aberredengine::resources::worldsignals::WorldSignals;
 use aberredengine::systems::RaylibAccess;
 use aberredengine::systems::mapspawn::load_font_with_mipmaps;
@@ -58,10 +62,12 @@ pub fn new_map_observer(
     mut app_state: ResMut<AppState>,
     mut texture_store: ResMut<TextureStore>,
     mut font_store: NonSendMut<FontStore>,
+    mut anim_store: ResMut<AnimationStore>,
 ) {
     texture_store.map.clear();
     texture_store.paths.clear();
     font_store.clear();
+    anim_store.animations.clear();
     reset_editor_map(
         &mut commands,
         &map_entities,
@@ -80,6 +86,7 @@ pub fn load_map_observer(
     mut app_state: ResMut<AppState>,
     mut texture_store: ResMut<TextureStore>,
     mut font_store: NonSendMut<FontStore>,
+    mut anim_store: ResMut<AnimationStore>,
 ) {
     let path = &trigger.event().path;
     let map = match load_map(path) {
@@ -92,6 +99,7 @@ pub fn load_map_observer(
     texture_store.map.clear();
     texture_store.paths.clear();
     font_store.clear();
+    anim_store.animations.clear();
     reset_editor_map(
         &mut commands,
         &map_entities,
@@ -376,6 +384,32 @@ pub struct RemoveFontRequested {
     pub key: String,
 }
 
+// ---------------------------------------------------------------------------
+// Animation store CRUD events
+// ---------------------------------------------------------------------------
+
+#[derive(Event)]
+pub struct AddAnimationRequested {
+    pub key: String,
+}
+
+#[derive(Event)]
+pub struct UpdateAnimationResourceRequested {
+    pub key: String,
+    pub resource: AnimationResource,
+}
+
+#[derive(Event)]
+pub struct RenameAnimationKeyRequested {
+    pub old_key: String,
+    pub new_key: String,
+}
+
+#[derive(Event)]
+pub struct RemoveAnimationRequested {
+    pub key: String,
+}
+
 pub fn add_font_observer(
     trigger: On<AddFontRequested>,
     mut raylib: RaylibAccess,
@@ -459,4 +493,92 @@ pub fn preview_mapdata_observer(
             warn!("preview_mapdata_observer: serialization failed: {}", e);
         }
     }
+}
+
+// ---------------------------------------------------------------------------
+// Animation store CRUD observers
+// ---------------------------------------------------------------------------
+
+pub fn add_animation_observer(
+    trigger: On<AddAnimationRequested>,
+    mut anim_store: ResMut<AnimationStore>,
+    mut map_data: ResMut<MapData>,
+) {
+    let key = &trigger.event().key;
+    if anim_store.animations.contains_key(key.as_str()) {
+        return;
+    }
+    let resource = AnimationResource {
+        tex_key: Arc::from(""),
+        position: Vector2 { x: 0.0, y: 0.0 },
+        horizontal_displacement: 16.0,
+        vertical_displacement: 0.0,
+        frame_count: 1,
+        fps: 12.0,
+        looped: true,
+    };
+    anim_store.insert(key.clone(), resource);
+    map_data.animations.push(AnimationEntry {
+        key: key.clone(),
+        texture_key: String::new(),
+        position: [0.0, 0.0],
+        horizontal_displacement: 16.0,
+        vertical_displacement: 0.0,
+        frame_count: 1,
+        fps: 12.0,
+        looping: true,
+    });
+    info!("add_animation_observer: added '{}'", key);
+}
+
+pub fn update_animation_resource_observer(
+    trigger: On<UpdateAnimationResourceRequested>,
+    mut anim_store: ResMut<AnimationStore>,
+    mut map_data: ResMut<MapData>,
+) {
+    let key = &trigger.event().key;
+    let res = &trigger.event().resource;
+    anim_store.insert(key.clone(), res.clone());
+    if let Some(entry) = map_data.animations.iter_mut().find(|e| e.key == *key) {
+        entry.texture_key = res.tex_key.as_ref().to_owned();
+        entry.position = [res.position.x, res.position.y];
+        entry.horizontal_displacement = res.horizontal_displacement;
+        entry.vertical_displacement = res.vertical_displacement;
+        entry.frame_count = res.frame_count as u32;
+        entry.fps = res.fps;
+        entry.looping = res.looped;
+    }
+}
+
+pub fn rename_animation_key_observer(
+    trigger: On<RenameAnimationKeyRequested>,
+    mut anim_store: ResMut<AnimationStore>,
+    mut map_data: ResMut<MapData>,
+) {
+    let old_key = &trigger.event().old_key;
+    let new_key = &trigger.event().new_key;
+    if old_key == new_key || anim_store.animations.contains_key(new_key.as_str()) {
+        return;
+    }
+    if let Some(resource) = anim_store.animations.remove(old_key.as_str()) {
+        anim_store.insert(new_key.clone(), resource);
+    }
+    if let Some(entry) = map_data.animations.iter_mut().find(|e| e.key == *old_key) {
+        entry.key = new_key.clone();
+    }
+    info!(
+        "rename_animation_key_observer: '{}' -> '{}'",
+        old_key, new_key
+    );
+}
+
+pub fn remove_animation_observer(
+    trigger: On<RemoveAnimationRequested>,
+    mut anim_store: ResMut<AnimationStore>,
+    mut map_data: ResMut<MapData>,
+) {
+    let key = &trigger.event().key;
+    anim_store.animations.remove(key.as_str());
+    map_data.animations.retain(|e| e.key != *key);
+    info!("remove_animation_observer: removed '{}'", key);
 }
