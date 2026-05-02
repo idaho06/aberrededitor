@@ -1,3 +1,12 @@
+//! Shared texture preview modal, used by the texture, font, and animation store editors.
+//!
+//! `draw_texture_viewer` renders the preview window; it reads `TEXTURE_VIEWER_SOURCE_KIND` and
+//! `TEXTURE_VIEWER_SOURCE_KEY` from `WorldSignals` to know what to display.
+//! `open_texture_viewer` is a helper called by other panels to set those signals and open the
+//! preview window.
+//!
+//! **Segfault caution:** passes `&ffi::Texture2D` (the full struct pointer) to ImGui — never the
+//! raw `.id` field. See `docs/architecture.md` for the full explanation.
 use crate::signals as sig;
 use aberredengine::imgui;
 use aberredengine::resources::fontstore::FontStore;

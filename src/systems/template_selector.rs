@@ -1,3 +1,8 @@
+//! Per-frame template entity cache for the template browser panel.
+//!
+//! Template entities are `MapEntity` entities that have neither `MapPosition` nor `ZIndex` —
+//! they serve as data-only archetypes for cloning into the map. `update_template_cache` scans
+//! for these entities every frame when the template browser window is open.
 use super::utils::entity_label;
 use aberredengine::bevy_ecs::prelude::{Entity, Or, Query, Res, ResMut, Without};
 use aberredengine::components::group::Group;

@@ -1,3 +1,11 @@
+//! Font store editor panel.
+//!
+//! `draw_font_editor` renders the font list window with add/rename/remove controls.
+//! Returns two booleans indicating whether the rename or remove modal should be opened;
+//! `editor_gui` in `update.rs` calls `ui.open_popup` based on those.
+//! `draw_font_modals` renders both modal popups.
+//!
+//! Reads `FontStore` directly (passed as `&FontStore` in `GuiCallback`).
 use super::texture_viewer_panel::open_texture_viewer;
 use crate::signals as sig;
 use aberredengine::imgui;

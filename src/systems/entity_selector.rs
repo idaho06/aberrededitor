@@ -1,3 +1,14 @@
+//! Entity selection: hit-testing, group selection, registry-key selection.
+//!
+//! Four observers handle different selection sources:
+//! - `entity_pick_observer` — spatial hit-test at a world-space click point (left mouse click).
+//! - `select_group_observer` — selects all entities in a named group.
+//! - `select_registered_entity_observer` — selects an entity by its `WorldSignals` key.
+//! - `select_entity_observer` — resolves a row index from the selector panel into an entity.
+//!
+//! Results are stored in `RenderableSelectorMutex` (an `AppState` Mutex cache). The GUI reads
+//! this cache to render the entity selector panel. A single entity auto-selected on a non-empty
+//! pick triggers `InspectEntityRequested` to populate the entity editor.
 use super::entity_inspector::InspectEntityRequested;
 use super::group_selector::{GroupListCache, GroupListMutex};
 use super::utils::{display_group_name, entity_label};
@@ -25,22 +36,29 @@ use log::{debug, warn};
 // Events
 // ---------------------------------------------------------------------------
 
+/// Hit-test all renderable `MapEntity` entities at world-space `(x, y)`.
+///
+/// Results are sorted topmost-first (by `ZIndex` descending, then entity index). The topmost
+/// hit is auto-selected; all hits are written to `RenderableSelectorMutex` for the panel.
 #[derive(Event)]
 pub struct PickEntitiesAtPointRequested {
     pub x: f32,
     pub y: f32,
 }
 
+/// Resolve `index` from the selector panel's hit list into a full entity selection.
 #[derive(Event)]
 pub struct SelectEntityRequested {
     pub index: usize,
 }
 
+/// Select all entities whose `Group` component matches `group`.
 #[derive(Event)]
 pub struct SelectGroupRequested {
     pub group: String,
 }
 
+/// Select the entity registered under `key` in `WorldSignals.entities`.
 #[derive(Event)]
 pub struct SelectRegisteredEntityRequested {
     pub key: String,
@@ -50,32 +68,43 @@ pub struct SelectRegisteredEntityRequested {
 // Cache resource
 // ---------------------------------------------------------------------------
 
+/// Describes how the current selector result set was produced.
 #[derive(Clone, Default)]
 pub enum SelectorSource {
     #[default]
     None,
+    /// Result of a spatial click at `(x, y)` in world space.
     Click {
         x: f32,
         y: f32,
     },
+    /// Result of selecting all entities in a named group.
     Group {
         display_name: String,
     },
+    /// Result of selecting a single registered entity by key.
     Registry {
         key: String,
     },
 }
 
+/// Cached hit list from the most recent entity selection operation.
+///
+/// Written by selection observers; read by `draw_entity_selector`. Stored in `AppState` as
+/// [`RenderableSelectorMutex`]. Indices in all `Vec` fields are aligned — `hits[i]`,
+/// `labels[i]`, `z_indices[i]`, and `corner_sets[i]` all describe the same entity.
 #[derive(Default)]
 pub struct RenderableSelectorCache {
     pub hits: Vec<Entity>,
     pub labels: Vec<String>,
     pub z_indices: Vec<f32>,
-    /// World-space corners for each hit: TL, TR, BR, BL (clockwise).
+    /// World-space corners for each hit: TL, TR, BR, BL (clockwise). `None` if the entity has
+    /// no pickable visual bounds (no Sprite, BoxCollider, or DynamicText).
     pub corner_sets: Vec<Option<[[f32; 2]; 4]>>,
     pub source: SelectorSource,
 }
 
+/// `AppState` key for the selector hit-list cache. Acquired via `app_state.get::<RenderableSelectorMutex>()`.
 pub type RenderableSelectorMutex = std::sync::Mutex<RenderableSelectorCache>;
 
 // ---------------------------------------------------------------------------

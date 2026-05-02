@@ -1,3 +1,8 @@
+//! In-world selection outline rendered via ImGui draw list.
+//!
+//! `draw_selection_outline` reads `SelectionCorners` from `AppState` (world-space quad) and the
+//! camera/letterbox signals, projects the four corners to ImGui screen coordinates, then draws
+//! a yellow quadrilateral using `ui.get_background_draw_list()`.
 use crate::editor_types::SelectionCorners;
 use crate::signals as sig;
 use aberredengine::imgui;

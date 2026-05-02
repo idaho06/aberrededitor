@@ -1,3 +1,12 @@
+//! Animation store editor panel.
+//!
+//! `draw_animation_store` renders the main animation store window (list + field editors).
+//! `draw_animation_modals` renders the rename and remove confirmation popups.
+//! Both are called from `editor_gui` in `update.rs`.
+//!
+//! The panel reads animation data from `AnimationStoreMutex` (an `AppState` cache synced by
+//! `animation_store_sync_system`) and writes action signals for `handle_animation_actions` in
+//! `editor_update` to consume.
 use std::sync::Arc;
 
 use aberredengine::imgui;

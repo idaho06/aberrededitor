@@ -1,3 +1,14 @@
+//! Tilemap loading: spawns a `TileMap` entity from a folder path and tags children.
+//!
+//! `tilemap_load_observer` handles `LoadTilemapRequested`. It must run in an ECS observer
+//! (not the GUI callback) because it needs `RaylibAccess` to load the tilemap texture.
+//!
+//! `tag_plain_map_entities` and `on_tilemap_added` are per-frame systems that run after
+//! the tilemap is spawned to insert `MapEntity`, `SerializedLuaSetup`, and `TextureStore`
+//! entries on the newly created entities.
+//!
+//! `PendingLuaSetupLoadState` tracks which entities still need their `SerializedLuaSetup`
+//! component populated from the map file's `lua_setup` fields.
 use crate::components::serialized_lua_setup::SerializedLuaSetup;
 use aberredengine::bevy_ecs;
 use aberredengine::bevy_ecs::hierarchy::ChildOf;
@@ -134,8 +145,8 @@ pub fn tag_plain_map_entities(
     }
 }
 
-/// Runs on Added<TileMap> — covers both the UI-trigger path and the engine's
-/// load-from-file spawn path. TextureStore.paths is an editor concern; the
+/// Runs on `Added<TileMap>` — covers both the UI-trigger path and the engine's
+/// load-from-file spawn path. `TextureStore.paths` is an editor concern; the
 /// engine's tilemap_spawn_system does not populate it.
 pub fn on_tilemap_added(
     query: Query<(Entity, &TileMap), Added<TileMap>>,

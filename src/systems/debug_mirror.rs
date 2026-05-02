@@ -1,3 +1,4 @@
+//! Observer that mirrors the engine's debug-mode toggle into `WorldSignals`.
 use crate::signals as sig;
 use aberredengine::bevy_ecs::observer::On;
 use aberredengine::bevy_ecs::prelude::*;

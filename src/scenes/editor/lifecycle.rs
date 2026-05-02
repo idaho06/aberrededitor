@@ -1,3 +1,8 @@
+//! Editor scene enter and exit handlers.
+//!
+//! `editor_enter` configures the camera and rebinds `Action1` to mouse-left-only (so WASD
+//! panning works without the mouse button firing entity picks). `editor_exit` restores input
+//! bindings and clears selector and pending state to avoid stale state on scene re-entry.
 use super::state::clear_entity_editor_pending;
 use crate::signals as sig;
 use crate::systems::entity_selector::clear_selector_state;

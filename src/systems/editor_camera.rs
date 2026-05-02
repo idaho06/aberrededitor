@@ -1,3 +1,9 @@
+//! Editor camera pan and zoom input handler.
+//!
+//! Arrow-key panning: ±300 px/s in world units at zoom = 1.0 (scales with 1/zoom so pan
+//! speed feels consistent). Mouse-wheel zoom: 1.1× per scroll tick, clamped to [0.1, 10.0].
+//! Both are suppressed when `IMGUI_WANTS_KEYBOARD` is set (i.e., an ImGui widget has focus).
+//! Reset zoom on `ACTION_VIEW_RESET_ZOOM` signal.
 use crate::signals as sig;
 use aberredengine::bevy_ecs::prelude::{Query, Res, ResMut};
 use aberredengine::components::cameratarget::CameraTarget;

@@ -1,3 +1,8 @@
+//! Groups browser panel — lists all entity groups and their entity counts.
+//!
+//! Reads `GroupListMutex` from `AppState` (maintained by `update_group_cache`). Clicking a
+//! group sets `GROUPS_SELECTED_GROUP` in `WorldSignals`; `editor_update` triggers
+//! `SelectGroupRequested` to populate the entity selector with that group's entities.
 use crate::signals as sig;
 use crate::systems::group_selector::GroupListMutex;
 use crate::systems::utils::display_group_name;

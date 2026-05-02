@@ -1,3 +1,8 @@
+//! Per-frame camera state sync to `WorldSignals`.
+//!
+//! Writes camera target, zoom, offset, and letterbox parameters every frame so the GUI
+//! callback can project world-space entity positions onto the ImGui screen coordinate system
+//! (used by `overlay::draw_selection_outline`).
 use crate::signals as sig;
 use aberredengine::bevy_ecs::prelude::{Res, ResMut};
 use aberredengine::resources::camera2d::Camera2DRes;

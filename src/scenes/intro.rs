@@ -1,3 +1,11 @@
+//! Intro splash scene with glitch and fade shader animations.
+//!
+//! Uses a `Phase` state machine (`start` → `medium` → `fadeout`) to animate shader uniforms
+//! (`uGlitch`, `fadeColor`) over time. The user can skip to the editor scene by pressing any
+//! action button. The scene also transitions automatically when the `fadeout` phase completes.
+//!
+//! This scene demonstrates the canonical scene lifecycle pattern: enter spawns entities and
+//! sets up shaders; update drives the phase machine; exit cleans up shaders and despawns assets.
 use aberredengine::bevy_ecs::prelude::Entity;
 use aberredengine::components::mapposition::MapPosition;
 use aberredengine::components::phase::{Phase, PhaseCallbackFns};

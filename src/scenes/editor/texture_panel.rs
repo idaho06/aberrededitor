@@ -1,3 +1,10 @@
+//! Texture store editor panel.
+//!
+//! `draw_texture_editor` renders the texture list window with add/rename/remove controls.
+//! Returns two booleans for rename and remove modal triggers; `editor_gui` calls `ui.open_popup`
+//! based on those. `draw_texture_modals` renders both modal popups.
+//!
+//! Reads `TextureStore` directly (passed as `&TextureStore` in `GuiCallback`).
 use super::texture_viewer_panel::open_texture_viewer;
 use crate::signals as sig;
 use aberredengine::imgui;

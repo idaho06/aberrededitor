@@ -1,3 +1,12 @@
+//! Per-entity component inspector and edit panel.
+//!
+//! `draw_entity_editor` renders the entity editor window. It reads `ComponentSnapshot` from
+//! `AppState` (written by `entity_inspect_observer`) and `PendingEditState` from `PendingMutex`
+//! (also in `AppState`). User edits update `PendingEditState`; commit booleans are set when
+//! the user triggers an apply action. `consume_entity_editor_commits` in `commit.rs` converts
+//! those commits into ECS events every frame in `editor_update`.
+//!
+//! `draw_entity_delete_modal` renders the entity deletion confirmation popup.
 use super::pending_state::PendingMutex;
 use crate::systems::animation_store_sync::AnimationStoreMutex;
 use super::widgets::{

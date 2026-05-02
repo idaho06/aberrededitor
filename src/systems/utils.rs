@@ -1,3 +1,10 @@
+//! Shared utility helpers used across multiple systems.
+//!
+//! - [`entity_label`] — builds a display string for the entity selector.
+//! - [`display_group_name`] — returns `"(empty)"` for blank group names, otherwise the name.
+//! - [`sprite_to_entry`] — converts a `Sprite` component to a serialisable `SpriteEntry`.
+//! - [`tilemap_tex_path`] / [`tilemap_stem`] — derive texture paths from tilemap folder paths.
+//! - [`to_relative`] — converts an absolute path (e.g., from `rfd`) to a CWD-relative path.
 use aberredengine::bevy_ecs::prelude::Entity;
 use aberredengine::components::group::Group;
 use aberredengine::components::persistent::Persistent;

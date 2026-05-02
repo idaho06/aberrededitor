@@ -1,3 +1,10 @@
+//! Editor main menu bar.
+//!
+//! `draw_menu_bar` renders File / View / Entity menus. Menu items set `WorldSignals` flags
+//! (e.g., `ACTION_FILE_NEW_MAP`) that `editor_update` in `update.rs` consumes the next frame.
+//! Returns `true` if the About modal should be opened.
+//!
+//! `draw_about_modal` renders the About popup (called from `editor_gui` after `draw_menu_bar`).
 use crate::signals as sig;
 use aberredengine::imgui;
 use aberredengine::resources::worldsignals::WorldSignals;

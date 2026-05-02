@@ -1,3 +1,15 @@
+//! Pending-state commit dispatcher: converts GUI edit buffers into ECS observer events.
+//!
+//! `consume_entity_editor_commits` is called from `editor_update` every frame. It:
+//! 1. Checks `PendingMutex` — returns immediately if `any_commit()` is false.
+//! 2. Verifies a selected entity exists and its snapshot is consistent.
+//! 3. For each dirty component group (`commit_xyz = true` or `remove_xyz = true`), triggers
+//!    the corresponding `Update*Requested` or `Remove*Requested` event.
+//! 4. Clears the pending state via `clear_entity_editor_pending`.
+//!
+//! Each `consume_xyz_commit` helper merges the pending `Option<T>` fields with the snapshot
+//! fallback (`p.field.unwrap_or(snap.field)`) to produce the final event payload. This
+//! implements the `PendingEditState` dirty-encoding pattern — see `docs/patterns.md §4`.
 use super::pending_state::{PendingEditState, PendingMutex};
 use super::state::clear_entity_editor_pending;
 use crate::editor_types::ComponentSnapshot;

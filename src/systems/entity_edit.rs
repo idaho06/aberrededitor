@@ -1,3 +1,18 @@
+//! ECS observers for all entity component mutations.
+//!
+//! Each editable component type has a pair of events:
+//! - `Update*Requested` — replaces or sets a component's value on the target entity.
+//! - `Remove*Requested` — removes the component from the target entity.
+//!
+//! Additional events handle entity lifecycle: [`CreateBlankEntityRequested`],
+//! [`CloneEntityRequested`], [`RemoveEntityRequested`], [`AddComponentRequested`],
+//! [`BakeTilemapRequested`], [`RegisterEntityRequested`], [`UnregisterEntityRequested`].
+//!
+//! All observers are registered in `main.rs` via `.add_observer()`. They are triggered from
+//! `scenes/editor/commit.rs` (entity editor commits) or directly from `editor_update`.
+//!
+//! Every mutation observer ends by re-triggering `InspectEntityRequested` so the GUI
+//! snapshot is refreshed within the same frame's command queue.
 use super::entity_inspector::InspectEntityRequested;
 use crate::components::serialized_lua_setup::SerializedLuaSetup;
 use crate::editor_types::ComponentKind;
@@ -69,6 +84,7 @@ pub struct UpdateScaleRequested {
 #[derive(Event)]
 pub struct UpdateSpriteRequested {
     pub entity: Entity,
+    /// Key into `TextureStore`.
     pub tex_key: String,
     pub width: f32,
     pub height: f32,
@@ -86,9 +102,11 @@ pub struct UpdateBoxColliderRequested {
     pub origin: [f32; 2],
 }
 
+/// Set the active animation key on `entity`. Resets frame index and elapsed time.
 #[derive(Event)]
 pub struct UpdateAnimationRequested {
     pub entity: Entity,
+    /// Key into `AnimationStore`.
     pub animation_key: String,
 }
 
@@ -140,6 +158,8 @@ pub struct RemovePhaseRequested {
 pub struct RemovePersistentRequested {
     pub entity: Entity,
 }
+/// Removes `TileMap`, cleans up `MapData`/`TextureStore` entries, despawns the entity,
+/// and clears all its `WorldSignals` registrations.
 #[derive(Event)]
 pub struct RemoveTileMapRequested {
     pub entity: Entity,
@@ -156,10 +176,13 @@ pub struct RemoveLuaSetupRequested {
 pub struct RemoveDynamicTextRequested {
     pub entity: Entity,
 }
+/// Despawn `entity` and remove all its `WorldSignals` entity registrations.
 #[derive(Event)]
 pub struct RemoveEntityRequested {
     pub entity: Entity,
 }
+/// Bake a tilemap root: convert tile children into standalone `MapEntity` entries and despawn
+/// the tilemap root. The baked texture entry is added to `MapData.textures`.
 #[derive(Event)]
 pub struct BakeTilemapRequested {
     pub entity: Entity,
@@ -178,6 +201,7 @@ pub struct UpdateTintRequested {
 pub struct UpdateDynamicTextRequested {
     pub entity: Entity,
     pub text: String,
+    /// Key into `FontStore`.
     pub font_key: String,
     pub font_size: f32,
     pub r: u8,
@@ -192,6 +216,10 @@ pub struct UpdateLuaSetupRequested {
     pub callback: String,
 }
 
+/// Register `entity` under `key` in `WorldSignals.entities`.
+///
+/// If `old_key` is `Some`, the old registration is removed first. Triggers
+/// `InspectEntityRequested` to refresh the inspector's key list.
 #[derive(Event)]
 pub struct RegisterEntityRequested {
     pub entity: Entity,
@@ -199,24 +227,28 @@ pub struct RegisterEntityRequested {
     pub old_key: Option<String>,
 }
 
+/// Remove the `key → entity` registration from `WorldSignals.entities`.
 #[derive(Event)]
 pub struct UnregisterEntityRequested {
     pub entity: Entity,
     pub key: String,
 }
 
+/// Insert a default-valued component of the given `kind` onto `entity`.
 #[derive(Event)]
 pub struct AddComponentRequested {
     pub entity: Entity,
     pub kind: ComponentKind,
 }
 
+/// Spawn a bare `MapEntity` with `MapPosition` at `(x, y)` and select it.
 #[derive(Event)]
 pub struct CreateBlankEntityRequested {
     pub x: f32,
     pub y: f32,
 }
 
+/// Deep-clone `entity` and place the clone at `(x, y)`. Selects the new entity.
 #[derive(Event)]
 pub struct CloneEntityRequested {
     pub entity: Entity,

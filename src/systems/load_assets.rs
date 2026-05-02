@@ -1,3 +1,12 @@
+//! One-shot setup system: loads shaders and initial assets, inserts all `AppState` caches.
+//!
+//! Registered via `EngineBuilder::on_setup`. Runs once during the `Setup` game state before
+//! the first scene is entered. Responsible for:
+//! - Loading shaders (glitch, fade) used by the intro scene.
+//! - Loading the intro logo texture.
+//! - Inserting all `Mutex<T>` caches into `AppState` so they are available before any system runs.
+//! - Inserting `MapData` and `EditorState` Bevy resources.
+//! - Advancing the game state to `Playing` to begin the scene loop.
 use crate::scenes::editor::EditorState;
 use crate::scenes::editor::pending_state::{PendingEditState, PendingMutex};
 use crate::systems::entity_selector::{RenderableSelectorCache, RenderableSelectorMutex};

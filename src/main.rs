@@ -1,3 +1,8 @@
+//! aberrededitor — 2D map editor built on aberredengine (Bevy ECS + Raylib).
+//!
+//! Entry point: [`main`] wires all observers, per-frame systems, and scene descriptors via
+//! [`aberredengine::engine_app::EngineBuilder`]. See `docs/architecture.md` for the
+//! two-layer ECS/GUI model, and `docs/patterns.md` for the recurring design patterns.
 mod components;
 mod editor_types;
 mod scenes;

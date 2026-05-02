@@ -1,3 +1,4 @@
+//! Editor-side Lua callback storage, decoupled from the engine's `lua` feature.
 use aberredengine::bevy_ecs;
 use aberredengine::bevy_ecs::prelude::Component;
 

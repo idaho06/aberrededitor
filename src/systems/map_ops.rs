@@ -1,3 +1,21 @@
+//! Map lifecycle and asset store CRUD observers.
+//!
+//! **Map lifecycle:**
+//! - [`NewMapRequested`] / [`new_map_observer`] — clears all stores and despawns all `MapEntity` entities.
+//! - [`LoadMapRequested`] / [`load_map_observer`] — deserialises a `.map` JSON file and
+//!   spawns entities + populates stores. Uses [`aberredengine::events::spawnmap::SpawnMapRequested`]
+//!   for the actual entity instantiation.
+//! - [`SaveMapRequested`] / [`save_map_observer`] — serialises all `MapEntity` components to
+//!   JSON and writes the file.
+//!
+//! **Asset store CRUD (Texture / Font / Animation):**
+//! Each store has three or four event/observer pairs: Add, Rename, Remove (and Update for
+//! animations). All observers mutate the corresponding engine resource directly; the GUI reads
+//! the updated state via the per-frame sync systems.
+//!
+//! **Group constants:**
+//! - [`GROUP_TILES`] — group name for individual tile entities inside a tilemap.
+//! - [`GROUP_TILEMAP_ROOTS`] — group name for tilemap root entities.
 use crate::components::serialized_lua_setup::SerializedLuaSetup;
 use crate::signals as sig;
 use aberredengine::bevy_ecs;
@@ -35,21 +53,26 @@ use crate::systems::entity_selector::clear_selector_state;
 use crate::systems::tilemap_load::PendingLuaSetupLoadMutex;
 use crate::systems::utils::{sprite_to_entry, to_relative};
 
+/// Group name assigned to individual tile entities spawned by a tilemap.
 pub const GROUP_TILES: &str = "tiles";
+/// Group name assigned to the root entity of a loaded tilemap.
 pub const GROUP_TILEMAP_ROOTS: &str = "tilemap-roots";
 
 // ---------------------------------------------------------------------------
 // Map lifecycle events
 // ---------------------------------------------------------------------------
 
+/// Clear all stores and despawn all `MapEntity` entities, resetting to an empty map.
 #[derive(Event)]
 pub struct NewMapRequested;
 
+/// Load a `.map` JSON file from `path` and populate ECS + asset stores.
 #[derive(Event)]
 pub struct LoadMapRequested {
     pub path: String,
 }
 
+/// Serialise all `MapEntity` components to JSON and write to `path`.
 #[derive(Event)]
 pub struct SaveMapRequested {
     pub path: String,
@@ -266,18 +289,23 @@ fn clear_map_entities(commands: &mut Commands, map_entities: &Query<Entity, With
 // Texture store events
 // ---------------------------------------------------------------------------
 
+/// Load the texture at `path` (relative to CWD) into `TextureStore` under `key`.
+/// No-ops if `key` already exists. Also records the entry in `MapData.textures`.
 #[derive(Event)]
 pub struct AddTextureRequested {
     pub key: String,
+    /// Relative-to-CWD path (converted via `to_relative` before triggering).
     pub path: String,
 }
 
+/// Rename a texture key in `TextureStore`, `TextureStore.paths`, and `MapData.textures`.
 #[derive(Event)]
 pub struct RenameTextureKeyRequested {
     pub old_key: String,
     pub new_key: String,
 }
 
+/// Remove a texture from `TextureStore` and `MapData.textures`.
 #[derive(Event)]
 pub struct RemoveTextureRequested {
     pub key: String,
@@ -370,19 +398,24 @@ pub fn remove_texture_observer(
 // Font store events
 // ---------------------------------------------------------------------------
 
+/// Load the font at `path` with `font_size` into `FontStore` under `key`.
+/// No-ops if `key` already exists. `FontStore` is `NonSend`; this observer requests `NonSendMut`.
 #[derive(Event)]
 pub struct AddFontRequested {
     pub key: String,
+    /// Relative-to-CWD path.
     pub path: String,
     pub font_size: f32,
 }
 
+/// Rename a font key in `FontStore` and `MapData.fonts`.
 #[derive(Event)]
 pub struct RenameFontKeyRequested {
     pub old_key: String,
     pub new_key: String,
 }
 
+/// Remove a font from `FontStore` and `MapData.fonts`.
 #[derive(Event)]
 pub struct RemoveFontRequested {
     pub key: String,
@@ -392,23 +425,27 @@ pub struct RemoveFontRequested {
 // Animation store CRUD events
 // ---------------------------------------------------------------------------
 
+/// Add a default-valued [`AnimationResource`] under `key` to `AnimationStore`.
 #[derive(Event)]
 pub struct AddAnimationRequested {
     pub key: String,
 }
 
+/// Overwrite the [`AnimationResource`] stored under `key` in `AnimationStore`.
 #[derive(Event)]
 pub struct UpdateAnimationResourceRequested {
     pub key: String,
     pub resource: AnimationResource,
 }
 
+/// Rename an animation key in `AnimationStore` and `MapData.animations`.
 #[derive(Event)]
 pub struct RenameAnimationKeyRequested {
     pub old_key: String,
     pub new_key: String,
 }
 
+/// Remove an animation from `AnimationStore` and `MapData.animations`.
 #[derive(Event)]
 pub struct RemoveAnimationRequested {
     pub key: String,

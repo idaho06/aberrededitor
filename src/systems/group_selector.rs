@@ -1,3 +1,10 @@
+//! Per-frame group list cache for the groups browser panel.
+//!
+//! `update_group_cache` maintains `GroupListMutex` in `AppState`. It only recomputes when:
+//! - `UI_GROUPS_WINDOW_OPEN` is set (lazy — don't compute when the window is closed), AND
+//! - a `Group` component was added, changed, or removed since last frame.
+//!
+//! The result is a sorted list of (`raw_name`, entity count) pairs read by `draw_groups_window`.
 use crate::signals as sig;
 use aberredengine::bevy_ecs::prelude::{Added, Changed, Or, Query, RemovedComponents, Res, ResMut};
 use aberredengine::components::group::Group;
@@ -7,12 +14,14 @@ use std::collections::HashMap;
 
 use super::utils::display_group_name;
 
+/// One row in the groups browser: the raw group name and the count of entities in that group.
 #[derive(Clone)]
 pub struct GroupEntry {
     pub raw_name: String,
     pub count: usize,
 }
 
+/// Cached group list. `dirty = true` means a recompute is needed on the next open frame.
 pub struct GroupListCache {
     pub entries: Vec<GroupEntry>,
     dirty: bool,
@@ -27,6 +36,7 @@ impl Default for GroupListCache {
     }
 }
 
+/// `AppState` key for the group list cache. Read by `draw_groups_window`.
 pub type GroupListMutex = std::sync::Mutex<GroupListCache>;
 
 #[allow(clippy::type_complexity)]

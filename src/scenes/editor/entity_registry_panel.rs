@@ -1,3 +1,8 @@
+//! Entity registry browser panel — lists all named (WorldSignals-registered) entities.
+//!
+//! Reads registered entity keys directly from `WorldSignals.entities` (filtered through
+//! `is_user_entity_key` to exclude internal editor keys). Clicking a key sets
+//! `ENTITY_REGISTRY_SELECTED_KEY`; `editor_update` triggers `SelectRegisteredEntityRequested`.
 use crate::signals as sig;
 use aberredengine::imgui;
 use aberredengine::resources::worldsignals::WorldSignals;

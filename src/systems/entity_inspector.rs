@@ -1,3 +1,11 @@
+//! Entity inspection: serialises ECS components into a `ComponentSnapshot` stored in `AppState`.
+//!
+//! `entity_inspect_observer` fires in response to `InspectEntityRequested`. It runs a single
+//! ECS query over all inspectable components and writes the result to `AppState` as a
+//! `ComponentSnapshot`. The GUI callback reads this snapshot each frame without querying ECS.
+//!
+//! The observer is re-triggered automatically at the end of every component-mutation observer so
+//! the inspector always shows the post-mutation state.
 use crate::components::serialized_lua_setup::SerializedLuaSetup;
 use crate::editor_types::{
     AnimationSnapshot, ColliderSnapshot, ComponentSnapshot, DynamicTextSnapshot, PhaseSnapshot,
@@ -29,6 +37,11 @@ use aberredengine::resources::worldsignals::WorldSignals;
 // Event
 // ---------------------------------------------------------------------------
 
+/// Request a full component snapshot of `entity` and store it in `AppState`.
+///
+/// Triggered by selection observers, mutation observers, and `editor_update`. On receipt,
+/// `entity_inspect_observer` queries all inspectable components and writes a `ComponentSnapshot`
+/// into `AppState`, then sets `ES_SELECTED_ENTITY` and `UI_ENTITY_EDITOR_OPEN`.
 #[derive(Event)]
 pub struct InspectEntityRequested {
     pub entity: Entity,

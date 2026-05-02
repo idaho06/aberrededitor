@@ -1,3 +1,18 @@
+//! Main editor scene update loop and ImGui GUI callback.
+//!
+//! Two public functions are registered in `main.rs` as the editor scene's callbacks:
+//!
+//! - `editor_update` — the `SceneUpdateFn`. Runs in ECS context each frame. Processes
+//!   `WorldSignals` flags from the previous GUI frame (mouse picks, menu actions, selector
+//!   selections, asset CRUD) and dispatches the corresponding events via `commands.trigger`.
+//!
+//! - `editor_gui` — the `GuiCallback`. Runs every frame after `editor_update`. Draws all
+//!   ImGui panels and synchronises `IMGUI_WANTS_MOUSE/KEYBOARD` flags so `editor_update` can
+//!   suppress world picks when the GUI is active.
+//!
+//! Action handling is split into `handle_file_actions`, `handle_entity_actions`,
+//! `handle_texture_actions`, `handle_font_actions`, `handle_animation_actions`, and
+//! `handle_view_actions` to keep `editor_update` readable.
 use super::commit::consume_entity_editor_commits;
 use super::entity_editor_panel::{draw_entity_delete_modal, draw_entity_editor};
 use super::entity_registry_panel::draw_entity_registry;

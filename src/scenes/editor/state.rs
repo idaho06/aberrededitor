@@ -1,3 +1,11 @@
+//! Editor scene ECS state resource and selection-change system.
+//!
+//! [`EditorState`] is a Bevy `Resource` that holds ECS-only transient state not needed by the
+//! GUI callback. Currently it only tracks the last-selected entity.
+//!
+//! [`entity_editor_selection_change_system`] runs every frame, detects when `ES_SELECTED_ENTITY`
+//! changes, and clears `PendingEditState` to prevent stale pending values from the previous
+//! selection leaking into the new one.
 use super::pending_state::{PendingEditState, PendingMutex};
 use crate::signals as sig;
 use aberredengine::bevy_ecs;

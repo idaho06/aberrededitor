@@ -1,3 +1,7 @@
+//! Entity selector panel — shows the hit list from the most recent pick/group/registry selection.
+//!
+//! Reads `RenderableSelectorMutex` from `AppState`. Clicking a row sets `ES_SELECTED_ROW` in
+//! `WorldSignals`; `editor_update` consumes that to trigger `SelectEntityRequested`.
 use crate::signals as sig;
 use crate::systems::entity_selector::{RenderableSelectorMutex, SelectorSource};
 use aberredengine::imgui;

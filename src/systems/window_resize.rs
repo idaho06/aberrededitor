@@ -1,3 +1,9 @@
+//! Window resize handler.
+//!
+//! `sync_render_size_to_window` is an observer registered via `configure_resize_schedule`.
+//! It recreates the Raylib render target to match the new window size and updates `ScreenSize`,
+//! `WindowSize`, and the camera offset to keep the letterbox centred.
+//! `configure_resize_schedule` wires the observer into the Bevy schedule before `camera_sync`.
 use aberredengine::bevy_ecs::prelude::*;
 use aberredengine::resources::camera2d::Camera2DRes;
 use aberredengine::resources::gameconfig::GameConfig;

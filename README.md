@@ -30,3 +30,12 @@ cargo build
 cargo run          # debug build
 cargo run --release  # optimized build
 ```
+
+## Documentation
+
+- [`docs/architecture.md`](docs/architecture.md) — ECS/ImGui two-layer model, signal bus, scene lifecycle, map data round-trip
+- [`docs/patterns.md`](docs/patterns.md) — six recurring design patterns (signal bus, observer dispatch, AppState caches, pending-state dirty encoding, snapshot serialization, MapEntity marker)
+- [`docs/gotchas.md`](docs/gotchas.md) — critical constraints: lua feature gate, path relativity, RaylibHandle access, bevy_ecs derive workaround, ImGui texture pointer safety
+- [`docs/recipes/`](docs/recipes/) — step-by-step guides: add a component, add a panel, add a menu action, add an asset store
+
+Generated API docs: `cargo doc --no-deps --open`

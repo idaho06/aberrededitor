@@ -1,3 +1,11 @@
+//! Template browser panel — pick a template entity to clone at the camera centre.
+//!
+//! Reads `TemplateSelectorMutex` from `AppState` (maintained by `update_template_cache`).
+//! Template entities are those without `MapPosition` or `ZIndex` — they act as data-only
+//! archetypes that can be cloned into the map.
+//!
+//! On selection, sets `TEMPLATE_SELECT_ENTITY` in `WorldSignals`; `editor_update` reads that
+//! flag and triggers `InspectEntityRequested` to show the entity in the editor.
 use crate::signals as sig;
 use crate::systems::template_selector::TemplateSelectorMutex;
 use aberredengine::bevy_ecs::prelude::Entity;
