@@ -70,6 +70,14 @@ pub const TEXTURE_VIEWER_SOURCE_KIND: &str = "gui:texture_viewer:source_kind";
 pub const TEXTURE_VIEWER_SOURCE_KEY: &str = "gui:texture_viewer:source_key";
 pub const TEXTURE_VIEWER_SOURCE_TEXTURE: &str = "texture";
 pub const TEXTURE_VIEWER_SOURCE_FONT: &str = "font";
+pub const TEXTURE_VIEWER_SOURCE_ANIMATION: &str = "animation";
+
+// ---- Animation store editor ----
+pub const UI_ANIMATION_STORE_OPEN: &str = "ui:animation_store:open";
+pub const ANIM_ADD_KEY_BUF: &str = "gui:animation_store:add_key_buf";
+pub const ANIM_RENAME_SRC: &str = "gui:animation_store:rename_src";
+pub const ANIM_RENAME_BUF: &str = "gui:animation_store:rename_buf";
+pub const ANIM_REMOVE_KEY: &str = "gui:animation_store:remove_key";
 
 // ---- Map data preview ----
 pub const MAPDATA_PREVIEW_JSON: &str = "gui:mapdata_preview_json";
