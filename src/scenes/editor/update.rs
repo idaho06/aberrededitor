@@ -324,11 +324,10 @@ fn handle_animation_actions(ctx: &mut GameCtx) {
         if let Some(key) = ctx
             .world_signals
             .get_string(sig::ANIM_ADD_KEY_BUF)
+            .filter(|k| !k.is_empty())
             .map(|s| s.to_owned())
         {
-            if !key.is_empty() {
-                ctx.commands.trigger(AddAnimationRequested { key });
-            }
+            ctx.commands.trigger(AddAnimationRequested { key });
         }
     }
 
@@ -358,14 +357,13 @@ fn handle_animation_actions(ctx: &mut GameCtx) {
     }
 
     if ctx.world_signals.take_flag(sig::ACTION_ANIM_UPDATE) {
-        let key = ctx
+        if let Some(key) = ctx
             .world_signals
             .get_string(sig::ANIM_UPDATE_KEY)
-            .map(|s| s.to_owned());
-        if let Some(key) = key {
+            .map(|s| s.to_owned())
+        {
             if let Some(mutex) = ctx.app_state.get::<AnimationStoreMutex>() {
-                let resource = mutex.lock().unwrap().get(key.as_str()).cloned();
-                if let Some(resource) = resource {
+                if let Some(resource) = mutex.lock().unwrap().get(key.as_str()).cloned() {
                     ctx.commands
                         .trigger(UpdateAnimationResourceRequested { key, resource });
                 }

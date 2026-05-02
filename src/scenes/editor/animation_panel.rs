@@ -98,23 +98,23 @@ pub(super) fn draw_animation_store(
                         }
 
                         // tex_key combo
-                        let mut current_tex = tex_key_strs
-                            .iter()
-                            .position(|k| *k == resource.tex_key.as_ref())
-                            .unwrap_or(0);
-                        ui.set_next_item_width(200.0);
-                        if !tex_key_strs.is_empty()
-                            && ui.combo_simple_string(
+                        if tex_key_strs.is_empty() {
+                            ui.text_disabled("(no textures loaded)");
+                        } else {
+                            let mut current_tex = tex_key_strs
+                                .iter()
+                                .position(|k| *k == resource.tex_key.as_ref())
+                                .unwrap_or(0);
+                            ui.set_next_item_width(200.0);
+                            if ui.combo_simple_string(
                                 "tex_key##anim",
                                 &mut current_tex,
                                 &tex_key_strs,
-                            )
-                        {
-                            let mut r = resource.clone();
-                            r.tex_key = Arc::from(tex_key_strs[current_tex]);
-                            changed_resource = Some(r);
-                        } else if tex_key_strs.is_empty() {
-                            ui.text_disabled("(no textures loaded)");
+                            ) {
+                                let mut r = resource.clone();
+                                r.tex_key = Arc::from(tex_key_strs[current_tex]);
+                                changed_resource = Some(r);
+                            }
                         }
 
                         // Numeric fields

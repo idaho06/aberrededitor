@@ -132,6 +132,20 @@ fn resolve_viewer_texture(
                 path: meta.path.clone(),
             })
         }
+        Some(sig::TEXTURE_VIEWER_SOURCE_ANIMATION) => {
+            let texture = textures.map.get(source_key)?;
+            let tex = texture.as_ref();
+            Some(ResolvedViewerTexture {
+                texture_id: imgui::TextureId::from(tex as *const _ as usize),
+                width: tex.width,
+                height: tex.height,
+                path: textures
+                    .paths
+                    .get(source_key)
+                    .cloned()
+                    .unwrap_or_else(|| "(path unavailable)".to_owned()),
+            })
+        }
         _ => None,
     }
 }

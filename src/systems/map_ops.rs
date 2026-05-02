@@ -503,6 +503,19 @@ pub fn preview_mapdata_observer(
 // Animation store CRUD observers
 // ---------------------------------------------------------------------------
 
+fn resource_to_entry(key: &str, res: &AnimationResource) -> AnimationEntry {
+    AnimationEntry {
+        key: key.to_owned(),
+        texture_key: res.tex_key.as_ref().to_owned(),
+        position: [res.position.x, res.position.y],
+        horizontal_displacement: res.horizontal_displacement,
+        vertical_displacement: res.vertical_displacement,
+        frame_count: res.frame_count as u32,
+        fps: res.fps,
+        looping: res.looped,
+    }
+}
+
 pub fn add_animation_observer(
     trigger: On<AddAnimationRequested>,
     mut anim_store: ResMut<AnimationStore>,
@@ -521,17 +534,8 @@ pub fn add_animation_observer(
         fps: 12.0,
         looped: true,
     };
+    map_data.animations.push(resource_to_entry(key, &resource));
     anim_store.insert(key.clone(), resource);
-    map_data.animations.push(AnimationEntry {
-        key: key.clone(),
-        texture_key: String::new(),
-        position: [0.0, 0.0],
-        horizontal_displacement: 16.0,
-        vertical_displacement: 0.0,
-        frame_count: 1,
-        fps: 12.0,
-        looping: true,
-    });
     info!("add_animation_observer: added '{}'", key);
 }
 
@@ -544,13 +548,7 @@ pub fn update_animation_resource_observer(
     let res = &trigger.event().resource;
     anim_store.insert(key.clone(), res.clone());
     if let Some(entry) = map_data.animations.iter_mut().find(|e| e.key == *key) {
-        entry.texture_key = res.tex_key.as_ref().to_owned();
-        entry.position = [res.position.x, res.position.y];
-        entry.horizontal_displacement = res.horizontal_displacement;
-        entry.vertical_displacement = res.vertical_displacement;
-        entry.frame_count = res.frame_count as u32;
-        entry.fps = res.fps;
-        entry.looping = res.looped;
+        *entry = resource_to_entry(key, res);
     }
 }
 
