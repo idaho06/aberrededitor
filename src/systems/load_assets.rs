@@ -1,6 +1,7 @@
 use crate::scenes::editor::EditorState;
 use crate::scenes::editor::pending_state::{PendingEditState, PendingMutex};
 use crate::systems::entity_selector::{RenderableSelectorCache, RenderableSelectorMutex};
+use crate::systems::animation_store_sync::AnimationStoreMutex;
 use crate::systems::group_selector::{GroupListCache, GroupListMutex};
 use crate::systems::template_selector::{TemplateSelectorCache, TemplateSelectorMutex};
 use crate::systems::tilemap_load::{PendingLuaSetupLoadMutex, PendingLuaSetupLoadState};
@@ -57,6 +58,7 @@ pub fn load_assets(
         RenderableSelectorCache::default(),
     ));
     app_state.insert(GroupListMutex::new(GroupListCache::default()));
+    app_state.insert(AnimationStoreMutex::new(Default::default()));
     app_state.insert(TemplateSelectorMutex::new(TemplateSelectorCache::default()));
     app_state.insert(PendingLuaSetupLoadMutex::new(
         PendingLuaSetupLoadState::default(),

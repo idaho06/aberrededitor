@@ -1,3 +1,4 @@
+pub mod animation_store_sync;
 pub mod camera_sync;
 pub mod debug_mirror;
 pub mod editor_camera;
