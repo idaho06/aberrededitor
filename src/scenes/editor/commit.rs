@@ -338,18 +338,12 @@ fn consume_animation_commit(
         );
         return;
     };
-    let frame_index = p
-        .anim_frame_index
-        .unwrap_or_else(|| i32::try_from(animation.frame_index).unwrap_or(i32::MAX))
-        .max(0) as usize;
     ctx.commands.trigger(UpdateAnimationRequested {
         entity,
         animation_key: p
             .anim_key
             .clone()
             .unwrap_or_else(|| animation.animation_key.clone()),
-        frame_index,
-        elapsed_time: p.anim_elapsed.unwrap_or(animation.elapsed_time),
     });
 }
 

@@ -53,6 +53,13 @@ pub(super) fn draw_menu_bar(ui: &imgui::Ui, signals: &mut WorldSignals) -> bool 
                 signals.toggle_flag(sig::UI_FONT_STORE_OPEN);
             }
             if ui
+                .menu_item_config("Animation Store")
+                .selected(signals.has_flag(sig::UI_ANIMATION_STORE_OPEN))
+                .build()
+            {
+                signals.toggle_flag(sig::UI_ANIMATION_STORE_OPEN);
+            }
+            if ui
                 .menu_item_config("Entity Selector")
                 .selected(signals.has_flag(sig::UI_ENTITY_SELECTOR_OPEN))
                 .build()

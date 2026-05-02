@@ -54,8 +54,6 @@ pub struct ColliderSnapshot {
 #[derive(Clone)]
 pub struct AnimationSnapshot {
     pub animation_key: String,
-    pub frame_index: usize,
-    pub elapsed_time: f32,
 }
 
 #[derive(Clone)]

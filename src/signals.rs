@@ -78,6 +78,11 @@ pub const ANIM_ADD_KEY_BUF: &str = "gui:animation_store:add_key_buf";
 pub const ANIM_RENAME_SRC: &str = "gui:animation_store:rename_src";
 pub const ANIM_RENAME_BUF: &str = "gui:animation_store:rename_buf";
 pub const ANIM_REMOVE_KEY: &str = "gui:animation_store:remove_key";
+pub const ANIM_UPDATE_KEY: &str = "gui:animation_store:update_key";
+pub const ACTION_ANIM_ADD: &str = "gui:action:anim:add";
+pub const ACTION_ANIM_RENAME: &str = "gui:action:anim:rename";
+pub const ACTION_ANIM_REMOVE: &str = "gui:action:anim:remove";
+pub const ACTION_ANIM_UPDATE: &str = "gui:action:anim:update";
 
 // ---- Map data preview ----
 pub const MAPDATA_PREVIEW_JSON: &str = "gui:mapdata_preview_json";

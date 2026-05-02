@@ -108,8 +108,6 @@ pub fn entity_inspect_observer(
         scale: scale.map(|s| [s.scale.x, s.scale.y]),
         animation: animation.map(|a| AnimationSnapshot {
             animation_key: a.animation_key.clone(),
-            frame_index: a.frame_index,
-            elapsed_time: a.elapsed_time,
         }),
         ttl: ttl.map(|t| TtlSnapshot {
             remaining: t.remaining,

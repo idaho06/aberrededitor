@@ -90,8 +90,6 @@ pub struct UpdateBoxColliderRequested {
 pub struct UpdateAnimationRequested {
     pub entity: Entity,
     pub animation_key: String,
-    pub frame_index: usize,
-    pub elapsed_time: f32,
 }
 
 #[derive(Event)]
@@ -372,14 +370,12 @@ component_edit_observer!(
     "Animation",
     |animation, event, entity| {
         animation.animation_key = event.animation_key.clone();
-        animation.frame_index = event.frame_index;
-        animation.elapsed_time = event.elapsed_time;
+        animation.frame_index = 0;
+        animation.elapsed_time = 0.0;
         debug!(
-            "update_animation_observer: updated entity {} animation '{}' frame {} elapsed {:.3}",
+            "update_animation_observer: updated entity {} animation '{}'",
             entity.to_bits(),
             event.animation_key,
-            event.frame_index,
-            event.elapsed_time
         );
     }
 );

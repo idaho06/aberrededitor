@@ -52,8 +52,6 @@ pub(crate) struct PendingEditState {
     pub commit_collider: bool,
     // Animation
     pub anim_key: Option<String>,
-    pub anim_frame_index: Option<i32>,
-    pub anim_elapsed: Option<f32>,
     pub commit_animation: bool,
     // Tint
     pub tint_color: Option<[f32; 4]>,

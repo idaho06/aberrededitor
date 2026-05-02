@@ -1,6 +1,7 @@
 use super::pending_state::PendingMutex;
+use crate::systems::animation_store_sync::AnimationStoreMutex;
 use super::widgets::{
-    draw_drag_float_input, draw_float_input, draw_int_input, draw_text_buffer_input,
+    draw_drag_float_input, draw_float_input, draw_text_buffer_input,
 };
 use crate::editor_types::{ComponentKind, ComponentSnapshot};
 use crate::signals as sig;
@@ -441,34 +442,35 @@ pub(super) fn draw_entity_editor(
                         if ui.button("Del##animation") {
                             p.remove_animation = true;
                         }
-                        ui.set_next_item_width(-1.0);
-                        let mut committed = false;
-                        draw_text_buffer_input(
-                            ui,
-                            "key##animation",
-                            &mut p.anim_key,
-                            &mut committed,
-                            animation.animation_key.as_str(),
-                        );
-                        if committed {
-                            p.commit_animation = true;
-                        }
-                        let frame_current = p.anim_frame_index.unwrap_or_else(|| {
-                            i32::try_from(animation.frame_index).unwrap_or(i32::MAX)
-                        });
-                        if let Some(v) = draw_int_input(ui, "frame_index##animation", frame_current)
-                        {
-                            p.anim_frame_index = Some(v);
-                            p.commit_animation = true;
-                        }
-                        if let Some(v) = draw_float_input(
-                            ui,
-                            "elapsed_time##animation",
-                            p.anim_elapsed.unwrap_or(animation.elapsed_time),
-                            1.0,
-                        ) {
-                            p.anim_elapsed = Some(v);
-                            p.commit_animation = true;
+                        let anim_keys: Vec<String> =
+                            if let Some(mutex) = app_state.get::<AnimationStoreMutex>() {
+                                let mut keys: Vec<String> =
+                                    mutex.lock().unwrap().keys().cloned().collect();
+                                keys.sort_unstable();
+                                keys
+                            } else {
+                                vec![]
+                            };
+                        let key_strs: Vec<&str> =
+                            anim_keys.iter().map(|k| k.as_str()).collect();
+                        let current_key =
+                            p.anim_key.as_deref().unwrap_or(&animation.animation_key);
+                        let mut idx = key_strs
+                            .iter()
+                            .position(|k| *k == current_key)
+                            .unwrap_or(0);
+                        if key_strs.is_empty() {
+                            ui.text_disabled("(no animations in store)");
+                        } else {
+                            ui.set_next_item_width(-1.0);
+                            if ui.combo_simple_string(
+                                "key##animation",
+                                &mut idx,
+                                &key_strs,
+                            ) {
+                                p.anim_key = Some(key_strs[idx].to_owned());
+                                p.commit_animation = true;
+                            }
                         }
                     }
                     if let Some(ref ttl) = snap.ttl {

@@ -2,6 +2,7 @@ use super::commit::consume_entity_editor_commits;
 use super::entity_editor_panel::{draw_entity_delete_modal, draw_entity_editor};
 use super::entity_registry_panel::draw_entity_registry;
 use super::entity_selector_panel::draw_entity_selector;
+use super::animation_panel::{draw_animation_modals, draw_animation_store};
 use super::font_panel::{draw_font_editor, draw_font_modals};
 use super::groups_panel::draw_groups_window;
 use super::menu::{draw_about_modal, draw_menu_bar};
@@ -16,9 +17,12 @@ use crate::systems::entity_selector::SelectGroupRequested;
 use crate::systems::entity_selector::{
     PickEntitiesAtPointRequested, SelectEntityRequested, SelectRegisteredEntityRequested,
 };
+use crate::systems::animation_store_sync::AnimationStoreMutex;
 use crate::systems::map_ops::{
-    AddTextureRequested, LoadMapRequested, NewMapRequested, PreviewMapDataRequested,
-    RemoveTextureRequested, RenameTextureKeyRequested, SaveMapRequested,
+    AddAnimationRequested, AddTextureRequested, LoadMapRequested, NewMapRequested,
+    PreviewMapDataRequested, RemoveAnimationRequested, RemoveTextureRequested,
+    RenameAnimationKeyRequested, RenameTextureKeyRequested, SaveMapRequested,
+    UpdateAnimationResourceRequested,
 };
 use crate::systems::tilemap_load::LoadTilemapRequested;
 use crate::systems::utils::to_relative;
@@ -76,6 +80,7 @@ pub fn editor_update(ctx: &mut GameCtx, _dt: f32, input: &InputState) {
     handle_file_actions(ctx);
     handle_texture_actions(ctx);
     handle_font_actions(ctx);
+    handle_animation_actions(ctx);
     handle_view_actions(ctx);
 }
 
@@ -101,6 +106,8 @@ pub fn editor_gui(
     let open_about = draw_menu_bar(ui, signals);
     let (open_rename_popup, open_remove_popup) = draw_texture_editor(ui, signals, textures);
     let (open_font_rename, open_font_remove) = draw_font_editor(ui, signals, fonts);
+    let (open_anim_rename, open_anim_remove) =
+        draw_animation_store(ui, signals, textures, app_state);
     draw_texture_viewer(ui, signals, textures, fonts);
     draw_map_preview(ui, signals);
     draw_groups_window(ui, signals, app_state);
@@ -121,6 +128,12 @@ pub fn editor_gui(
     if open_font_remove {
         ui.open_popup("Remove Font##font_store");
     }
+    if open_anim_rename {
+        ui.open_popup("Rename Key##animation_store");
+    }
+    if open_anim_remove {
+        ui.open_popup("Remove Animation##animation_store");
+    }
     if open_about {
         ui.open_popup("About");
     }
@@ -130,6 +143,7 @@ pub fn editor_gui(
 
     draw_texture_modals(ui, signals);
     draw_font_modals(ui, signals);
+    draw_animation_modals(ui, signals);
     draw_about_modal(ui);
     draw_entity_delete_modal(ui, app_state);
     draw_selection_outline(ui, signals, app_state);
@@ -302,6 +316,61 @@ fn handle_view_actions(ctx: &mut GameCtx) {
         .take_flag(sig::ACTION_VIEW_PREVIEW_MAPDATA)
     {
         ctx.commands.trigger(PreviewMapDataRequested);
+    }
+}
+
+fn handle_animation_actions(ctx: &mut GameCtx) {
+    if ctx.world_signals.take_flag(sig::ACTION_ANIM_ADD) {
+        if let Some(key) = ctx
+            .world_signals
+            .get_string(sig::ANIM_ADD_KEY_BUF)
+            .map(|s| s.to_owned())
+        {
+            if !key.is_empty() {
+                ctx.commands.trigger(AddAnimationRequested { key });
+            }
+        }
+    }
+
+    if ctx.world_signals.take_flag(sig::ACTION_ANIM_RENAME) {
+        let old_key = ctx
+            .world_signals
+            .get_string(sig::ANIM_RENAME_SRC)
+            .map(|s| s.to_owned());
+        let new_key = ctx
+            .world_signals
+            .get_string(sig::ANIM_RENAME_BUF)
+            .map(|s| s.to_owned());
+        if let (Some(old_key), Some(new_key)) = (old_key, new_key) {
+            ctx.commands
+                .trigger(RenameAnimationKeyRequested { old_key, new_key });
+        }
+    }
+
+    if ctx.world_signals.take_flag(sig::ACTION_ANIM_REMOVE) {
+        if let Some(key) = ctx
+            .world_signals
+            .get_string(sig::ANIM_REMOVE_KEY)
+            .map(|s| s.to_owned())
+        {
+            ctx.commands.trigger(RemoveAnimationRequested { key });
+        }
+    }
+
+    if ctx.world_signals.take_flag(sig::ACTION_ANIM_UPDATE) {
+        let key = ctx
+            .world_signals
+            .get_string(sig::ANIM_UPDATE_KEY)
+            .map(|s| s.to_owned());
+        if let Some(key) = key {
+            if let Some(mutex) = ctx.app_state.get::<AnimationStoreMutex>() {
+                let resource = mutex.lock().unwrap().get(key.as_str()).cloned();
+                if let Some(resource) = resource {
+                    ctx.commands
+                        .trigger(UpdateAnimationResourceRequested { key, resource });
+                }
+            }
+        }
     }
 }
 

@@ -1,3 +1,4 @@
+mod animation_panel;
 mod commit;
 mod entity_editor_panel;
 mod entity_registry_panel;
