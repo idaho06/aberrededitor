@@ -4,6 +4,7 @@ use aberredengine::bevy_ecs;
 use aberredengine::bevy_ecs::prelude::{
     Commands, Entity, Event, NonSendMut, On, Query, Res, ResMut, With,
 };
+use aberredengine::components::animation::Animation;
 use aberredengine::components::group::Group;
 use aberredengine::components::mapposition::MapPosition;
 use aberredengine::components::rotation::Rotation;
@@ -142,6 +143,7 @@ type MapEntitiesQuery<'w, 's> = Query<
         Option<&'static Tint>,
         Option<&'static SerializedLuaSetup>,
         Option<&'static DynamicText>,
+        Option<&'static Animation>,
     ),
     With<MapEntity>,
 >;
@@ -163,7 +165,7 @@ fn sync_map_entities(
         .map(|(k, e)| (*e, k.as_str()))
         .collect();
 
-    for (entity, tilemap, pos, z, group, rot, scale, sprite, tint, lua_setup, dynamic_text) in
+    for (entity, tilemap, pos, z, group, rot, scale, sprite, tint, lua_setup, dynamic_text, animation) in
         entities.iter()
     {
         let registered_as = user_keys
@@ -172,6 +174,7 @@ fn sync_map_entities(
             .map(|(_, k)| k.to_string());
 
         let tint_arr = tint.map(|t| [t.color.r, t.color.g, t.color.b, t.color.a]);
+        let animation_key = animation.map(|a| a.animation_key.clone());
         let lua_setup_callback = lua_setup.map(|l| l.callback.clone());
         let dynamic_text_entry = dynamic_text.map(|d| DynamicTextEntry {
             text: d.text.to_string(),
@@ -207,6 +210,7 @@ fn sync_map_entities(
                 sprite: sprite.map(sprite_to_entry),
                 registered_as,
                 tint: tint_arr,
+                animation_key,
                 lua_setup: lua_setup_callback,
                 dynamic_text: dynamic_text_entry,
                 ..Default::default()
