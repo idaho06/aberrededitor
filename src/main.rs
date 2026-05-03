@@ -78,6 +78,7 @@ fn main() -> Result<(), String> {
         .add_system(systems::animation_store_sync::animation_store_sync_system)
         .add_system(systems::camera_sync::editor_camera_sync_system)
         .add_system(systems::editor_camera::editor_camera_system)
+        .add_system(systems::file_dialogs::poll_async_dialogs)
         .add_system(systems::group_selector::update_group_cache)
         .add_system(systems::tilemap_load::on_tilemap_added)
         .add_system(systems::tilemap_load::tag_plain_map_entities)

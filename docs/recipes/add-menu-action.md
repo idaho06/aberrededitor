@@ -83,18 +83,18 @@ fn handle_my_actions(ctx: &mut GameCtx) {
 
 Call `handle_my_actions(ctx)` from `editor_update`.
 
-**Note:** If the action requires a file dialog, open it here in `editor_update` (not in the GUI
-callback). File dialogs block the thread; they are safe in the `SceneUpdateFn` context:
+**Note:** If the action requires a file dialog, start it from `editor_update()` but do not open
+`rfd::FileDialog` inline anymore. Use the async dialog bridge so the editor loop stays responsive:
 
 ```rust
-if ctx.world_signals.take_flag(sig::ACTION_MY_FEATURE)
-    && let Some(path) = rfd::FileDialog::new().pick_file()
-{
-    ctx.commands.trigger(MyFeatureRequested {
-        path: to_relative(&path.display().to_string()),
-    });
+if ctx.world_signals.take_flag(sig::ACTION_MY_FEATURE) {
+    request_async_dialog(&ctx.app_state, AsyncFileDialogRequest::OpenMap);
 }
 ```
+
+If you need a new dialog shape, add a new request/result variant in `src/systems/file_dialogs.rs`
+and map its completion back to your domain event in `poll_async_dialogs()`. Keep asset loading,
+map writes, and other real mutations in observers.
 
 ## 7. Register the observer in main.rs
 
@@ -110,3 +110,4 @@ In `src/main.rs`:
 - Run the editor, click the menu item — the observer fires (check log output)
 - The expected ECS/map state change happens
 - If a file dialog was involved, test the cancel path (no crash, no stale state)
+- If a file dialog was involved, confirm the editor stays responsive while the native dialog is open

@@ -35,6 +35,10 @@ let path = to_relative(&path.display().to_string());
 `to_relative()` is in `src/systems/utils.rs`. Violating this means maps saved on one machine
 won't load on another, and paths won't match between `TextureStore` lookups and `MapData`.
 
+With the async dialog bridge in `src/systems/file_dialogs.rs`, do this conversion in the
+completion path, not in the GUI callback or while constructing the dialog request. The dialog
+request should carry only user intent and any non-path metadata it needs.
+
 ---
 
 ## 3. RaylibHandle is not in GameCtx
@@ -124,3 +128,23 @@ Two callback styles exist and **must not be mixed**:
 
 Using a by-value system function where a by-ref scene callback is expected (or vice versa) is
 the most common compile error when adding new scenes or setup functions.
+
+---
+
+## 9. Async dialogs are orchestration, not loading
+
+Do not put `rfd::AsyncFileDialog` directly into GUI code or use it to replace an observer.
+
+The correct split is:
+
+1. GUI or menu sets a signal.
+2. `editor_update()` calls `request_async_dialog(...)`.
+3. `poll_async_dialogs()` converts the completed selection into the existing domain event.
+4. The observer for that domain event performs the real load/save/mutation.
+
+This matters because `GameCtx` still does not expose `RaylibAccess`, `FontStore` is still
+main-thread-only, and the relative-path invariant still has to be enforced in one place.
+
+Also note that the bridge currently allows only one in-flight dialog. A second request while a
+dialog is already open is ignored. If you need queueing or visible UI feedback, build that on
+top of the bridge rather than opening multiple native dialogs at once.

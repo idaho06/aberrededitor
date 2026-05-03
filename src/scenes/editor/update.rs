@@ -27,6 +27,7 @@ use super::texture_panel::{draw_texture_editor, draw_texture_modals};
 use super::texture_viewer_panel::draw_texture_viewer;
 use crate::signals as sig;
 use crate::systems::entity_edit::CreateBlankEntityRequested;
+use crate::systems::file_dialogs::{request_async_dialog, AsyncFileDialogRequest};
 use crate::systems::entity_inspector::InspectEntityRequested;
 use crate::systems::entity_selector::SelectGroupRequested;
 use crate::systems::entity_selector::{
@@ -34,13 +35,10 @@ use crate::systems::entity_selector::{
 };
 use crate::systems::animation_store_sync::AnimationStoreMutex;
 use crate::systems::map_ops::{
-    AddAnimationRequested, AddTextureRequested, LoadMapRequested, NewMapRequested,
-    PreviewMapDataRequested, RemoveAnimationRequested, RemoveTextureRequested,
-    RenameAnimationKeyRequested, RenameTextureKeyRequested, SaveMapRequested,
-    UpdateAnimationResourceRequested,
+    AddAnimationRequested, NewMapRequested, PreviewMapDataRequested,
+    RemoveAnimationRequested, RemoveTextureRequested, RenameAnimationKeyRequested,
+    RenameTextureKeyRequested, SaveMapRequested, UpdateAnimationResourceRequested,
 };
-use crate::systems::tilemap_load::LoadTilemapRequested;
-use crate::systems::utils::to_relative;
 use aberredengine::events::switchdebug::SwitchDebugEvent;
 use aberredengine::imgui;
 use aberredengine::resources::appstate::AppState;
@@ -169,15 +167,8 @@ fn handle_file_actions(ctx: &mut GameCtx) {
         ctx.commands.trigger(NewMapRequested);
     }
 
-    if ctx.world_signals.take_flag(sig::ACTION_FILE_OPEN_MAP)
-        && let Some(path) = rfd::FileDialog::new()
-            .add_filter("Map", &["map"])
-            .pick_file()
-    {
-        let path = to_relative(&path.display().to_string());
-        ctx.world_signals
-            .set_string(sig::MAP_CURRENT_PATH, path.clone());
-        ctx.commands.trigger(LoadMapRequested { path });
+    if ctx.world_signals.take_flag(sig::ACTION_FILE_OPEN_MAP) {
+        request_async_dialog(&ctx.app_state, AsyncFileDialogRequest::OpenMap);
     }
 
     if ctx.world_signals.take_flag(sig::ACTION_FILE_SAVE) {
@@ -192,23 +183,12 @@ fn handle_file_actions(ctx: &mut GameCtx) {
         }
     }
 
-    if ctx.world_signals.take_flag(sig::ACTION_FILE_SAVE_AS)
-        && let Some(path) = rfd::FileDialog::new()
-            .add_filter("Map", &["map"])
-            .save_file()
-    {
-        let path = to_relative(&path.display().to_string());
-        ctx.world_signals
-            .set_string(sig::MAP_CURRENT_PATH, path.clone());
-        ctx.commands.trigger(SaveMapRequested { path });
+    if ctx.world_signals.take_flag(sig::ACTION_FILE_SAVE_AS) {
+        request_async_dialog(&ctx.app_state, AsyncFileDialogRequest::SaveMapAs);
     }
 
-    if ctx.world_signals.take_flag(sig::ACTION_FILE_LOAD_TILEMAP)
-        && let Some(path) = rfd::FileDialog::new().pick_folder()
-    {
-        ctx.commands.trigger(LoadTilemapRequested {
-            path: to_relative(&path.display().to_string()),
-        });
+    if ctx.world_signals.take_flag(sig::ACTION_FILE_LOAD_TILEMAP) {
+        request_async_dialog(&ctx.app_state, AsyncFileDialogRequest::LoadTilemapFolder);
     }
 }
 
@@ -257,21 +237,14 @@ fn handle_texture_actions(ctx: &mut GameCtx) {
             .get_string(sig::TEX_ADD_KEY_BUF)
             .map(|s| s.to_owned())
             .unwrap_or_default();
-        if !key.is_empty()
-            && let Some(path) = rfd::FileDialog::new()
-                .add_filter("Image", &["png", "jpg", "jpeg", "bmp"])
-                .pick_file()
-        {
-            ctx.commands.trigger(AddTextureRequested {
-                key,
-                path: to_relative(&path.display().to_string()),
-            });
+        if !key.is_empty() {
+            request_async_dialog(&ctx.app_state, AsyncFileDialogRequest::AddTexture { key });
         }
     }
 }
 
 fn handle_font_actions(ctx: &mut GameCtx) {
-    use crate::systems::map_ops::{AddFontRequested, RemoveFontRequested, RenameFontKeyRequested};
+    use crate::systems::map_ops::{RemoveFontRequested, RenameFontKeyRequested};
 
     if ctx.world_signals.take_flag(sig::ACTION_FONT_RENAME) {
         let old_key = ctx
@@ -307,16 +280,11 @@ fn handle_font_actions(ctx: &mut GameCtx) {
             .world_signals
             .get_scalar(sig::FONT_ADD_SIZE_BUF)
             .unwrap_or(32.0);
-        if !key.is_empty()
-            && let Some(path) = rfd::FileDialog::new()
-                .add_filter("Font", &["ttf", "otf"])
-                .pick_file()
-        {
-            ctx.commands.trigger(AddFontRequested {
-                key,
-                path: to_relative(&path.display().to_string()),
-                font_size,
-            });
+        if !key.is_empty() {
+            request_async_dialog(
+                &ctx.app_state,
+                AsyncFileDialogRequest::AddFont { key, font_size },
+            );
         }
     }
 }
@@ -335,15 +303,14 @@ fn handle_view_actions(ctx: &mut GameCtx) {
 }
 
 fn handle_animation_actions(ctx: &mut GameCtx) {
-    if ctx.world_signals.take_flag(sig::ACTION_ANIM_ADD) {
-        if let Some(key) = ctx
+    if ctx.world_signals.take_flag(sig::ACTION_ANIM_ADD)
+        && let Some(key) = ctx
             .world_signals
             .get_string(sig::ANIM_ADD_KEY_BUF)
             .filter(|k| !k.is_empty())
             .map(|s| s.to_owned())
-        {
-            ctx.commands.trigger(AddAnimationRequested { key });
-        }
+    {
+        ctx.commands.trigger(AddAnimationRequested { key });
     }
 
     if ctx.world_signals.take_flag(sig::ACTION_ANIM_RENAME) {
@@ -361,29 +328,25 @@ fn handle_animation_actions(ctx: &mut GameCtx) {
         }
     }
 
-    if ctx.world_signals.take_flag(sig::ACTION_ANIM_REMOVE) {
-        if let Some(key) = ctx
+    if ctx.world_signals.take_flag(sig::ACTION_ANIM_REMOVE)
+        && let Some(key) = ctx
             .world_signals
             .get_string(sig::ANIM_REMOVE_KEY)
             .map(|s| s.to_owned())
-        {
-            ctx.commands.trigger(RemoveAnimationRequested { key });
-        }
+    {
+        ctx.commands.trigger(RemoveAnimationRequested { key });
     }
 
-    if ctx.world_signals.take_flag(sig::ACTION_ANIM_UPDATE) {
-        if let Some(key) = ctx
+    if ctx.world_signals.take_flag(sig::ACTION_ANIM_UPDATE)
+        && let Some(key) = ctx
             .world_signals
             .get_string(sig::ANIM_UPDATE_KEY)
             .map(|s| s.to_owned())
-        {
-            if let Some(mutex) = ctx.app_state.get::<AnimationStoreMutex>() {
-                if let Some(resource) = mutex.lock().unwrap().get(key.as_str()).cloned() {
-                    ctx.commands
-                        .trigger(UpdateAnimationResourceRequested { key, resource });
-                }
-            }
-        }
+        && let Some(mutex) = ctx.app_state.get::<AnimationStoreMutex>()
+        && let Some(resource) = mutex.lock().unwrap().get(key.as_str()).cloned()
+    {
+        ctx.commands
+            .trigger(UpdateAnimationResourceRequested { key, resource });
     }
 }
 

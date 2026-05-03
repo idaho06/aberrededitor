@@ -5,6 +5,7 @@
 //! bindings and clears selector and pending state to avoid stale state on scene re-entry.
 use super::state::clear_entity_editor_pending;
 use crate::signals as sig;
+use crate::systems::file_dialogs::clear_async_dialog;
 use crate::systems::entity_selector::clear_selector_state;
 use aberredengine::components::cameratarget::CameraTarget;
 use aberredengine::components::mapposition::MapPosition;
@@ -61,6 +62,7 @@ pub fn editor_exit(ctx: &mut GameCtx) {
     );
 
     clear_selector_state(&mut ctx.world_signals, &mut ctx.app_state);
+    clear_async_dialog(&ctx.app_state);
     clear_entity_editor_pending(&ctx.app_state);
     ctx.world_signals.clear_flag(sig::IMGUI_WANTS_MOUSE);
     ctx.world_signals.clear_flag(sig::IMGUI_WANTS_KEYBOARD);

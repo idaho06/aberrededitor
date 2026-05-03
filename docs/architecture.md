@@ -70,6 +70,41 @@ values stored inside `AppState`:
 The Mutex provides interior mutability: the ECS system acquires the write lock, the GUI callback
 acquires the read lock. Both sides see up-to-date data without sharing mutable refs.
 
+## Async file dialog bridge
+
+Native file dialogs used to open directly inside `editor_update()`. That kept them out of the
+GUI callback, but it still stalled the frame loop while the OS dialog was open. The editor now
+routes file and directory pickers through `src/systems/file_dialogs.rs`.
+
+The full path is:
+
+```text
+menu/panel click
+   -> WorldSignals flag
+   -> editor_update()
+   -> request_async_dialog(...)
+   -> AsyncFileDialog future + worker thread
+   -> AppState receiver
+   -> poll_async_dialogs() system
+   -> commands.trigger(existing domain event)
+   -> existing observer does the real work
+```
+
+This keeps the architecture consistent with the rest of the editor:
+
+- GUI still only emits signals.
+- `editor_update()` still owns action routing.
+- The bridge module owns dialog orchestration only.
+- Existing map and asset observers still own loading, saving, and store mutation.
+
+`AsyncFileDialogState` lives in `AppState` as a mutex cache just like the selector, group list,
+and animation store mirrors. The difference is that this cache stores control-flow state
+(`Receiver<...>`) rather than view-model data.
+
+The bridge currently enforces one in-flight native dialog at a time. If a second request arrives
+while one dialog is open, `request_async_dialog()` returns `false` and the request is ignored.
+That keeps reentrancy simple and avoids multiple overlapping OS dialogs.
+
 ## Observer dispatch vs per-frame systems
 
 Use **observers** (`#[derive(Event)]` + `.add_observer()`) for one-shot mutations triggered by a
@@ -145,4 +180,4 @@ immediately. See `texture_panel.rs` and `font_panel.rs` for the correct pattern.
    `TilemapStore`, the various `Mutex<T>` caches)
 3. Intro scene runs, transitions to editor on input or timeout
 4. `editor_enter()` — configures camera and input bindings
-5. Every frame: all systems run → `editor_update()` processes signals → `editor_gui()` draws ImGui
+5. Every frame: all systems run (including `poll_async_dialogs()`) → `editor_update()` processes signals → `editor_gui()` draws ImGui

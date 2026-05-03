@@ -16,6 +16,7 @@ pub mod editor_camera;
 pub mod entity_edit;
 pub mod entity_inspector;
 pub mod entity_selector;
+pub mod file_dialogs;
 pub mod group_selector;
 pub mod load_assets;
 pub mod map_ops;

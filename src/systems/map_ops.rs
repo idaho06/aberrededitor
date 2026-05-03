@@ -78,6 +78,7 @@ pub struct SaveMapRequested {
     pub path: String,
 }
 
+#[allow(clippy::too_many_arguments)]
 pub fn new_map_observer(
     _trigger: On<NewMapRequested>,
     mut commands: Commands,
@@ -102,6 +103,7 @@ pub fn new_map_observer(
     info!("new_map_observer: cleared map");
 }
 
+#[allow(clippy::too_many_arguments)]
 pub fn load_map_observer(
     trigger: On<LoadMapRequested>,
     mut commands: Commands,

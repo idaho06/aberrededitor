@@ -1,6 +1,6 @@
 # Design Patterns
 
-Six recurring patterns appear throughout the codebase. Recognising them makes the code
+Seven recurring patterns appear throughout the codebase. Recognising them makes the code
 predictable; using them correctly when extending keeps the codebase coherent.
 
 ---
@@ -245,3 +245,47 @@ fn my_observer(query: Query<&MyComponent, With<MapEntity>>) { ... }
 
 When saving: only `MapEntity` entities are serialized by `save_map_observer`. The marker doubles
 as a filter for serialization.
+
+---
+
+## 7. Async dialog bridge
+
+**Problem:** Native file dialogs are initiated from user actions, but opening them directly in
+`editor_update()` blocks the frame loop. The GUI callback also cannot own them because it should
+stay read-mostly and signal-driven.
+
+**Solution:** Route dialog opening through a small bridge module that stores one in-flight dialog
+receiver in `AppState`, awaits the dialog off the frame loop, and then re-emits the completion as
+the same ECS events the old synchronous flow used.
+
+**How to recognise it:** `AsyncFileDialogRequest`, `request_async_dialog()`,
+`AsyncFileDialogMutex`, and `poll_async_dialogs()` in `src/systems/file_dialogs.rs`.
+
+**How to use in new code:**
+
+1. Collect all non-path parameters before opening the dialog.
+    ```rust
+    let key = ctx
+         .world_signals
+         .get_string(sig::TEX_ADD_KEY_BUF)
+         .map(|s| s.to_owned())
+         .unwrap_or_default();
+    ```
+2. In `editor_update()`, enqueue a dialog request instead of opening `rfd::FileDialog` inline.
+    ```rust
+    if !key.is_empty() {
+         request_async_dialog(&ctx.app_state, AsyncFileDialogRequest::AddTexture { key });
+    }
+    ```
+3. In `src/systems/file_dialogs.rs`, add a request variant and a matching result variant if the
+    existing ones do not fit.
+4. Extend `build_dialog_task()` to create the correct `rfd::AsyncFileDialog` future.
+5. Extend `poll_async_dialogs()` to normalize the path with `to_relative()` and trigger the
+    downstream event that already owns the real mutation.
+
+**Key rules:**
+
+- Keep dialogs as orchestration only. Do not load assets or mutate stores inside the bridge.
+- Convert absolute paths to relative paths in the completion path before triggering observers.
+- Treat cancel as a no-op.
+- Assume only one native dialog may be open at a time unless the bridge design changes.
