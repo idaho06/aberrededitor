@@ -464,7 +464,13 @@ pub fn add_font_observer(
         return;
     }
     let (rl, th) = (&mut *raylib.rl, &*raylib.th);
-    let font = load_font_with_mipmaps(rl, th, path, font_size as i32);
+    let font = match load_font_with_mipmaps(rl, th, path, font_size as i32) {
+        Ok(f) => f,
+        Err(e) => {
+            warn!("add_font_observer: failed to load '{}': {}", path, e);
+            return;
+        }
+    };
     info!("add_font_observer: added '{}' from '{}'", key, path);
     font_store.add_with_meta(key, font, path.clone(), font_size);
     if !map_data.fonts.iter().any(|e| e.key == *key) {

@@ -12,7 +12,7 @@ mod systems;
 use aberredengine::engine_app::EngineBuilder;
 use aberredengine::systems::scene_dispatch::{GuiCallback, SceneDescriptor};
 
-fn main() {
+fn main() -> Result<(), String> {
     env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info")).init();
 
     EngineBuilder::new()
@@ -102,5 +102,5 @@ fn main() {
             },
         )
         .initial_scene("intro")
-        .run();
+        .try_run()
 }
