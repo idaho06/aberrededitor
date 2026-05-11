@@ -66,6 +66,7 @@ values stored inside `AppState`:
 | `TemplateSelectorMutex` | `update_template_cache` | `draw_template_browser` |
 | `PendingMutex` | GUI panels | `consume_entity_editor_commits` |
 | `ComponentSnapshot` in AppState | `entity_inspect_observer` | `draw_entity_editor` |
+| `AsyncFileDialogMutex` | (self-contained bridge) | `poll_async_dialogs` |
 
 The Mutex provides interior mutability: the ECS system acquires the write lock, the GUI callback
 acquires the read lock. Both sides see up-to-date data without sharing mutable refs.
@@ -102,8 +103,8 @@ and animation store mirrors. The difference is that this cache stores control-fl
 (`Receiver<...>`) rather than view-model data.
 
 The bridge currently enforces one in-flight native dialog at a time. If a second request arrives
-while one dialog is open, `request_async_dialog()` returns `false` and the request is ignored.
-That keeps reentrancy simple and avoids multiple overlapping OS dialogs.
+while one dialog is open, `request_async_dialog()` silently ignores it (logs a debug message and
+returns). That keeps reentrancy simple and avoids multiple overlapping OS dialogs.
 
 ## Observer dispatch vs per-frame systems
 

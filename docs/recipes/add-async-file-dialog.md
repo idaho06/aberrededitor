@@ -63,7 +63,9 @@ pub enum AsyncFileDialogResult {
 ## 4. Build the dialog future
 
 Extend `build_dialog_task()` to construct the correct `rfd::AsyncFileDialog` future and package
-its result back into your new completion variant.
+its result back into your new result variant. `build_dialog_task` returns
+`Pin<Box<dyn Future<Output = Option<AsyncFileDialogResult>> + Send>>` — `None` means the user
+cancelled.
 
 ```rust
 AsyncFileDialogRequest::AddSound { key, volume } => {
@@ -71,13 +73,11 @@ AsyncFileDialogRequest::AddSound { key, volume } => {
         .add_filter("Audio", &["wav", "ogg"])
         .pick_file();
     Box::pin(async move {
-        AsyncFileDialogCompletion {
-            result: dialog.await.map(|file| AsyncFileDialogResult::AddSound {
-                key,
-                volume,
-                path: file.path().to_string_lossy().into_owned(),
-            }),
-        }
+        dialog.await.map(|file| AsyncFileDialogResult::AddSound {
+            key,
+            volume,
+            path: file.path().to_string_lossy().into_owned(),
+        })
     })
 }
 ```
@@ -96,9 +96,9 @@ if ctx.world_signals.take_flag(sig::ACTION_SOUND_ADD_BROWSE) && !key.is_empty() 
 }
 ```
 
-The bridge currently accepts only one in-flight dialog at a time. If `request_async_dialog()`
-returns `false`, another native dialog is already open or the bridge was not inserted into
-`AppState`.
+`request_async_dialog` returns `()`. If another dialog is already in flight it silently ignores
+the call (logs a debug message). There is currently no feedback to the user that a dialog was
+suppressed — if you need that, check `AsyncFileDialogState.receiver.is_some()` before calling.
 
 ## 6. Re-emit the existing domain event on completion
 

@@ -111,7 +111,28 @@ fn handle_my_panel_actions(ctx: &mut GameCtx) {
 
 Call `handle_my_panel_actions(ctx)` from `editor_update`.
 
-## 7. If the panel needs a live data cache
+## 7. If the panel needs texture previews
+
+For panels that display textures (from `TextureStore`), font atlas thumbnails (from `FontStore`),
+or animation sprite sheets, use the shared texture viewer instead of building a custom preview
+modal.
+
+In the panel, call `open_texture_viewer` when the user clicks a preview button:
+
+```rust
+use super::texture_viewer_panel::open_texture_viewer;
+use crate::signals as sig;
+
+// inside draw_my_panel:
+if ui.small_button("Preview##my_texture") {
+    open_texture_viewer(signals, sig::TEXTURE_VIEWER_SOURCE_TEXTURE, &tex_key);
+}
+```
+
+The three source kind constants are `sig::TEXTURE_VIEWER_SOURCE_TEXTURE`, `..._FONT`, and
+`..._ANIMATION`. The viewer is always drawn by `editor_gui` regardless of which panel opened it.
+
+## 8. If the panel needs a live data cache
 
 If the panel needs to show data from ECS (entity lists, resource contents, etc.) that can't be
 queried in the GUI callback, use the AppState mutex cache pattern from `docs/patterns.md`.
