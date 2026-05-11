@@ -208,6 +208,21 @@ if let Some(ref my_entry) = entity_def.my_component {
 }
 ```
 
+## Shortcut: string-typed components
+
+If the component stores only a single `String` value (like `LuaSetup` or `DynamicText` for its
+script/text content), the snapshot can be `Option<String>` instead of a dedicated snapshot struct:
+
+```rust
+// In ComponentSnapshot:
+pub lua_setup: Option<String>,
+```
+
+The pending state is similarly just `Option<String>`, and the inspector widget is a plain
+`input_text` that writes back into the pending field on change. See `LuaSetup` in
+`entity_inspector.rs`, `entity_editor_panel.rs`, `pending_state.rs`, and `entity_edit.rs` as
+the reference implementation for this simpler pattern.
+
 ## Verification
 
 - `cargo check` passes

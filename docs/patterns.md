@@ -274,9 +274,10 @@ the same ECS events the old synchronous flow used.
 2. In `editor_update()`, enqueue a dialog request instead of opening `rfd::FileDialog` inline.
     ```rust
     if !key.is_empty() {
-         request_async_dialog(&ctx.app_state, AsyncFileDialogRequest::AddTexture { key });
+        request_async_dialog(&ctx.app_state, AsyncFileDialogRequest::AddTexture { key });
     }
     ```
+    `request_async_dialog` returns `()`. If another dialog is already in flight it silently ignores the call (logs at debug level).
 3. In `src/systems/file_dialogs.rs`, add a request variant and a matching result variant if the
     existing ones do not fit.
 4. Extend `build_dialog_task()` to create the correct `rfd::AsyncFileDialog` future.
