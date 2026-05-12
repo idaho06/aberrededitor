@@ -16,7 +16,9 @@
 use super::entity_inspector::InspectEntityRequested;
 use crate::components::serialized_lua_setup::SerializedLuaSetup;
 use crate::editor_types::ComponentKind;
-use crate::systems::entity_selector::{apply_selection, clear_selector_state};
+use crate::systems::entity_selector::{
+    MultiEntitySelectionMutex, apply_selection, clear_selector_state,
+};
 use crate::systems::utils::{entity_label, sprite_to_entry, tilemap_stem, tilemap_tex_path};
 use aberredengine::bevy_ecs;
 use aberredengine::bevy_ecs::hierarchy::{ChildOf, Children};
@@ -60,6 +62,17 @@ pub struct UpdateMapPositionRequested {
 pub struct UpdateZIndexRequested {
     pub entity: Entity,
     pub z_index: f32,
+}
+
+#[derive(Event)]
+pub struct MoveMultiSelectionRequested {
+    pub dx: f32,
+    pub dy: f32,
+}
+
+#[derive(Event)]
+pub struct AdjustMultiSelectionZRequested {
+    pub delta: f32,
 }
 
 #[derive(Event)]
@@ -311,6 +324,66 @@ component_edit_observer!(
         );
     }
 );
+
+pub fn move_multi_selection_observer(
+    trigger: On<MoveMultiSelectionRequested>,
+    mut positions: Query<&mut MapPosition>,
+    app_state: Res<AppState>,
+) {
+    let Some(mutex) = app_state.get::<MultiEntitySelectionMutex>() else {
+        return;
+    };
+    let Ok(cache) = mutex.lock() else {
+        return;
+    };
+    let event = trigger.event();
+
+    for &entity in &cache.hits {
+        let Ok(mut position) = positions.get_mut(entity) else {
+            warn_missing_component("move_multi_selection_observer", entity, "MapPosition");
+            continue;
+        };
+        position.pos.x += event.dx;
+        position.pos.y += event.dy;
+        debug!(
+            "move_multi_selection_observer: moved entity {} by ({:.3}, {:.3})",
+            entity.to_bits(),
+            event.dx,
+            event.dy
+        );
+    }
+}
+
+pub fn adjust_multi_selection_z_observer(
+    trigger: On<AdjustMultiSelectionZRequested>,
+    mut z_indices: Query<&mut ZIndex>,
+    mut commands: Commands,
+    app_state: Res<AppState>,
+) {
+    let Some(mutex) = app_state.get::<MultiEntitySelectionMutex>() else {
+        return;
+    };
+    let Ok(cache) = mutex.lock() else {
+        return;
+    };
+    let event = trigger.event();
+
+    for &entity in &cache.hits {
+        if let Ok(mut z_index) = z_indices.get_mut(entity) {
+            z_index.0 += event.delta;
+        } else if let Ok(mut ec) = commands.get_entity(entity) {
+            // Entity exists but lacks ZIndex — insert it so the delta is not silently lost.
+            ec.insert(ZIndex(event.delta));
+        } else {
+            continue;
+        }
+        debug!(
+            "adjust_multi_selection_z_observer: adjusted entity {} by {:.3}",
+            entity.to_bits(),
+            event.delta
+        );
+    }
+}
 
 component_edit_observer!(
     update_group_observer,

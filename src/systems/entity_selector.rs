@@ -1,7 +1,9 @@
-//! Entity selection: hit-testing, group selection, registry-key selection.
+//! Entity selection: hit-testing, rectangle requests, group selection, registry-key selection.
 //!
-//! Four observers handle different selection sources:
+//! Five observers handle different selection sources:
 //! - `entity_pick_observer` — spatial hit-test at a world-space click point (left mouse click).
+//! - `entity_rect_pick_observer` — receives a world-space rectangle selection request and routes
+//!   the result set into single- or multi-selection UI.
 //! - `select_group_observer` — selects all entities in a named group.
 //! - `select_registered_entity_observer` — selects an entity by its `WorldSignals` key.
 //! - `select_entity_observer` — resolves a row index from the selector panel into an entity.
@@ -15,7 +17,8 @@ use super::utils::{display_group_name, entity_label};
 use crate::editor_types::{ComponentSnapshot, SelectionCorners};
 use crate::signals as sig;
 use aberredengine::bevy_ecs;
-use aberredengine::bevy_ecs::prelude::{Commands, Entity, Event, On, Query, ResMut};
+use aberredengine::bevy_ecs::prelude::{Commands, Entity, Event, On, Query, ResMut, With};
+use crate::components::map_entity::MapEntity;
 use aberredengine::components::boxcollider::BoxCollider;
 use aberredengine::components::dynamictext::DynamicText;
 use aberredengine::components::globaltransform2d::GlobalTransform2D;
@@ -46,6 +49,19 @@ pub struct PickEntitiesAtPointRequested {
     pub y: f32,
 }
 
+/// Request hit-testing all renderable `MapEntity` entities touched by a world-space rectangle.
+///
+/// Handled by `entity_rect_pick_observer`, which tests each entity's visual bounds (sprite quad,
+/// collider AABB, or dynamic-text rect) against the rectangle via SAT. Multiple hits open the
+/// multi-entity selector; a single hit behaves like a click pick.
+#[derive(Event)]
+pub struct PickEntitiesInRectRequested {
+    pub min_x: f32,
+    pub min_y: f32,
+    pub max_x: f32,
+    pub max_y: f32,
+}
+
 /// Resolve `index` from the selector panel's hit list into a full entity selection.
 #[derive(Event)]
 pub struct SelectEntityRequested {
@@ -74,18 +90,18 @@ pub enum SelectorSource {
     #[default]
     None,
     /// Result of a spatial click at `(x, y)` in world space.
-    Click {
-        x: f32,
-        y: f32,
+    Click { x: f32, y: f32 },
+    /// Result of a rectangle selection in world space.
+    Rectangle {
+        min_x: f32,
+        min_y: f32,
+        max_x: f32,
+        max_y: f32,
     },
     /// Result of selecting all entities in a named group.
-    Group {
-        display_name: String,
-    },
+    Group { display_name: String },
     /// Result of selecting a single registered entity by key.
-    Registry {
-        key: String,
-    },
+    Registry { key: String },
 }
 
 /// Cached hit list from the most recent entity selection operation.
@@ -106,6 +122,42 @@ pub struct RenderableSelectorCache {
 
 /// `AppState` key for the selector hit-list cache. Acquired via `app_state.get::<RenderableSelectorMutex>()`.
 pub type RenderableSelectorMutex = std::sync::Mutex<RenderableSelectorCache>;
+
+/// Cached multi-selection result set for the dedicated multi-entity UI.
+#[derive(Default)]
+pub struct MultiEntitySelectionCache {
+    pub hits: Vec<Entity>,
+    pub labels: Vec<String>,
+    /// World-space corners for each hit (parallel to `hits`): TL, TR, BR, BL.
+    /// `None` if the entity has no pickable visual bounds.
+    pub corner_sets: Vec<Option<[[f32; 2]; 4]>>,
+    pub source: SelectorSource,
+    pub bulk_edit: MultiEntityBulkEditState,
+}
+
+/// `AppState` key for the multi-selection result cache.
+pub type MultiEntitySelectionMutex = std::sync::Mutex<MultiEntitySelectionCache>;
+
+/// Transient modal buffers and pending apply requests for multi-selection bulk edits.
+#[derive(Default)]
+pub struct MultiEntityBulkEditState {
+    pub move_dx: f32,
+    pub move_dy: f32,
+    pub pending_move_request: Option<[f32; 2]>,
+    pub z_delta: f32,
+    pub pending_z_request: Option<f32>,
+}
+
+impl MultiEntityBulkEditState {
+    pub fn reset_move_buffer(&mut self) {
+        self.move_dx = 0.0;
+        self.move_dy = 0.0;
+    }
+
+    pub fn reset_z_buffer(&mut self) {
+        self.z_delta = 0.0;
+    }
+}
 
 // ---------------------------------------------------------------------------
 // Pick observer — internal types
@@ -137,7 +189,7 @@ pub fn entity_pick_observer(
         Option<&GlobalTransform2D>,
         Option<&Group>,
         Option<&Persistent>,
-    )>,
+    ), With<MapEntity>>,
     mut world_signals: ResMut<WorldSignals>,
     mut app_state: ResMut<AppState>,
     mut commands: Commands,
@@ -232,36 +284,103 @@ pub fn entity_pick_observer(
             .then_with(|| a.entity.index().cmp(&b.entity.index()))
     });
 
-    let (is_empty, top_hit) = {
-        let mutex = app_state
-            .get::<RenderableSelectorMutex>()
-            .expect("RenderableSelectorMutex not in AppState");
-        let mut cache = mutex.lock().unwrap();
-        populate_selector_cache(
-            &mut cache,
-            hits,
-            SelectorSource::Click {
-                x: click_x,
-                y: click_y,
-            },
+    apply_single_selection_results(
+        hits,
+        SelectorSource::Click {
+            x: click_x,
+            y: click_y,
+        },
+        &mut world_signals,
+        &mut app_state,
+        &mut commands,
+    );
+}
+
+#[allow(clippy::type_complexity)]
+pub fn entity_rect_pick_observer(
+    trigger: On<PickEntitiesInRectRequested>,
+    query: Query<(
+        Entity,
+        &MapPosition,
+        Option<&BoxCollider>,
+        Option<&Sprite>,
+        Option<&DynamicText>,
+        Option<&Rotation>,
+        Option<&Scale>,
+        Option<&ZIndex>,
+        Option<&GlobalTransform2D>,
+        Option<&Group>,
+        Option<&Persistent>,
+    ), With<MapEntity>>,
+    mut world_signals: ResMut<WorldSignals>,
+    mut app_state: ResMut<AppState>,
+    mut commands: Commands,
+) {
+    let ev = trigger.event();
+    let mut hits: Vec<PickResult> = Vec::new();
+    for (
+        entity,
+        pos,
+        maybe_collider,
+        maybe_sprite,
+        maybe_dynamic_text,
+        maybe_rot,
+        maybe_scale,
+        maybe_zindex,
+        maybe_gt,
+        maybe_group,
+        maybe_persistent,
+    ) in query.iter()
+    {
+        let corners = compute_group_corners(
+            Some(pos),
+            maybe_collider,
+            maybe_sprite,
+            maybe_dynamic_text,
+            maybe_scale,
+            maybe_rot,
+            maybe_gt,
         );
-        let top = cache
-            .hits
-            .first()
-            .map(|&e| (e, cache.labels[0].clone(), cache.corner_sets[0]));
-        (cache.hits.is_empty(), top)
+
+        let included = match corners {
+            Some(c) => quad_overlaps_rect(c, ev.min_x, ev.min_y, ev.max_x, ev.max_y),
+            // No visual bounds — fall back to origin-point test.
+            None => {
+                pos.pos.x >= ev.min_x
+                    && pos.pos.x <= ev.max_x
+                    && pos.pos.y >= ev.min_y
+                    && pos.pos.y <= ev.max_y
+            }
+        };
+        if !included {
+            continue;
+        }
+
+        hits.push(PickResult {
+            entity,
+            label: entity_label(entity, maybe_group, maybe_persistent),
+            zindex: maybe_zindex.map_or(0.0, |z| z.0),
+            corners,
+        });
+    }
+    hits.sort_by(|a, b| {
+        a.label
+            .cmp(&b.label)
+            .then_with(|| a.entity.index().cmp(&b.entity.index()))
+    });
+
+    let source = SelectorSource::Rectangle {
+        min_x: ev.min_x,
+        min_y: ev.min_y,
+        max_x: ev.max_x,
+        max_y: ev.max_y,
     };
-
-    world_signals.set_flag(sig::UI_ENTITY_SELECTOR_OPEN);
-
-    // Empty click — clear active selection and outline; otherwise auto-select topmost
-    if is_empty {
-        clear_active_selection(&mut world_signals, &mut app_state);
-    } else if let Some((top, top_label, top_corners)) = top_hit {
-        apply_selection(
-            top,
-            &top_label,
-            top_corners,
+    if hits.len() > 1 {
+        apply_multi_selection_results(hits, source, &mut world_signals, &mut app_state);
+    } else {
+        apply_single_selection_results(
+            hits,
+            source,
             &mut world_signals,
             &mut app_state,
             &mut commands,
@@ -333,39 +452,15 @@ pub fn select_group_observer(
             .then_with(|| a.entity.index().cmp(&b.entity.index()))
     });
 
-    let (is_empty, top_hit) = {
-        let mutex = app_state
-            .get::<RenderableSelectorMutex>()
-            .expect("RenderableSelectorMutex not in AppState");
-        let mut cache = mutex.lock().unwrap();
-        populate_selector_cache(
-            &mut cache,
-            hits,
-            SelectorSource::Group {
-                display_name: display_group_name(&trigger.event().group).to_owned(),
-            },
-        );
-        let top = cache
-            .hits
-            .first()
-            .map(|&entity| (entity, cache.labels[0].clone(), cache.corner_sets[0]));
-        (cache.hits.is_empty(), top)
-    };
-
-    world_signals.set_flag(sig::UI_ENTITY_SELECTOR_OPEN);
-
-    if is_empty {
-        clear_active_selection(&mut world_signals, &mut app_state);
-    } else if let Some((top, top_label, top_corners)) = top_hit {
-        apply_selection(
-            top,
-            &top_label,
-            top_corners,
-            &mut world_signals,
-            &mut app_state,
-            &mut commands,
-        );
-    }
+    apply_single_selection_results(
+        hits,
+        SelectorSource::Group {
+            display_name: display_group_name(&trigger.event().group).to_owned(),
+        },
+        &mut world_signals,
+        &mut app_state,
+        &mut commands,
+    );
 }
 
 #[allow(clippy::type_complexity)]
@@ -430,30 +525,16 @@ pub fn select_registered_entity_observer(
         maybe_gt,
     );
 
-    {
-        let mutex = app_state
-            .get::<RenderableSelectorMutex>()
-            .expect("RenderableSelectorMutex not in AppState");
-        let mut cache = mutex.lock().unwrap();
-        populate_selector_cache(
-            &mut cache,
-            vec![PickResult {
-                entity,
-                label: label.clone(),
-                zindex,
-                corners,
-            }],
-            SelectorSource::Registry {
-                key: key.to_owned(),
-            },
-        );
-    }
-
-    world_signals.set_flag(sig::UI_ENTITY_SELECTOR_OPEN);
-    apply_selection(
-        entity,
-        &label,
-        corners,
+    apply_single_selection_results(
+        vec![PickResult {
+            entity,
+            label,
+            zindex,
+            corners,
+        }],
+        SelectorSource::Registry {
+            key: key.to_owned(),
+        },
         &mut world_signals,
         &mut app_state,
         &mut commands,
@@ -663,7 +744,84 @@ fn populate_selector_cache(
     cache.source = source;
 }
 
+fn populate_multi_selection_cache(
+    cache: &mut MultiEntitySelectionCache,
+    hits: Vec<PickResult>,
+    source: SelectorSource,
+) {
+    cache.hits.clear();
+    cache.labels.clear();
+    cache.corner_sets.clear();
+    cache.bulk_edit = MultiEntityBulkEditState::default();
+    for hit in hits {
+        cache.hits.push(hit.entity);
+        cache.labels.push(hit.label);
+        cache.corner_sets.push(hit.corners);
+    }
+    cache.source = source;
+}
+
+fn apply_single_selection_results(
+    hits: Vec<PickResult>,
+    source: SelectorSource,
+    world_signals: &mut WorldSignals,
+    app_state: &mut AppState,
+    commands: &mut Commands,
+) {
+    clear_multi_selection_state(world_signals, app_state);
+    let top_hit = {
+        let mutex = app_state
+            .get::<RenderableSelectorMutex>()
+            .expect("RenderableSelectorMutex not in AppState");
+        let mut cache = mutex.lock().unwrap();
+        populate_selector_cache(&mut cache, hits, source);
+        cache
+            .hits
+            .first()
+            .map(|&entity| (entity, cache.labels[0].clone(), cache.corner_sets[0]))
+    };
+
+    world_signals.set_flag(sig::UI_ENTITY_SELECTOR_OPEN);
+    if let Some((top, top_label, top_corners)) = top_hit {
+        apply_selection(
+            top,
+            &top_label,
+            top_corners,
+            world_signals,
+            app_state,
+            commands,
+        );
+    } else {
+        clear_active_selection(world_signals, app_state);
+    }
+}
+
+fn apply_multi_selection_results(
+    hits: Vec<PickResult>,
+    source: SelectorSource,
+    world_signals: &mut WorldSignals,
+    app_state: &mut AppState,
+) {
+    clear_active_selection(world_signals, app_state);
+    world_signals.clear_flag(sig::UI_ENTITY_SELECTOR_OPEN);
+    world_signals.clear_integer(sig::ES_SELECTED_ROW);
+    let mutex = app_state
+        .get::<MultiEntitySelectionMutex>()
+        .expect("MultiEntitySelectionMutex not in AppState");
+    let mut cache = mutex.lock().unwrap();
+    populate_multi_selection_cache(&mut cache, hits, source);
+    world_signals.set_flag(sig::UI_MULTI_ENTITY_SELECTOR_OPEN);
+}
+
+fn clear_multi_selection_state(world_signals: &mut WorldSignals, app_state: &mut AppState) {
+    world_signals.clear_flag(sig::UI_MULTI_ENTITY_SELECTOR_OPEN);
+    if let Some(mutex) = app_state.get::<MultiEntitySelectionMutex>() {
+        *mutex.lock().unwrap() = MultiEntitySelectionCache::default();
+    }
+}
+
 fn clear_active_selection(world_signals: &mut WorldSignals, app_state: &mut AppState) {
+    clear_multi_selection_state(world_signals, app_state);
     world_signals.remove_entity(sig::ES_SELECTED_ENTITY);
     world_signals.remove_string(sig::ES_SELECTED_LABEL);
     world_signals.clear_flag(sig::UI_ENTITY_EDITOR_OPEN);
@@ -679,6 +837,7 @@ pub(crate) fn apply_selection(
     app_state: &mut AppState,
     commands: &mut Commands,
 ) {
+    clear_multi_selection_state(world_signals, app_state);
     world_signals.set_entity(sig::ES_SELECTED_ENTITY, entity);
     world_signals.set_string(sig::ES_SELECTED_LABEL, label);
     app_state.remove::<ComponentSnapshot>();
@@ -700,6 +859,9 @@ pub fn clear_selector_state(world_signals: &mut WorldSignals, app_state: &mut Ap
     if let Some(m) = app_state.get::<RenderableSelectorMutex>() {
         *m.lock().unwrap() = RenderableSelectorCache::default();
     }
+    if let Some(m) = app_state.get::<MultiEntitySelectionMutex>() {
+        *m.lock().unwrap() = MultiEntitySelectionCache::default();
+    }
     if let Some(m) = app_state.get::<GroupListMutex>() {
         *m.lock().unwrap() = GroupListCache::default();
     }
@@ -707,4 +869,56 @@ pub fn clear_selector_state(world_signals: &mut WorldSignals, app_state: &mut Ap
     world_signals.remove_string(sig::ENTITY_REGISTRY_SELECTED_KEY);
     world_signals.remove_string(sig::GROUPS_SELECTED_GROUP);
     clear_active_selection(world_signals, app_state);
+}
+
+/// SAT overlap test for a world-space quad (4 corners, TL→TR→BR→BL) against an AABB.
+/// Returns `true` if any part of the quad overlaps the rectangle [min_x, max_x] × [min_y, max_y].
+fn quad_overlaps_rect(
+    corners: [[f32; 2]; 4],
+    min_x: f32,
+    min_y: f32,
+    max_x: f32,
+    max_y: f32,
+) -> bool {
+    // Quick rejection: test AABB of the OBB against the selection rect (equivalent to projecting
+    // both shapes onto the world X and Y axes — the first two SAT axes for an AABB opponent).
+    let (obb_min_x, obb_max_x, obb_min_y, obb_max_y) = corners.iter().fold(
+        (f32::INFINITY, f32::NEG_INFINITY, f32::INFINITY, f32::NEG_INFINITY),
+        |(mnx, mxx, mny, mxy), c| (mnx.min(c[0]), mxx.max(c[0]), mny.min(c[1]), mxy.max(c[1])),
+    );
+    if obb_max_x < min_x || obb_min_x > max_x || obb_max_y < min_y || obb_min_y > max_y {
+        return false;
+    }
+
+    // Remaining two SAT axes: the OBB's own edge normals (2 unique directions for a rectangle).
+    let rect_corners = [
+        [min_x, min_y],
+        [max_x, min_y],
+        [max_x, max_y],
+        [min_x, max_y],
+    ];
+    for i in 0..2 {
+        let dx = corners[i + 1][0] - corners[i][0];
+        let dy = corners[i + 1][1] - corners[i][1];
+        let (nx, ny) = (-dy, dx); // perpendicular edge normal
+
+        let proj = |c: &[f32; 2]| c[0] * nx + c[1] * ny;
+        let (obb_min, obb_max) = corners
+            .iter()
+            .map(proj)
+            .fold((f32::INFINITY, f32::NEG_INFINITY), |(mn, mx), v| {
+                (mn.min(v), mx.max(v))
+            });
+        let (rect_min, rect_max) = rect_corners
+            .iter()
+            .map(proj)
+            .fold((f32::INFINITY, f32::NEG_INFINITY), |(mn, mx), v| {
+                (mn.min(v), mx.max(v))
+            });
+        if obb_max < rect_min || obb_min > rect_max {
+            return false;
+        }
+    }
+
+    true
 }

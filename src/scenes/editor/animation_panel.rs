@@ -42,10 +42,7 @@ pub(super) fn draw_animation_store(
     // holding the lock across imgui calls.
     let entries: Vec<(String, AnimationResource)> = {
         let cache = mutex.lock().unwrap();
-        let mut v: Vec<_> = cache
-            .iter()
-            .map(|(k, r)| (k.clone(), r.clone()))
-            .collect();
+        let mut v: Vec<_> = cache.iter().map(|(k, r)| (k.clone(), r.clone())).collect();
         v.sort_by(|a, b| a.0.cmp(&b.0));
         v
     };
@@ -161,11 +158,9 @@ pub(super) fn draw_animation_store(
                             r.vertical_displacement = v;
                             changed_resource = Some(r);
                         }
-                        if let Some(v) = draw_int_input(
-                            ui,
-                            "frame_count##anim",
-                            resource.frame_count as i32,
-                        ) {
+                        if let Some(v) =
+                            draw_int_input(ui, "frame_count##anim", resource.frame_count as i32)
+                        {
                             let mut r = changed_resource.take().unwrap_or_else(|| resource.clone());
                             r.frame_count = v.max(1) as usize;
                             changed_resource = Some(r);
@@ -278,4 +273,3 @@ pub(super) fn draw_animation_modals(ui: &imgui::Ui, signals: &mut WorldSignals) 
             }
         });
 }
-

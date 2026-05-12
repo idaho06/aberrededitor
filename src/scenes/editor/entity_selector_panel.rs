@@ -50,6 +50,20 @@ pub(super) fn draw_entity_selector(
                     ui.separator();
                     Some("No entities at click position.")
                 }
+                SelectorSource::Rectangle {
+                    min_x,
+                    min_y,
+                    max_x,
+                    max_y,
+                } => {
+                    ui.text_disabled(format!(
+                        "Rectangle: ({:.1}, {:.1}) -> ({:.1}, {:.1})",
+                        min_x, min_y, max_x, max_y
+                    ));
+                    ui.text_disabled(format!("{} entities", labels.len()));
+                    ui.separator();
+                    Some("No entities found in rectangle.")
+                }
                 SelectorSource::Group { display_name } => {
                     ui.text_disabled(format!("Group: {}", display_name));
                     ui.text_disabled(format!("{} entities", labels.len()));

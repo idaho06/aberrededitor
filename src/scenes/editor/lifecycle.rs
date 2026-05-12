@@ -1,12 +1,13 @@
 //! Editor scene enter and exit handlers.
 //!
 //! `editor_enter` configures the camera and rebinds `Action1` to mouse-left-only (so WASD
-//! panning works without the mouse button firing entity picks). `editor_exit` restores input
-//! bindings and clears selector and pending state to avoid stale state on scene re-entry.
-use super::state::clear_entity_editor_pending;
+//! panning works without the mouse button firing entity picks) and resets the shared selection
+//! mode to its default. `editor_exit` restores input bindings and clears selector and pending
+//! state to avoid stale state on scene re-entry.
+use super::{reset_selection_mode, state::clear_entity_editor_pending};
 use crate::signals as sig;
-use crate::systems::file_dialogs::clear_async_dialog;
 use crate::systems::entity_selector::clear_selector_state;
+use crate::systems::file_dialogs::clear_async_dialog;
 use aberredengine::components::cameratarget::CameraTarget;
 use aberredengine::components::mapposition::MapPosition;
 use aberredengine::events::input::InputAction;
@@ -40,6 +41,7 @@ pub fn editor_enter(ctx: &mut GameCtx) {
     ctx.camera_follow.enabled = true;
     ctx.camera_follow.mode = FollowMode::Instant;
     ctx.camera_follow.zoom_lerp_speed = 10.0;
+    reset_selection_mode(&ctx.app_state);
 
     // Rebind Action1 to mouse-left only so Space doesn't trigger entity picking
     ctx.input_bindings.rebind(

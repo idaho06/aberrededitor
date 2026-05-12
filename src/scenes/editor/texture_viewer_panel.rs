@@ -58,7 +58,8 @@ pub(super) fn draw_texture_viewer(
                 return;
             }
 
-            let Some(view) = resolve_viewer_texture(source_kind, source_key, textures, fonts) else {
+            let Some(view) = resolve_viewer_texture(source_kind, source_key, textures, fonts)
+            else {
                 ui.text_disabled("The selected preview is no longer available.");
                 ui.text_disabled(format!("Key: {source_key}"));
                 return;

@@ -32,9 +32,9 @@ use crate::systems::map_ops::{
 use crate::systems::tilemap_load::LoadTilemapRequested;
 use crate::systems::utils::to_relative;
 use aberredengine::bevy_ecs::prelude::{Commands, Res, ResMut};
-use crossbeam_channel::{self, Receiver, TryRecvError};
 use aberredengine::resources::appstate::AppState;
 use aberredengine::resources::worldsignals::WorldSignals;
+use crossbeam_channel::{self, Receiver, TryRecvError};
 use log::{debug, warn};
 use std::future::Future;
 use std::pin::Pin;
@@ -215,9 +215,9 @@ fn build_dialog_task(request: AsyncFileDialogRequest) -> DialogTask {
                 .add_filter("Map", &["map"])
                 .pick_file();
             Box::pin(async move {
-                dialog
-                    .await
-                    .map(|file| AsyncFileDialogResult::OpenMap { path: path_of(file) })
+                dialog.await.map(|file| AsyncFileDialogResult::OpenMap {
+                    path: path_of(file),
+                })
             })
         }
         AsyncFileDialogRequest::SaveMapAs => {
@@ -225,9 +225,9 @@ fn build_dialog_task(request: AsyncFileDialogRequest) -> DialogTask {
                 .add_filter("Map", &["map"])
                 .save_file();
             Box::pin(async move {
-                dialog
-                    .await
-                    .map(|file| AsyncFileDialogResult::SaveMapAs { path: path_of(file) })
+                dialog.await.map(|file| AsyncFileDialogResult::SaveMapAs {
+                    path: path_of(file),
+                })
             })
         }
         AsyncFileDialogRequest::LoadTilemapFolder => {
@@ -235,7 +235,9 @@ fn build_dialog_task(request: AsyncFileDialogRequest) -> DialogTask {
             Box::pin(async move {
                 dialog
                     .await
-                    .map(|file| AsyncFileDialogResult::LoadTilemapFolder { path: path_of(file) })
+                    .map(|file| AsyncFileDialogResult::LoadTilemapFolder {
+                        path: path_of(file),
+                    })
             })
         }
         AsyncFileDialogRequest::AddTexture { key } => {

@@ -18,8 +18,10 @@ mod font_panel;
 mod groups_panel;
 mod lifecycle;
 mod menu;
+mod multi_entity_selector_panel;
 mod overlay;
 pub(crate) mod pending_state;
+mod selection_mode;
 mod state;
 mod template_browser_panel;
 mod texture_panel;
@@ -28,5 +30,10 @@ mod update;
 mod widgets;
 
 pub use lifecycle::{editor_enter, editor_exit};
+pub(crate) use selection_mode::{
+    SelectionDragRect, SelectionMode, SelectionModeMutex, SelectionModeState,
+    current_selection_drag, current_selection_mode, finish_selection_drag, reset_selection_mode,
+    set_selection_mode, start_selection_drag, update_selection_drag,
+};
 pub use state::{EditorState, entity_editor_selection_change_system};
 pub use update::{editor_gui, editor_update};

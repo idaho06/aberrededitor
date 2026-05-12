@@ -8,12 +8,10 @@
 //!
 //! `draw_entity_delete_modal` renders the entity deletion confirmation popup.
 use super::pending_state::PendingMutex;
-use crate::systems::animation_store_sync::AnimationStoreMutex;
-use super::widgets::{
-    draw_drag_float_input, draw_float_input, draw_text_buffer_input,
-};
+use super::widgets::{draw_drag_float_input, draw_float_input, draw_text_buffer_input};
 use crate::editor_types::{ComponentKind, ComponentSnapshot};
 use crate::signals as sig;
+use crate::systems::animation_store_sync::AnimationStoreMutex;
 use aberredengine::imgui;
 use aberredengine::resources::appstate::AppState;
 use aberredengine::resources::fontstore::FontStore;
@@ -460,23 +458,14 @@ pub(super) fn draw_entity_editor(
                             } else {
                                 vec![]
                             };
-                        let key_strs: Vec<&str> =
-                            anim_keys.iter().map(|k| k.as_str()).collect();
-                        let current_key =
-                            p.anim_key.as_deref().unwrap_or(&animation.animation_key);
-                        let mut idx = key_strs
-                            .iter()
-                            .position(|k| *k == current_key)
-                            .unwrap_or(0);
+                        let key_strs: Vec<&str> = anim_keys.iter().map(|k| k.as_str()).collect();
+                        let current_key = p.anim_key.as_deref().unwrap_or(&animation.animation_key);
+                        let mut idx = key_strs.iter().position(|k| *k == current_key).unwrap_or(0);
                         if key_strs.is_empty() {
                             ui.text_disabled("(no animations in store)");
                         } else {
                             ui.set_next_item_width(-1.0);
-                            if ui.combo_simple_string(
-                                "key##animation",
-                                &mut idx,
-                                &key_strs,
-                            ) {
+                            if ui.combo_simple_string("key##animation", &mut idx, &key_strs) {
                                 p.anim_key = Some(key_strs[idx].to_owned());
                                 p.commit_animation = true;
                             }
@@ -563,9 +552,9 @@ pub(super) fn draw_entity_editor(
                             p.remove_tint = true;
                         }
                         let mut color = p.tint_color.unwrap_or(tint_snap.color_normalized());
-                            if ui.color_edit4("##tint_color", &mut color) {
-                                p.tint_color = Some(color);
-                            }
+                        if ui.color_edit4("##tint_color", &mut color) {
+                            p.tint_color = Some(color);
+                        }
                         if ui.is_item_deactivated_after_edit() {
                             p.commit_tint = true;
                         }
@@ -640,9 +629,9 @@ pub(super) fn draw_entity_editor(
                         }
 
                         let mut color = p.dynamic_text_color.unwrap_or(dt.color_normalized());
-                            if ui.color_edit4("##dt_color", &mut color) {
-                                p.dynamic_text_color = Some(color);
-                            }
+                        if ui.color_edit4("##dt_color", &mut color) {
+                            p.dynamic_text_color = Some(color);
+                        }
                         if ui.is_item_deactivated_after_edit() {
                             p.commit_dynamic_text = true;
                         }

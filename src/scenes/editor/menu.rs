@@ -1,16 +1,24 @@
 //! Editor main menu bar.
 //!
-//! `draw_menu_bar` renders File / View / Entity menus. Menu items set `WorldSignals` flags
-//! (e.g., `ACTION_FILE_NEW_MAP`) that `editor_update` in `update.rs` consumes the next frame.
+//! `draw_menu_bar` renders File / View / Selection / Entity menus. Menu items set `WorldSignals`
+//! flags (e.g., `ACTION_FILE_NEW_MAP`) that `editor_update` in `update.rs` consumes the next
+//! frame.
 //! Returns `true` if the About modal should be opened.
 //!
 //! `draw_about_modal` renders the About popup (called from `editor_gui` after `draw_menu_bar`).
+use super::{SelectionMode, current_selection_mode, set_selection_mode};
 use crate::signals as sig;
 use aberredengine::imgui;
+use aberredengine::resources::appstate::AppState;
 use aberredengine::resources::worldsignals::WorldSignals;
 
-pub(super) fn draw_menu_bar(ui: &imgui::Ui, signals: &mut WorldSignals) -> bool {
+pub(super) fn draw_menu_bar(
+    ui: &imgui::Ui,
+    signals: &mut WorldSignals,
+    app_state: &AppState,
+) -> bool {
     let mut open_about = false;
+    let selection_mode = current_selection_mode(app_state);
     if let Some(_mb) = ui.begin_main_menu_bar() {
         if let Some(_file) = ui.begin_menu("File") {
             if ui.menu_item("New Map") {
@@ -107,6 +115,23 @@ pub(super) fn draw_menu_bar(ui: &imgui::Ui, signals: &mut WorldSignals) -> bool 
                 } else {
                     signals.set_flag(sig::ACTION_VIEW_PREVIEW_MAPDATA);
                 }
+            }
+        }
+
+        if let Some(_selection) = ui.begin_menu("Selection") {
+            if ui
+                .menu_item_config("Click")
+                .selected(selection_mode == SelectionMode::Click)
+                .build()
+            {
+                set_selection_mode(app_state, SelectionMode::Click);
+            }
+            if ui
+                .menu_item_config("Rectangle")
+                .selected(selection_mode == SelectionMode::Rectangle)
+                .build()
+            {
+                set_selection_mode(app_state, SelectionMode::Rectangle);
             }
         }
 

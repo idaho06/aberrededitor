@@ -90,6 +90,7 @@ pub const UI_PREVIEW_MAPDATA_OPEN: &str = "gui:view:preview_mapdata_open";
 
 // ---- Entity selector ----
 pub const UI_ENTITY_SELECTOR_OPEN: &str = "ui:entity_selector:open";
+pub const UI_MULTI_ENTITY_SELECTOR_OPEN: &str = "ui:multi_entity_selector:open";
 pub const ES_SELECTED_ROW: &str = "gui:entity_selector:selected_row";
 pub const ES_SELECTED_LABEL: &str = "gui:entity_selector:selected_label";
 pub const ES_SELECTED_ENTITY: &str = "editor:selected_entity";

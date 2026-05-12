@@ -14,10 +14,7 @@ use rustc_hash::FxHashMap;
 /// `AnimationResource`. Populated by `animation_store_sync_system` on every change to `AnimationStore`.
 pub type AnimationStoreMutex = std::sync::Mutex<FxHashMap<String, AnimationResource>>;
 
-pub fn animation_store_sync_system(
-    anim_store: Res<AnimationStore>,
-    app_state: ResMut<AppState>,
-) {
+pub fn animation_store_sync_system(anim_store: Res<AnimationStore>, app_state: ResMut<AppState>) {
     if !anim_store.is_changed() {
         return;
     }

@@ -4,7 +4,8 @@
 //!
 //! - `editor_update` — the `SceneUpdateFn`. Runs in ECS context each frame. Processes
 //!   `WorldSignals` flags from the previous GUI frame (mouse picks, menu actions, selector
-//!   selections, asset CRUD) and dispatches the corresponding events via `commands.trigger`.
+//!   selections, asset CRUD, and selection-mode-specific input handling before dispatching the
+//!   corresponding events via `commands.trigger`.
 //!
 //! - `editor_gui` — the `GuiCallback`. Runs every frame after `editor_update`. Draws all
 //!   ImGui panels and synchronises `IMGUI_WANTS_MOUSE/KEYBOARD` flags so `editor_update` can
@@ -13,31 +14,43 @@
 //! Action handling is split into `handle_file_actions`, `handle_entity_actions`,
 //! `handle_texture_actions`, `handle_font_actions`, `handle_animation_actions`, and
 //! `handle_view_actions` to keep `editor_update` readable.
+use super::animation_panel::{draw_animation_modals, draw_animation_store};
 use super::commit::consume_entity_editor_commits;
 use super::entity_editor_panel::{draw_entity_delete_modal, draw_entity_editor};
 use super::entity_registry_panel::draw_entity_registry;
 use super::entity_selector_panel::draw_entity_selector;
-use super::animation_panel::{draw_animation_modals, draw_animation_store};
 use super::font_panel::{draw_font_editor, draw_font_modals};
 use super::groups_panel::draw_groups_window;
 use super::menu::{draw_about_modal, draw_menu_bar};
-use super::overlay::draw_selection_outline;
+use super::multi_entity_selector_panel::{
+    draw_multi_entity_selector, draw_multi_entity_selector_modals,
+};
+use super::overlay::{
+    draw_multi_entity_outlines, draw_selection_drag_overlay, draw_selection_outline, render_to_world,
+};
 use super::template_browser_panel::draw_template_browser;
 use super::texture_panel::{draw_texture_editor, draw_texture_modals};
 use super::texture_viewer_panel::draw_texture_viewer;
+use super::{
+    SelectionDragRect, SelectionMode, current_selection_mode, finish_selection_drag,
+    start_selection_drag, update_selection_drag,
+};
 use crate::signals as sig;
-use crate::systems::entity_edit::CreateBlankEntityRequested;
-use crate::systems::file_dialogs::{request_async_dialog, AsyncFileDialogRequest};
+use crate::systems::animation_store_sync::AnimationStoreMutex;
+use crate::systems::entity_edit::{
+    AdjustMultiSelectionZRequested, CreateBlankEntityRequested, MoveMultiSelectionRequested,
+};
 use crate::systems::entity_inspector::InspectEntityRequested;
 use crate::systems::entity_selector::SelectGroupRequested;
 use crate::systems::entity_selector::{
-    PickEntitiesAtPointRequested, SelectEntityRequested, SelectRegisteredEntityRequested,
+    MultiEntitySelectionMutex, PickEntitiesAtPointRequested, PickEntitiesInRectRequested,
+    SelectEntityRequested, SelectRegisteredEntityRequested,
 };
-use crate::systems::animation_store_sync::AnimationStoreMutex;
+use crate::systems::file_dialogs::{AsyncFileDialogRequest, request_async_dialog};
 use crate::systems::map_ops::{
-    AddAnimationRequested, NewMapRequested, PreviewMapDataRequested,
-    RemoveAnimationRequested, RemoveTextureRequested, RenameAnimationKeyRequested,
-    RenameTextureKeyRequested, SaveMapRequested, UpdateAnimationResourceRequested,
+    AddAnimationRequested, NewMapRequested, PreviewMapDataRequested, RemoveAnimationRequested,
+    RemoveTextureRequested, RenameAnimationKeyRequested, RenameTextureKeyRequested,
+    SaveMapRequested, UpdateAnimationResourceRequested,
 };
 use aberredengine::events::switchdebug::SwitchDebugEvent;
 use aberredengine::imgui;
@@ -49,14 +62,20 @@ use aberredengine::resources::worldsignals::WorldSignals;
 use aberredengine::systems::GameCtx;
 
 pub fn editor_update(ctx: &mut GameCtx, _dt: f32, input: &InputState) {
-    // Entity picking — left mouse click (Action1 rebound to mouse-only in editor_enter).
-    // Suppressed when ImGui captured the mouse last frame to prevent clicks on UI widgets
-    // from triggering world picks.
-    if input.action_1.just_pressed && !ctx.world_signals.has_flag(sig::IMGUI_WANTS_MOUSE) {
-        ctx.commands.trigger(PickEntitiesAtPointRequested {
-            x: input.mouse_world_x,
-            y: input.mouse_world_y,
-        });
+    let wants_mouse = ctx.world_signals.has_flag(sig::IMGUI_WANTS_MOUSE);
+    match current_selection_mode(&ctx.app_state) {
+        SelectionMode::Click => {
+            // Entity picking — left mouse click (Action1 rebound to mouse-only in editor_enter).
+            // Suppressed when ImGui captured the mouse last frame to prevent clicks on UI widgets
+            // from triggering world picks.
+            if input.action_1.just_pressed && !wants_mouse {
+                ctx.commands.trigger(PickEntitiesAtPointRequested {
+                    x: input.mouse_world_x,
+                    y: input.mouse_world_y,
+                });
+            }
+        }
+        SelectionMode::Rectangle => handle_rectangle_drag(ctx, input, wants_mouse),
     }
 
     if let Some(row) = ctx.world_signals.clear_integer(sig::ES_SELECTED_ROW) {
@@ -89,6 +108,7 @@ pub fn editor_update(ctx: &mut GameCtx, _dt: f32, input: &InputState) {
     }
 
     consume_entity_editor_commits(ctx);
+    consume_multi_entity_commits(ctx);
     handle_entity_actions(ctx);
     handle_file_actions(ctx);
     handle_texture_actions(ctx);
@@ -116,7 +136,7 @@ pub fn editor_gui(
         signals.clear_flag(sig::IMGUI_WANTS_KEYBOARD);
     }
 
-    let open_about = draw_menu_bar(ui, signals);
+    let open_about = draw_menu_bar(ui, signals, app_state);
     let (open_rename_popup, open_remove_popup) = draw_texture_editor(ui, signals, textures);
     let (open_font_rename, open_font_remove) = draw_font_editor(ui, signals, fonts);
     let (open_anim_rename, open_anim_remove) =
@@ -126,6 +146,8 @@ pub fn editor_gui(
     draw_groups_window(ui, signals, app_state);
     draw_entity_registry(ui, signals);
     draw_entity_selector(ui, signals, app_state);
+    let (open_multi_move_popup, open_multi_z_popup) =
+        draw_multi_entity_selector(ui, signals, app_state);
     let open_delete_popup = draw_entity_editor(ui, signals, textures, fonts, app_state);
     draw_template_browser(ui, signals, app_state);
 
@@ -153,13 +175,73 @@ pub fn editor_gui(
     if open_delete_popup {
         ui.open_popup("Delete Entity##entity_editor");
     }
+    if open_multi_move_popup {
+        ui.open_popup("Move Selected Entities##multi_selector");
+    }
+    if open_multi_z_popup {
+        ui.open_popup("Adjust ZIndex##multi_selector");
+    }
 
     draw_texture_modals(ui, signals);
     draw_font_modals(ui, signals);
     draw_animation_modals(ui, signals);
     draw_about_modal(ui);
+    draw_multi_entity_selector_modals(ui, app_state);
     draw_entity_delete_modal(ui, app_state);
     draw_selection_outline(ui, signals, app_state);
+    draw_multi_entity_outlines(ui, signals, app_state);
+    draw_selection_drag_overlay(ui, signals, app_state);
+}
+
+fn consume_multi_entity_commits(ctx: &mut GameCtx) {
+    let (move_request, z_request) = {
+        let Some(mutex) = ctx.app_state.get::<MultiEntitySelectionMutex>() else {
+            return;
+        };
+        let Ok(mut cache) = mutex.lock() else {
+            return;
+        };
+        (
+            cache.bulk_edit.pending_move_request.take(),
+            cache.bulk_edit.pending_z_request.take(),
+        )
+    };
+
+    if let Some([dx, dy]) = move_request {
+        ctx.commands.trigger(MoveMultiSelectionRequested { dx, dy });
+    }
+    if let Some(delta) = z_request {
+        ctx.commands
+            .trigger(AdjustMultiSelectionZRequested { delta });
+    }
+}
+
+fn handle_rectangle_drag(ctx: &mut GameCtx, input: &InputState, wants_mouse: bool) {
+    let current_point = [input.mouse_x, input.mouse_y];
+
+    if input.action_1.just_pressed && !wants_mouse {
+        start_selection_drag(&ctx.app_state, current_point);
+    }
+    if input.action_1.active {
+        update_selection_drag(&ctx.app_state, current_point);
+    }
+    if input.action_1.just_released
+        && let Some(drag_rect) = finish_selection_drag(&ctx.app_state, current_point)
+    {
+        dispatch_rectangle_pick(ctx, drag_rect);
+    }
+}
+
+fn dispatch_rectangle_pick(ctx: &mut GameCtx, drag_rect: SelectionDragRect) {
+    let ([min_render_x, min_render_y], [max_render_x, max_render_y]) = drag_rect.normalized();
+    let [min_x, min_y] = render_to_world(&ctx.world_signals, min_render_x, min_render_y);
+    let [max_x, max_y] = render_to_world(&ctx.world_signals, max_render_x, max_render_y);
+    ctx.commands.trigger(PickEntitiesInRectRequested {
+        min_x,
+        min_y,
+        max_x,
+        max_y,
+    });
 }
 
 fn handle_file_actions(ctx: &mut GameCtx) {

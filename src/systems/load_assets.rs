@@ -7,10 +7,13 @@
 //! - Inserting all `Mutex<T>` caches into `AppState` so they are available before any system runs.
 //! - Inserting `MapData` and `EditorState` Bevy resources.
 //! - Advancing the game state to `Playing` to begin the scene loop.
-use crate::scenes::editor::EditorState;
 use crate::scenes::editor::pending_state::{PendingEditState, PendingMutex};
-use crate::systems::entity_selector::{RenderableSelectorCache, RenderableSelectorMutex};
+use crate::scenes::editor::{EditorState, SelectionModeMutex, SelectionModeState};
 use crate::systems::animation_store_sync::AnimationStoreMutex;
+use crate::systems::entity_selector::{
+    MultiEntitySelectionCache, MultiEntitySelectionMutex, RenderableSelectorCache,
+    RenderableSelectorMutex,
+};
 use crate::systems::file_dialogs::{AsyncFileDialogMutex, AsyncFileDialogState};
 use crate::systems::group_selector::{GroupListCache, GroupListMutex};
 use crate::systems::template_selector::{TemplateSelectorCache, TemplateSelectorMutex};
@@ -67,6 +70,9 @@ pub fn load_assets(
     app_state.insert(RenderableSelectorMutex::new(
         RenderableSelectorCache::default(),
     ));
+    app_state.insert(MultiEntitySelectionMutex::new(
+        MultiEntitySelectionCache::default(),
+    ));
     app_state.insert(AsyncFileDialogMutex::new(AsyncFileDialogState::default()));
     app_state.insert(GroupListMutex::new(GroupListCache::default()));
     app_state.insert(AnimationStoreMutex::new(Default::default()));
@@ -74,6 +80,7 @@ pub fn load_assets(
     app_state.insert(PendingLuaSetupLoadMutex::new(
         PendingLuaSetupLoadState::default(),
     ));
+    app_state.insert(SelectionModeMutex::new(SelectionModeState::default()));
     commands.insert_resource(EditorState::default());
     app_state.insert(PendingMutex::new(PendingEditState::default()));
 

@@ -49,11 +49,7 @@ pub(super) fn draw_font_editor(
                     let tex_id = imgui::TextureId::from(&font.texture as *const _ as usize);
                     imgui::Image::new(tex_id, [64.0f32, 64.0]).build(ui);
                     if ui.is_item_clicked() {
-                        open_texture_viewer(
-                            signals,
-                            sig::TEXTURE_VIEWER_SOURCE_FONT,
-                            key.as_str(),
-                        );
+                        open_texture_viewer(signals, sig::TEXTURE_VIEWER_SOURCE_FONT, key.as_str());
                     }
                     ui.same_line();
 

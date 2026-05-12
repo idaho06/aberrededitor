@@ -23,6 +23,7 @@ use aberredengine::bevy_ecs::prelude::{
     Commands, Entity, Event, NonSendMut, On, Query, Res, ResMut, With,
 };
 use aberredengine::components::animation::Animation;
+use aberredengine::components::dynamictext::DynamicText;
 use aberredengine::components::group::Group;
 use aberredengine::components::mapposition::MapPosition;
 use aberredengine::components::rotation::Rotation;
@@ -31,7 +32,6 @@ use aberredengine::components::sprite::Sprite;
 use aberredengine::components::tilemap::TileMap;
 use aberredengine::components::tint::Tint;
 use aberredengine::components::zindex::ZIndex;
-use aberredengine::components::dynamictext::DynamicText;
 use aberredengine::events::spawnmap::SpawnMapRequested;
 use aberredengine::raylib::prelude::Vector2;
 use aberredengine::resources::animationstore::{AnimationResource, AnimationStore};
@@ -42,11 +42,11 @@ use aberredengine::resources::mapdata::{
     save_map,
 };
 use aberredengine::resources::texturestore::TextureStore;
-use std::sync::Arc;
 use aberredengine::resources::worldsignals::WorldSignals;
 use aberredengine::systems::RaylibAccess;
 use aberredengine::systems::mapspawn::load_font_with_mipmaps;
 use log::{info, warn};
+use std::sync::Arc;
 
 use crate::components::map_entity::MapEntity;
 use crate::systems::entity_selector::clear_selector_state;
@@ -190,8 +190,20 @@ fn sync_map_entities(
         .map(|(k, e)| (*e, k.as_str()))
         .collect();
 
-    for (entity, tilemap, pos, z, group, rot, scale, sprite, tint, lua_setup, dynamic_text, animation) in
-        entities.iter()
+    for (
+        entity,
+        tilemap,
+        pos,
+        z,
+        group,
+        rot,
+        scale,
+        sprite,
+        tint,
+        lua_setup,
+        dynamic_text,
+        animation,
+    ) in entities.iter()
     {
         let registered_as = user_keys
             .iter()
