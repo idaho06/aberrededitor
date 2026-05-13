@@ -1,23 +1,43 @@
 //! In-world overlay rendering and overlay settings.
 //!
-//! Grid and origin-axis overlays are drawn via Raylib world-space (`draw_world_overlays`).
-//! Selection outlines and the drag marquee use ImGui's background draw list.
+//! Grid, origin-axis, and selection outlines are drawn via Raylib world-space
+//! (`draw_world_overlays`).
+//! The drag marquee uses ImGui's background draw list because it is screen-space.
 //! This module also owns the overlay state (`OverlaySettingsMutex`) and the grid preferences modal.
 use super::current_selection_drag;
 use crate::editor_types::SelectionCorners;
 use crate::signals as sig;
 use crate::systems::entity_selector::MultiEntitySelectionMutex;
 use aberredengine::imgui;
+use aberredengine::raylib::prelude::{Camera2D, Color, Vector2};
 use aberredengine::resources::appstate::AppState;
 use aberredengine::resources::screensize::ScreenSize;
 use aberredengine::resources::worldsignals::WorldSignals;
 use aberredengine::systems::scene_dispatch::WorldDraw;
-use aberredengine::raylib::prelude::{Camera2D, Color, Vector2};
+use log::trace;
 
 pub(super) const GRID_PREFERENCES_POPUP_ID: &str = "Grid Preferences##overlay";
-const ORIGIN_AXIS_COLOR: Color = Color { r: 178, g: 178, b: 178, a: 255 };
-const GRID_COLOR: Color = Color { r: 64, g: 64, b: 64, a: 255 };
-const SELECTION_OUTLINE_COLOR: [f32; 4] = [1.0, 0.85, 0.0, 1.0];
+const ORIGIN_AXIS_COLOR: Color = Color {
+    r: 178,
+    g: 178,
+    b: 178,
+    a: 255,
+};
+const GRID_COLOR: Color = Color {
+    r: 64,
+    g: 64,
+    b: 64,
+    a: 255,
+};
+const GRID_DASH_SIZE: i32 = 4;
+const GRID_DASH_GAP: i32 = 6;
+const SELECTION_OUTLINE_THICKNESS: f32 = 2.0;
+const SELECTION_OUTLINE_COLOR: Color = Color {
+    r: 255,
+    g: 217,
+    b: 0,
+    a: 255,
+};
 const DRAG_MARQUEE_COLOR: [f32; 4] = [0.6, 0.6, 0.6, 1.0];
 const DRAG_MARQUEE_THICKNESS: f32 = 1.5;
 const DRAG_MARQUEE_DASH: f32 = 6.0;
@@ -96,7 +116,12 @@ pub(super) fn overlay_visibility(app_state: &AppState) -> (bool, bool) {
 
 pub(super) fn corners_aabb(corners: [[f32; 2]; 4]) -> (f32, f32, f32, f32) {
     corners.iter().fold(
-        (f32::INFINITY, f32::NEG_INFINITY, f32::INFINITY, f32::NEG_INFINITY),
+        (
+            f32::INFINITY,
+            f32::NEG_INFINITY,
+            f32::INFINITY,
+            f32::NEG_INFINITY,
+        ),
         |(min_x, max_x, min_y, max_y), [x, y]| {
             (min_x.min(*x), max_x.max(*x), min_y.min(*y), max_y.max(*y))
         },
@@ -108,7 +133,7 @@ pub(crate) fn draw_world_overlays(
     camera: &Camera2D,
     screen: &ScreenSize,
     app_state: &AppState,
-    _signals: &WorldSignals,
+    signals: &WorldSignals,
 ) {
     let state = lock_overlay_settings(app_state);
     let show_axis = state.show_origin_axis;
@@ -117,17 +142,18 @@ pub(crate) fn draw_world_overlays(
     drop(state);
 
     let grid_active = show_grid && grid.width > 0.0 && grid.height > 0.0;
-    if !show_axis && !grid_active {
-        return;
+    if show_axis || grid_active {
+        let bounds = world_bounds_from_camera(camera, screen);
+        if grid_active {
+            draw_grid_lines(d, bounds, grid);
+        }
+        if show_axis {
+            draw_axis_lines(d, bounds);
+        }
     }
 
-    let bounds = world_bounds_from_camera(camera, screen);
-    if grid_active {
-        draw_grid_lines(d, bounds, grid);
-    }
-    if show_axis {
-        draw_axis_lines(d, bounds);
-    }
+    draw_selection_outline(d, app_state);
+    draw_multi_entity_outlines(d, signals, app_state);
 }
 
 fn world_bounds_from_camera(camera: &Camera2D, screen: &ScreenSize) -> (f32, f32, f32, f32) {
@@ -153,10 +179,7 @@ fn world_bounds_from_camera(camera: &Camera2D, screen: &ScreenSize) -> (f32, f32
     corners_aabb(corners)
 }
 
-fn draw_axis_lines(
-    d: &mut dyn WorldDraw,
-    (min_x, max_x, min_y, max_y): (f32, f32, f32, f32),
-) {
+fn draw_axis_lines(d: &mut dyn WorldDraw, (min_x, max_x, min_y, max_y): (f32, f32, f32, f32)) {
     let color = ORIGIN_AXIS_COLOR;
     d.draw_line_v(Vector2::new(min_x, 0.0), Vector2::new(max_x, 0.0), color);
     d.draw_line_v(Vector2::new(0.0, min_y), Vector2::new(0.0, max_y), color);
@@ -170,24 +193,41 @@ fn draw_grid_lines(
     // Guard against runaway loops if the user sets a very small grid spacing.
     const MAX_LINES: f32 = 2000.0;
     if (max_x - min_x) / grid.width > MAX_LINES || (max_y - min_y) / grid.height > MAX_LINES {
+        trace!(
+            "draw_grid_lines: skipped dashed grid width={} height={} bounds=({}, {}, {}, {})",
+            grid.width, grid.height, min_x, max_x, min_y, max_y
+        );
         return;
     }
 
     let color = GRID_COLOR;
-    let mut x = aligned_grid_line_start(min_x, grid.offset_x, grid.width);
+    let start_x = aligned_grid_line_start(min_x, grid.offset_x, grid.width);
+    let start_y = aligned_grid_line_start(min_y, grid.offset_y, grid.height);
+
+    let mut x = start_x;
     while x <= max_x + grid.width * 0.5 {
-        d.draw_line_v(Vector2::new(x, min_y), Vector2::new(x, max_y), color);
+        d.draw_line_dashed(
+            Vector2::new(x, min_y),
+            Vector2::new(x, max_y),
+            GRID_DASH_SIZE,
+            GRID_DASH_GAP,
+            color,
+        );
         x += grid.width;
     }
 
-    let mut y = aligned_grid_line_start(min_y, grid.offset_y, grid.height);
+    let mut y = start_y;
     while y <= max_y + grid.height * 0.5 {
-        d.draw_line_v(Vector2::new(min_x, y), Vector2::new(max_x, y), color);
+        d.draw_line_dashed(
+            Vector2::new(min_x, y),
+            Vector2::new(max_x, y),
+            GRID_DASH_SIZE,
+            GRID_DASH_GAP,
+            color,
+        );
         y += grid.height;
     }
 }
-
-
 
 pub(super) fn draw_grid_preferences_modal(ui: &imgui::Ui, app_state: &AppState) {
     ui.modal_popup_config(GRID_PREFERENCES_POPUP_ID)
@@ -234,18 +274,15 @@ pub(super) fn draw_grid_preferences_modal(ui: &imgui::Ui, app_state: &AppState) 
         });
 }
 
-pub(super) fn draw_selection_outline(ui: &imgui::Ui, signals: &WorldSignals, app_state: &AppState) {
+fn draw_selection_outline(d: &mut dyn WorldDraw, app_state: &AppState) {
     let Some(corners) = app_state.get::<SelectionCorners>() else {
         return;
     };
-    let points = corners
-        .0
-        .map(|[world_x, world_y]| world_to_screen(signals, world_x, world_y));
-    draw_quad_outline(&ui.get_background_draw_list(), points);
+    draw_quad_outline(d, corners.0);
 }
 
-pub(super) fn draw_multi_entity_outlines(
-    ui: &imgui::Ui,
+fn draw_multi_entity_outlines(
+    d: &mut dyn WorldDraw,
     signals: &WorldSignals,
     app_state: &AppState,
 ) {
@@ -258,21 +295,20 @@ pub(super) fn draw_multi_entity_outlines(
     let Ok(cache) = mutex.lock() else {
         return;
     };
-    let draw_list = ui.get_background_draw_list();
     for corners in cache.corner_sets.iter().flatten() {
-        let points = corners.map(|[world_x, world_y]| world_to_screen(signals, world_x, world_y));
-        draw_quad_outline(&draw_list, points);
+        draw_quad_outline(d, *corners);
     }
 }
 
-fn draw_quad_outline(draw_list: &imgui::DrawListMut<'_>, points: [[f32; 2]; 4]) {
+fn draw_quad_outline(d: &mut dyn WorldDraw, points: [[f32; 2]; 4]) {
     for i in 0..4 {
-        draw_line(
-            draw_list,
-            points[i],
-            points[(i + 1) % 4],
+        let a = points[i];
+        let b = points[(i + 1) % 4];
+        d.draw_line_ex(
+            Vector2::new(a[0], a[1]),
+            Vector2::new(b[0], b[1]),
+            SELECTION_OUTLINE_THICKNESS,
             SELECTION_OUTLINE_COLOR,
-            2.0,
         );
     }
 }
@@ -289,7 +325,17 @@ pub(super) fn draw_selection_drag_overlay(
     let [min_x, min_y] = render_to_screen(signals, min_rx, min_ry);
     let [max_x, max_y] = render_to_screen(signals, max_rx, max_ry);
     let draw_list = ui.get_background_draw_list();
-    let side = |a, b| draw_dotted_line(&draw_list, a, b, DRAG_MARQUEE_COLOR, DRAG_MARQUEE_THICKNESS, DRAG_MARQUEE_DASH, DRAG_MARQUEE_GAP);
+    let side = |a, b| {
+        draw_dotted_line(
+            &draw_list,
+            a,
+            b,
+            DRAG_MARQUEE_COLOR,
+            DRAG_MARQUEE_THICKNESS,
+            DRAG_MARQUEE_DASH,
+            DRAG_MARQUEE_GAP,
+        )
+    };
     side([min_x, min_y], [max_x, min_y]);
     side([max_x, min_y], [max_x, max_y]);
     side([max_x, max_y], [min_x, max_y]);
@@ -311,7 +357,10 @@ impl CameraParams {
             target_x: signals.get_scalar(sig::CAM_TARGET_X).unwrap_or(0.0),
             target_y: signals.get_scalar(sig::CAM_TARGET_Y).unwrap_or(0.0),
             zoom: signals.get_scalar(sig::CAM_ZOOM).unwrap_or(1.0),
-            rotation_rad: signals.get_scalar(sig::CAM_ROTATION).unwrap_or(0.0).to_radians(),
+            rotation_rad: signals
+                .get_scalar(sig::CAM_ROTATION)
+                .unwrap_or(0.0)
+                .to_radians(),
             offset_x: signals.get_scalar(sig::CAM_OFFSET_X).unwrap_or(0.0),
             offset_y: signals.get_scalar(sig::CAM_OFFSET_Y).unwrap_or(0.0),
         }
@@ -335,18 +384,6 @@ fn render_to_screen(signals: &WorldSignals, render_x: f32, render_y: f32) -> [f3
     let lb_x = signals.get_scalar(sig::WIN_OFFSET_X).unwrap_or(0.0);
     let lb_y = signals.get_scalar(sig::WIN_OFFSET_Y).unwrap_or(0.0);
     [render_x * lb_scale + lb_x, render_y * lb_scale + lb_y]
-}
-
-fn world_to_screen(signals: &WorldSignals, world_x: f32, world_y: f32) -> [f32; 2] {
-    let cam = CameraParams::from_signals(signals);
-    let rotation_rad = -cam.rotation_rad;
-    let dx = world_x - cam.target_x;
-    let dy = world_y - cam.target_y;
-    let cos_a = rotation_rad.cos();
-    let sin_a = rotation_rad.sin();
-    let render_x = (dx * cos_a - dy * sin_a) * cam.zoom + cam.offset_x;
-    let render_y = (dx * sin_a + dy * cos_a) * cam.zoom + cam.offset_y;
-    render_to_screen(signals, render_x, render_y)
 }
 
 fn aligned_grid_line_start(min_value: f32, offset: f32, spacing: f32) -> f32 {

@@ -1,9 +1,8 @@
 //! Per-frame camera state sync to `WorldSignals`.
 //!
 //! Writes camera target, zoom, rotation, offset, render size, and letterbox parameters every
-//! frame so the GUI
-//! callback can project world-space entity positions onto the ImGui screen coordinate system
-//! (used by `overlay::draw_selection_outline`).
+//! frame so editor systems and GUI overlays can convert between render, world, and window-space
+//! coordinates.
 use crate::signals as sig;
 use aberredengine::bevy_ecs::prelude::{Res, ResMut};
 use aberredengine::resources::camera2d::Camera2DRes;
@@ -12,8 +11,8 @@ use aberredengine::resources::windowsize::WindowSize;
 use aberredengine::resources::worldsignals::WorldSignals;
 
 /// Per-frame system that writes the active camera, render target, and letterbox parameters to
-/// `WorldSignals` so the GUI callback can project world-space coordinates onto
-/// the ImGui screen without needing direct ECS access.
+/// `WorldSignals` so editor systems and GUI overlays can convert coordinates without needing
+/// direct ECS access.
 pub fn editor_camera_sync_system(
     camera: Res<Camera2DRes>,
     screen: Res<ScreenSize>,

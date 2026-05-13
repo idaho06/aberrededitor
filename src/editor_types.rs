@@ -36,7 +36,7 @@ pub enum ComponentKind {
 /// World-space quad corners for the active entity selection outline: TL → TR → BR → BL.
 ///
 /// Stored in `AppState` by `entity_selector` observers; consumed by `overlay::draw_selection_outline`
-/// to project the quad to screen space and render it as a yellow border.
+/// to render the quad as a yellow border in the world draw callback.
 #[derive(Debug, Clone, Copy)]
 pub struct SelectionCorners(pub [[f32; 2]; 4]);
 

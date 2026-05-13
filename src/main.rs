@@ -104,9 +104,7 @@ fn main() -> Result<(), String> {
                 on_update: Some(scenes::editor::editor_update),
                 on_exit: Some(scenes::editor::editor_exit),
                 gui_callback: Some(scenes::editor::editor_gui as GuiCallback),
-                world_draw_callback: Some(
-                    scenes::editor::draw_world_overlays as WorldDrawCallback,
-                ),
+                world_draw_callback: Some(scenes::editor::draw_world_overlays as WorldDrawCallback),
             },
         )
         .initial_scene("intro")

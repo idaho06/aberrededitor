@@ -26,9 +26,8 @@ use super::multi_entity_selector_panel::{
     draw_multi_entity_selector, draw_multi_entity_selector_modals,
 };
 use super::overlay::{
-    corners_aabb, draw_grid_preferences_modal, draw_multi_entity_outlines,
-    draw_selection_drag_overlay, draw_selection_outline, render_to_world,
-    GRID_PREFERENCES_POPUP_ID,
+    GRID_PREFERENCES_POPUP_ID, corners_aabb, draw_grid_preferences_modal,
+    draw_selection_drag_overlay, render_to_world,
 };
 use super::template_browser_panel::draw_template_browser;
 use super::texture_panel::{draw_texture_editor, draw_texture_modals};
@@ -194,8 +193,6 @@ pub fn editor_gui(
     draw_grid_preferences_modal(ui, app_state);
     draw_multi_entity_selector_modals(ui, app_state);
     draw_entity_delete_modal(ui, app_state);
-    draw_selection_outline(ui, signals, app_state);
-    draw_multi_entity_outlines(ui, signals, app_state);
     draw_selection_drag_overlay(ui, signals, app_state);
 }
 
