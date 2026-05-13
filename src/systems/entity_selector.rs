@@ -14,11 +14,11 @@
 use super::entity_inspector::InspectEntityRequested;
 use super::group_selector::{GroupListCache, GroupListMutex};
 use super::utils::{display_group_name, entity_label};
+use crate::components::map_entity::MapEntity;
 use crate::editor_types::{ComponentSnapshot, SelectionCorners};
 use crate::signals as sig;
 use aberredengine::bevy_ecs;
 use aberredengine::bevy_ecs::prelude::{Commands, Entity, Event, On, Query, ResMut, With};
-use crate::components::map_entity::MapEntity;
 use aberredengine::components::boxcollider::BoxCollider;
 use aberredengine::components::dynamictext::DynamicText;
 use aberredengine::components::globaltransform2d::GlobalTransform2D;
@@ -177,19 +177,22 @@ struct PickResult {
 #[allow(clippy::type_complexity)]
 pub fn entity_pick_observer(
     trigger: On<PickEntitiesAtPointRequested>,
-    query: Query<(
-        Entity,
-        &MapPosition,
-        Option<&BoxCollider>,
-        Option<&Sprite>,
-        Option<&DynamicText>,
-        Option<&Rotation>,
-        Option<&Scale>,
-        Option<&ZIndex>,
-        Option<&GlobalTransform2D>,
-        Option<&Group>,
-        Option<&Persistent>,
-    ), With<MapEntity>>,
+    query: Query<
+        (
+            Entity,
+            &MapPosition,
+            Option<&BoxCollider>,
+            Option<&Sprite>,
+            Option<&DynamicText>,
+            Option<&Rotation>,
+            Option<&Scale>,
+            Option<&ZIndex>,
+            Option<&GlobalTransform2D>,
+            Option<&Group>,
+            Option<&Persistent>,
+        ),
+        With<MapEntity>,
+    >,
     mut world_signals: ResMut<WorldSignals>,
     mut app_state: ResMut<AppState>,
     mut commands: Commands,
@@ -299,19 +302,22 @@ pub fn entity_pick_observer(
 #[allow(clippy::type_complexity)]
 pub fn entity_rect_pick_observer(
     trigger: On<PickEntitiesInRectRequested>,
-    query: Query<(
-        Entity,
-        &MapPosition,
-        Option<&BoxCollider>,
-        Option<&Sprite>,
-        Option<&DynamicText>,
-        Option<&Rotation>,
-        Option<&Scale>,
-        Option<&ZIndex>,
-        Option<&GlobalTransform2D>,
-        Option<&Group>,
-        Option<&Persistent>,
-    ), With<MapEntity>>,
+    query: Query<
+        (
+            Entity,
+            &MapPosition,
+            Option<&BoxCollider>,
+            Option<&Sprite>,
+            Option<&DynamicText>,
+            Option<&Rotation>,
+            Option<&Scale>,
+            Option<&ZIndex>,
+            Option<&GlobalTransform2D>,
+            Option<&Group>,
+            Option<&Persistent>,
+        ),
+        With<MapEntity>,
+    >,
     mut world_signals: ResMut<WorldSignals>,
     mut app_state: ResMut<AppState>,
     mut commands: Commands,
@@ -883,7 +889,12 @@ fn quad_overlaps_rect(
     // Quick rejection: test AABB of the OBB against the selection rect (equivalent to projecting
     // both shapes onto the world X and Y axes — the first two SAT axes for an AABB opponent).
     let (obb_min_x, obb_max_x, obb_min_y, obb_max_y) = corners.iter().fold(
-        (f32::INFINITY, f32::NEG_INFINITY, f32::INFINITY, f32::NEG_INFINITY),
+        (
+            f32::INFINITY,
+            f32::NEG_INFINITY,
+            f32::INFINITY,
+            f32::NEG_INFINITY,
+        ),
         |(mnx, mxx, mny, mxy), c| (mnx.min(c[0]), mxx.max(c[0]), mny.min(c[1]), mxy.max(c[1])),
     );
     if obb_max_x < min_x || obb_min_x > max_x || obb_max_y < min_y || obb_min_y > max_y {

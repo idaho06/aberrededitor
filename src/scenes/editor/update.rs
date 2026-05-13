@@ -26,7 +26,9 @@ use super::multi_entity_selector_panel::{
     draw_multi_entity_selector, draw_multi_entity_selector_modals,
 };
 use super::overlay::{
-    draw_multi_entity_outlines, draw_selection_drag_overlay, draw_selection_outline, render_to_world,
+    corners_aabb, draw_grid_overlay, draw_grid_preferences_modal, draw_multi_entity_outlines,
+    draw_origin_axis_overlay, draw_selection_drag_overlay, draw_selection_outline,
+    render_to_world, GRID_PREFERENCES_POPUP_ID,
 };
 use super::template_browser_panel::draw_template_browser;
 use super::texture_panel::{draw_texture_editor, draw_texture_modals};
@@ -136,7 +138,7 @@ pub fn editor_gui(
         signals.clear_flag(sig::IMGUI_WANTS_KEYBOARD);
     }
 
-    let open_about = draw_menu_bar(ui, signals, app_state);
+    let menu_actions = draw_menu_bar(ui, signals, app_state);
     let (open_rename_popup, open_remove_popup) = draw_texture_editor(ui, signals, textures);
     let (open_font_rename, open_font_remove) = draw_font_editor(ui, signals, fonts);
     let (open_anim_rename, open_anim_remove) =
@@ -169,8 +171,11 @@ pub fn editor_gui(
     if open_anim_remove {
         ui.open_popup("Remove Animation##animation_store");
     }
-    if open_about {
+    if menu_actions.open_about {
         ui.open_popup("About");
+    }
+    if menu_actions.open_grid_preferences {
+        ui.open_popup(GRID_PREFERENCES_POPUP_ID);
     }
     if open_delete_popup {
         ui.open_popup("Delete Entity##entity_editor");
@@ -186,8 +191,11 @@ pub fn editor_gui(
     draw_font_modals(ui, signals);
     draw_animation_modals(ui, signals);
     draw_about_modal(ui);
+    draw_grid_preferences_modal(ui, app_state);
     draw_multi_entity_selector_modals(ui, app_state);
     draw_entity_delete_modal(ui, app_state);
+    draw_grid_overlay(ui, signals, app_state);
+    draw_origin_axis_overlay(ui, signals, app_state);
     draw_selection_outline(ui, signals, app_state);
     draw_multi_entity_outlines(ui, signals, app_state);
     draw_selection_drag_overlay(ui, signals, app_state);
@@ -234,8 +242,13 @@ fn handle_rectangle_drag(ctx: &mut GameCtx, input: &InputState, wants_mouse: boo
 
 fn dispatch_rectangle_pick(ctx: &mut GameCtx, drag_rect: SelectionDragRect) {
     let ([min_render_x, min_render_y], [max_render_x, max_render_y]) = drag_rect.normalized();
-    let [min_x, min_y] = render_to_world(&ctx.world_signals, min_render_x, min_render_y);
-    let [max_x, max_y] = render_to_world(&ctx.world_signals, max_render_x, max_render_y);
+    let corners = [
+        render_to_world(&ctx.world_signals, min_render_x, min_render_y),
+        render_to_world(&ctx.world_signals, max_render_x, min_render_y),
+        render_to_world(&ctx.world_signals, max_render_x, max_render_y),
+        render_to_world(&ctx.world_signals, min_render_x, max_render_y),
+    ];
+    let (min_x, max_x, min_y, max_y) = corners_aabb(corners);
     ctx.commands.trigger(PickEntitiesInRectRequested {
         min_x,
         min_y,

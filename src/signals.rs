@@ -7,8 +7,11 @@
 pub const CAM_TARGET_X: &str = "editor:cam:target_x";
 pub const CAM_TARGET_Y: &str = "editor:cam:target_y";
 pub const CAM_ZOOM: &str = "editor:cam:zoom";
+pub const CAM_ROTATION: &str = "editor:cam:rotation";
 pub const CAM_OFFSET_X: &str = "editor:cam:offset_x";
 pub const CAM_OFFSET_Y: &str = "editor:cam:offset_y";
+pub const RENDER_WIDTH: &str = "editor:render:width";
+pub const RENDER_HEIGHT: &str = "editor:render:height";
 pub const WIN_SCALE: &str = "editor:win:scale";
 pub const WIN_OFFSET_X: &str = "editor:win:offset_x";
 pub const WIN_OFFSET_Y: &str = "editor:win:offset_y";

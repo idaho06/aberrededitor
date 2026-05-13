@@ -1,6 +1,7 @@
 //! Per-frame camera state sync to `WorldSignals`.
 //!
-//! Writes camera target, zoom, offset, and letterbox parameters every frame so the GUI
+//! Writes camera target, zoom, rotation, offset, render size, and letterbox parameters every
+//! frame so the GUI
 //! callback can project world-space entity positions onto the ImGui screen coordinate system
 //! (used by `overlay::draw_selection_outline`).
 use crate::signals as sig;
@@ -10,7 +11,7 @@ use aberredengine::resources::screensize::ScreenSize;
 use aberredengine::resources::windowsize::WindowSize;
 use aberredengine::resources::worldsignals::WorldSignals;
 
-/// Per-frame system that writes the active camera and letterbox parameters to
+/// Per-frame system that writes the active camera, render target, and letterbox parameters to
 /// `WorldSignals` so the GUI callback can project world-space coordinates onto
 /// the ImGui screen without needing direct ECS access.
 pub fn editor_camera_sync_system(
@@ -25,8 +26,11 @@ pub fn editor_camera_sync_system(
     signals.set_scalar(sig::CAM_TARGET_X, camera.0.target.x);
     signals.set_scalar(sig::CAM_TARGET_Y, camera.0.target.y);
     signals.set_scalar(sig::CAM_ZOOM, camera.0.zoom);
+    signals.set_scalar(sig::CAM_ROTATION, camera.0.rotation);
     signals.set_scalar(sig::CAM_OFFSET_X, camera.0.offset.x);
     signals.set_scalar(sig::CAM_OFFSET_Y, camera.0.offset.y);
+    signals.set_scalar(sig::RENDER_WIDTH, screen.w as f32);
+    signals.set_scalar(sig::RENDER_HEIGHT, screen.h as f32);
     signals.set_scalar(sig::WIN_SCALE, lb_scale);
     signals.set_scalar(sig::WIN_OFFSET_X, lb.x);
     signals.set_scalar(sig::WIN_OFFSET_Y, lb.y);
