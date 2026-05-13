@@ -30,6 +30,7 @@ mod update;
 mod widgets;
 
 pub use lifecycle::{editor_enter, editor_exit};
+pub(crate) use overlay::draw_world_overlays;
 pub(crate) use overlay::{OverlaySettingsMutex, OverlaySettingsState};
 pub(crate) use selection_mode::{
     SelectionDragRect, SelectionMode, SelectionModeMutex, SelectionModeState,
