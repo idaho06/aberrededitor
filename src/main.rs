@@ -16,7 +16,7 @@ fn main() -> Result<(), String> {
     env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info")).init();
 
     EngineBuilder::new()
-        .config("config.ini")
+        .config_str(include_str!("../config.ini"))
         // .title("Map Editor")
         .on_setup(systems::load_assets::load_assets)
         .add_observer(systems::tilemap_load::tilemap_load_observer)
