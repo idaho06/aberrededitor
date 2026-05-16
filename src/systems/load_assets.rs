@@ -21,7 +21,7 @@ use crate::systems::group_selector::{GroupListCache, GroupListMutex};
 use crate::systems::template_selector::{TemplateSelectorCache, TemplateSelectorMutex};
 use crate::systems::tilemap_load::{PendingLuaSetupLoadMutex, PendingLuaSetupLoadState};
 use aberredengine::bevy_ecs::prelude::{Commands, NonSendMut, ResMut};
-use aberredengine::raylib::prelude::Color;
+use aberredengine::raylib::prelude::{Color, Image};
 use aberredengine::resources::appstate::AppState;
 use aberredengine::resources::gameconfig::GameConfig;
 use aberredengine::resources::gamestate::{GameStates, NextGameState};
@@ -31,9 +31,10 @@ use aberredengine::resources::texturestore::TextureStore;
 use aberredengine::systems::RaylibAccess;
 use log::info;
 
-const SHADER_GLITCH: &str = "./assets/shaders/glitch.fs";
-const SHADER_FADE: &str = "./assets/shaders/fade.fs";
-const TEXTURE_ISOMETRIC: &str = "./assets/textures/aberred_engine_isometric_alpha.png";
+const SHADER_GLITCH_SRC: &str = include_str!("../../assets/shaders/glitch.fs");
+const SHADER_FADE_SRC: &str = include_str!("../../assets/shaders/fade.fs");
+const TEXTURE_ISOMETRIC_DATA: &[u8] =
+    include_bytes!("../../assets/textures/aberred_engine_isometric_alpha.png");
 
 /// Called as a Bevy ECS system during the engine setup stage.
 /// Loads shaders, textures, and initialises resource stores.
@@ -51,21 +52,23 @@ pub fn load_assets(
 
     let (rl, th) = (&mut *raylib.rl, &*raylib.th);
 
-    let mut load_shader = |name: &str, path: &str| {
-        let shader = rl.load_shader(th, None, Some(path));
+    let mut load_shader = |name: &str, src: &str| {
+        let shader = rl.load_shader_from_memory(th, None, Some(src));
         if shader.is_shader_valid() {
             shaders.add(name, shader);
         } else {
             log::warn!("load_assets: {} shader failed validation", name);
         }
     };
-    load_shader("glitch", SHADER_GLITCH);
-    load_shader("fade", SHADER_FADE);
+    load_shader("glitch", SHADER_GLITCH_SRC);
+    load_shader("fade", SHADER_FADE_SRC);
 
     let mut texture_store = TextureStore::new();
+    let image = Image::load_image_from_mem(".png", TEXTURE_ISOMETRIC_DATA)
+        .expect("embedded intro texture is invalid PNG");
     let texture = rl
-        .load_texture(th, TEXTURE_ISOMETRIC)
-        .expect("Failed to load texture");
+        .load_texture_from_image(th, &image)
+        .expect("Failed to upload embedded texture");
     texture_store.insert("aberred_engine_isometric_alpha", texture);
     commands.insert_resource(texture_store);
     commands.insert_resource(MapData::default());
