@@ -8,7 +8,7 @@
 use super::overlay::{
     overlay_visibility, prepare_grid_preferences, toggle_grid, toggle_origin_axis,
 };
-use super::{SelectionMode, current_selection_mode, set_selection_mode};
+use super::{EditorTool, current_tool, set_tool};
 use crate::signals as sig;
 use aberredengine::imgui;
 use aberredengine::resources::appstate::AppState;
@@ -28,7 +28,7 @@ pub(super) fn draw_menu_bar(
         open_about: false,
         open_grid_preferences: false,
     };
-    let selection_mode = current_selection_mode(app_state);
+    let active_tool = current_tool(app_state);
     let (show_origin_axis, show_grid) = overlay_visibility(app_state);
     if let Some(_mb) = ui.begin_main_menu_bar() {
         if let Some(_file) = ui.begin_menu("File") {
@@ -150,24 +150,27 @@ pub(super) fn draw_menu_bar(
         if let Some(_selection) = ui.begin_menu("Selection") {
             if ui
                 .menu_item_config("Click")
-                .selected(selection_mode == SelectionMode::Click)
+                .selected(active_tool == EditorTool::Click)
                 .build()
             {
-                set_selection_mode(app_state, SelectionMode::Click);
+                set_tool(app_state, EditorTool::Click);
             }
             if ui
                 .menu_item_config("Rectangle")
-                .selected(selection_mode == SelectionMode::Rectangle)
+                .selected(active_tool == EditorTool::Rectangle)
                 .build()
             {
-                set_selection_mode(app_state, SelectionMode::Rectangle);
+                set_tool(app_state, EditorTool::Rectangle);
             }
         }
 
-        if let Some(_entity) = ui.begin_menu("Entity")
-            && ui.menu_item("Add")
-        {
-            signals.set_flag(sig::ACTION_ENTITY_ADD);
+        if let Some(_entity) = ui.begin_menu("Entity") {
+            if ui.menu_item("Add") {
+                signals.set_flag(sig::ACTION_ENTITY_ADD);
+            }
+            if ui.menu_item("Add Collider") {
+                signals.set_flag(sig::ACTION_ENTITY_ADD_COLLIDER);
+            }
         }
 
         if let Some(_help) = ui.begin_menu("Help")

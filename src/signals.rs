@@ -43,6 +43,7 @@ pub const ACTION_VIEW_PREVIEW_MAPDATA: &str = "gui:action:view:preview_mapdata";
 
 // ---- Entity menu actions ----
 pub const ACTION_ENTITY_ADD: &str = "gui:action:entity:add";
+pub const ACTION_ENTITY_ADD_COLLIDER: &str = "gui:action:entity:add_collider";
 
 // ---- Texture editor UI state ----
 pub const UI_TEXTURE_EDITOR_OPEN: &str = "ui:texture_editor:open";

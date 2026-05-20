@@ -261,6 +261,15 @@ pub struct CreateBlankEntityRequested {
     pub y: f32,
 }
 
+/// Spawn a `MapEntity` with `MapPosition` at `(x, y)` and `BoxCollider` of `(width, height)` and select it.
+#[derive(Event)]
+pub struct CreateColliderEntityRequested {
+    pub x: f32,
+    pub y: f32,
+    pub width: f32,
+    pub height: f32,
+}
+
 /// Deep-clone `entity` and place the clone at `(x, y)`. Selects the new entity.
 #[derive(Event)]
 pub struct CloneEntityRequested {
@@ -716,6 +725,34 @@ pub fn create_blank_entity_observer(
         entity.to_bits(),
         event.x,
         event.y
+    );
+}
+
+pub fn create_collider_entity_observer(
+    trigger: On<CreateColliderEntityRequested>,
+    mut commands: Commands,
+    mut world_signals: ResMut<WorldSignals>,
+    mut app_state: ResMut<AppState>,
+) {
+    let event = trigger.event();
+    let entity = commands
+        .spawn((
+            MapEntity,
+            MapPosition::new(event.x, event.y),
+            BoxCollider::new(event.width, event.height),
+        ))
+        .id();
+    apply_selection(
+        entity,
+        &entity_label(entity, None, None),
+        None,
+        &mut world_signals,
+        &mut app_state,
+        &mut commands,
+    );
+    debug!(
+        "create_collider_entity_observer: spawned {:?} at ({:.1},{:.1}) size {:.1}x{:.1}",
+        entity, event.x, event.y, event.width, event.height,
     );
 }
 

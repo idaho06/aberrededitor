@@ -9,7 +9,7 @@
 //! - Advancing the game state to `Playing` to begin the scene loop.
 use crate::scenes::editor::pending_state::{PendingEditState, PendingMutex};
 use crate::scenes::editor::{
-    EditorState, OverlaySettingsMutex, OverlaySettingsState, SelectionModeMutex, SelectionModeState,
+    EditorState, EditorToolMutex, EditorToolState, OverlaySettingsMutex, OverlaySettingsState,
 };
 use crate::systems::animation_store_sync::AnimationStoreMutex;
 use crate::systems::entity_selector::{
@@ -85,7 +85,7 @@ pub fn load_assets(
     app_state.insert(PendingLuaSetupLoadMutex::new(
         PendingLuaSetupLoadState::default(),
     ));
-    app_state.insert(SelectionModeMutex::new(SelectionModeState::default()));
+    app_state.insert(EditorToolMutex::new(EditorToolState::default()));
     app_state.insert(OverlaySettingsMutex::new(OverlaySettingsState::default()));
     commands.insert_resource(EditorState::default());
     app_state.insert(PendingMutex::new(PendingEditState::default()));

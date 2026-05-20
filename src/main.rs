@@ -70,6 +70,7 @@ fn main() -> Result<(), String> {
         .add_observer(systems::entity_edit::unregister_entity_observer)
         .add_observer(systems::entity_edit::add_component_observer)
         .add_observer(systems::entity_edit::create_blank_entity_observer)
+        .add_observer(systems::entity_edit::create_collider_entity_observer)
         .add_observer(systems::entity_edit::clone_entity_observer)
         .add_observer(systems::entity_selector::entity_pick_observer)
         .add_observer(systems::entity_selector::entity_rect_pick_observer)

@@ -21,7 +21,7 @@ mod menu;
 mod multi_entity_selector_panel;
 mod overlay;
 pub(crate) mod pending_state;
-mod selection_mode;
+mod editor_tool;
 mod state;
 mod template_browser_panel;
 mod texture_panel;
@@ -32,10 +32,11 @@ mod widgets;
 pub use lifecycle::{editor_enter, editor_exit};
 pub(crate) use overlay::draw_world_overlays;
 pub(crate) use overlay::{OverlaySettingsMutex, OverlaySettingsState};
-pub(crate) use selection_mode::{
-    SelectionDragRect, SelectionMode, SelectionModeMutex, SelectionModeState,
-    current_selection_drag, current_selection_mode, finish_selection_drag, reset_selection_mode,
-    set_selection_mode, start_selection_drag, update_selection_drag,
+pub(crate) use editor_tool::{
+    EditorTool, EditorToolMutex, EditorToolState, SelectionDragRect,
+    current_selection_drag, current_tool, enter_placement_mode, exit_placement_mode,
+    finish_selection_drag, reset_tool, set_tool, start_selection_drag,
+    update_selection_drag,
 };
 pub use state::{EditorState, entity_editor_selection_change_system};
 pub use update::{editor_gui, editor_update};

@@ -33,13 +33,14 @@ use super::template_browser_panel::draw_template_browser;
 use super::texture_panel::{draw_texture_editor, draw_texture_modals};
 use super::texture_viewer_panel::draw_texture_viewer;
 use super::{
-    SelectionDragRect, SelectionMode, current_selection_mode, finish_selection_drag,
-    start_selection_drag, update_selection_drag,
+    SelectionDragRect, EditorTool, current_tool, enter_placement_mode,
+    exit_placement_mode, finish_selection_drag, start_selection_drag, update_selection_drag,
 };
 use crate::signals as sig;
 use crate::systems::animation_store_sync::AnimationStoreMutex;
 use crate::systems::entity_edit::{
-    AdjustMultiSelectionZRequested, CreateBlankEntityRequested, MoveMultiSelectionRequested,
+    AdjustMultiSelectionZRequested, CreateBlankEntityRequested, CreateColliderEntityRequested,
+    MoveMultiSelectionRequested,
 };
 use crate::systems::entity_inspector::InspectEntityRequested;
 use crate::systems::entity_selector::SelectGroupRequested;
@@ -64,8 +65,8 @@ use aberredengine::systems::GameCtx;
 
 pub fn editor_update(ctx: &mut GameCtx, _dt: f32, input: &InputState) {
     let wants_mouse = ctx.world_signals.has_flag(sig::IMGUI_WANTS_MOUSE);
-    match current_selection_mode(&ctx.app_state) {
-        SelectionMode::Click => {
+    match current_tool(&ctx.app_state) {
+        EditorTool::Click => {
             // Entity picking — left mouse click (Action1 rebound to mouse-only in editor_enter).
             // Suppressed when ImGui captured the mouse last frame to prevent clicks on UI widgets
             // from triggering world picks.
@@ -76,7 +77,9 @@ pub fn editor_update(ctx: &mut GameCtx, _dt: f32, input: &InputState) {
                 });
             }
         }
-        SelectionMode::Rectangle => handle_rectangle_drag(ctx, input, wants_mouse),
+        EditorTool::Rectangle => handle_rectangle_drag(ctx, input, wants_mouse),
+        EditorTool::AddEntity => handle_add_entity_click(ctx, input, wants_mouse),
+        EditorTool::AddCollider => handle_add_collider_drag(ctx, input, wants_mouse),
     }
 
     if let Some(row) = ctx.world_signals.clear_integer(sig::ES_SELECTED_ROW) {
@@ -219,37 +222,77 @@ fn consume_multi_entity_commits(ctx: &mut GameCtx) {
     }
 }
 
-fn handle_rectangle_drag(ctx: &mut GameCtx, input: &InputState, wants_mouse: bool) {
+fn handle_drag(
+    ctx: &mut GameCtx,
+    input: &InputState,
+    wants_mouse: bool,
+    on_finish: impl FnOnce(&mut GameCtx, SelectionDragRect),
+) {
     let current_point = [input.mouse_x, input.mouse_y];
-
     if input.action_1.just_pressed && !wants_mouse {
         start_selection_drag(&ctx.app_state, current_point);
     }
     if input.action_1.active {
         update_selection_drag(&ctx.app_state, current_point);
     }
-    if input.action_1.just_released
-        && let Some(drag_rect) = finish_selection_drag(&ctx.app_state, current_point)
-    {
-        dispatch_rectangle_pick(ctx, drag_rect);
+    if input.action_1.just_released {
+        if let Some(drag_rect) = finish_selection_drag(&ctx.app_state, current_point) {
+            on_finish(ctx, drag_rect);
+        }
     }
 }
 
+fn handle_rectangle_drag(ctx: &mut GameCtx, input: &InputState, wants_mouse: bool) {
+    handle_drag(ctx, input, wants_mouse, dispatch_rectangle_pick);
+}
+
 fn dispatch_rectangle_pick(ctx: &mut GameCtx, drag_rect: SelectionDragRect) {
-    let ([min_render_x, min_render_y], [max_render_x, max_render_y]) = drag_rect.normalized();
-    let corners = [
-        render_to_world(&ctx.world_signals, min_render_x, min_render_y),
-        render_to_world(&ctx.world_signals, max_render_x, min_render_y),
-        render_to_world(&ctx.world_signals, max_render_x, max_render_y),
-        render_to_world(&ctx.world_signals, min_render_x, max_render_y),
-    ];
-    let (min_x, max_x, min_y, max_y) = corners_aabb(corners);
+    let (min_x, max_x, min_y, max_y) = drag_rect_to_world_aabb(&ctx.world_signals, drag_rect);
     ctx.commands.trigger(PickEntitiesInRectRequested {
         min_x,
         min_y,
         max_x,
         max_y,
     });
+}
+
+fn handle_add_entity_click(ctx: &mut GameCtx, input: &InputState, wants_mouse: bool) {
+    if input.action_1.just_pressed && !wants_mouse {
+        ctx.commands.trigger(CreateBlankEntityRequested {
+            x: input.mouse_world_x,
+            y: input.mouse_world_y,
+        });
+        exit_placement_mode(&ctx.app_state);
+    }
+}
+
+fn handle_add_collider_drag(ctx: &mut GameCtx, input: &InputState, wants_mouse: bool) {
+    handle_drag(ctx, input, wants_mouse, dispatch_collider_creation);
+    if input.action_1.just_released {
+        exit_placement_mode(&ctx.app_state);
+    }
+}
+
+fn dispatch_collider_creation(ctx: &mut GameCtx, drag_rect: SelectionDragRect) {
+    let (min_x, max_x, min_y, max_y) = drag_rect_to_world_aabb(&ctx.world_signals, drag_rect);
+    let width = max_x - min_x;
+    let height = max_y - min_y;
+    if width < 1.0 || height < 1.0 {
+        return;
+    }
+    ctx.commands
+        .trigger(CreateColliderEntityRequested { x: min_x, y: min_y, width, height });
+}
+
+fn drag_rect_to_world_aabb(signals: &WorldSignals, drag_rect: SelectionDragRect) -> (f32, f32, f32, f32) {
+    let ([min_render_x, min_render_y], [max_render_x, max_render_y]) = drag_rect.normalized();
+    let corners = [
+        render_to_world(signals, min_render_x, min_render_y),
+        render_to_world(signals, max_render_x, min_render_y),
+        render_to_world(signals, max_render_x, max_render_y),
+        render_to_world(signals, min_render_x, max_render_y),
+    ];
+    corners_aabb(corners)
 }
 
 fn handle_file_actions(ctx: &mut GameCtx) {
@@ -284,15 +327,10 @@ fn handle_file_actions(ctx: &mut GameCtx) {
 
 fn handle_entity_actions(ctx: &mut GameCtx) {
     if ctx.world_signals.take_flag(sig::ACTION_ENTITY_ADD) {
-        let x = ctx
-            .world_signals
-            .get_scalar(sig::CAM_TARGET_X)
-            .unwrap_or(0.0);
-        let y = ctx
-            .world_signals
-            .get_scalar(sig::CAM_TARGET_Y)
-            .unwrap_or(0.0);
-        ctx.commands.trigger(CreateBlankEntityRequested { x, y });
+        enter_placement_mode(&ctx.app_state, EditorTool::AddEntity);
+    }
+    if ctx.world_signals.take_flag(sig::ACTION_ENTITY_ADD_COLLIDER) {
+        enter_placement_mode(&ctx.app_state, EditorTool::AddCollider);
     }
 }
 

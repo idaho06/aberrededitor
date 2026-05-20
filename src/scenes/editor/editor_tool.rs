@@ -1,15 +1,18 @@
-//! Shared selection-mode and rectangle-drag state for editor GUI and update logic.
+//! Active editor tool state, rectangle-drag tracking, and tool-transition helpers.
 //!
-//! The current mode lives in `AppState` rather than a Bevy resource because both the GUI
+//! The active tool lives in `AppState` rather than a Bevy resource because both the GUI
 //! callback and the scene update path need direct access to it.
+use aberredengine::raylib::ffi::{MouseCursor, SetMouseCursor};
 use aberredengine::resources::appstate::AppState;
 
 /// Active entity-selection interaction mode.
 #[derive(Clone, Copy, Default, Eq, PartialEq)]
-pub enum SelectionMode {
+pub enum EditorTool {
     #[default]
     Click,
     Rectangle,
+    AddEntity,
+    AddCollider,
 }
 
 /// Current rectangle-drag endpoints in render-target space.
@@ -36,27 +39,27 @@ impl SelectionDragRect {
 
 /// Shared selection settings stored in `AppState`.
 #[derive(Default)]
-pub struct SelectionModeState {
-    pub mode: SelectionMode,
+pub struct EditorToolState {
+    pub mode: EditorTool,
     pub drag_rect: Option<SelectionDragRect>,
 }
 
 /// `AppState` key for editor selection mode.
-pub type SelectionModeMutex = std::sync::Mutex<SelectionModeState>;
+pub type EditorToolMutex = std::sync::Mutex<EditorToolState>;
 
-fn lock_mode_state(app_state: &AppState) -> std::sync::MutexGuard<'_, SelectionModeState> {
+fn lock_mode_state(app_state: &AppState) -> std::sync::MutexGuard<'_, EditorToolState> {
     app_state
-        .get::<SelectionModeMutex>()
-        .expect("SelectionModeMutex not in AppState")
+        .get::<EditorToolMutex>()
+        .expect("EditorToolMutex not in AppState")
         .lock()
-        .expect("SelectionModeMutex poisoned")
+        .expect("EditorToolMutex poisoned")
 }
 
-pub fn current_selection_mode(app_state: &AppState) -> SelectionMode {
+pub fn current_tool(app_state: &AppState) -> EditorTool {
     lock_mode_state(app_state).mode
 }
 
-pub fn set_selection_mode(app_state: &AppState, mode: SelectionMode) {
+pub fn set_tool(app_state: &AppState, mode: EditorTool) {
     let mut state = lock_mode_state(app_state);
     if state.mode != mode {
         state.drag_rect = None;
@@ -89,6 +92,18 @@ pub fn finish_selection_drag(app_state: &AppState, point: [f32; 2]) -> Option<Se
     state.drag_rect.take()
 }
 
-pub fn reset_selection_mode(app_state: &AppState) {
-    *lock_mode_state(app_state) = SelectionModeState::default();
+pub fn reset_tool(app_state: &AppState) {
+    *lock_mode_state(app_state) = EditorToolState::default();
+}
+
+/// Enter a placement mode (AddEntity / AddCollider): sets the mode and switches the cursor to a crosshair.
+pub fn enter_placement_mode(app_state: &AppState, mode: EditorTool) {
+    set_tool(app_state, mode);
+    unsafe { SetMouseCursor(MouseCursor::MOUSE_CURSOR_CROSSHAIR as i32); }
+}
+
+/// Exit any placement mode: resets to Click and restores the default cursor.
+pub fn exit_placement_mode(app_state: &AppState) {
+    set_tool(app_state, EditorTool::Click);
+    unsafe { SetMouseCursor(MouseCursor::MOUSE_CURSOR_DEFAULT as i32); }
 }
