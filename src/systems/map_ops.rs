@@ -23,6 +23,7 @@ use aberredengine::bevy_ecs::prelude::{
     Commands, Entity, Event, NonSendMut, On, Query, Res, ResMut, With,
 };
 use aberredengine::components::animation::Animation;
+use aberredengine::components::boxcollider::BoxCollider;
 use aberredengine::components::dynamictext::DynamicText;
 use aberredengine::components::group::Group;
 use aberredengine::components::mapposition::MapPosition;
@@ -51,7 +52,7 @@ use std::sync::Arc;
 use crate::components::map_entity::MapEntity;
 use crate::systems::entity_selector::clear_selector_state;
 use crate::systems::tilemap_load::PendingLuaSetupLoadMutex;
-use crate::systems::utils::{sprite_to_entry, to_relative};
+use crate::systems::utils::{collider_to_entry, sprite_to_entry, to_relative};
 
 /// Group name assigned to individual tile entities spawned by a tilemap.
 pub const GROUP_TILES: &str = "tiles";
@@ -165,6 +166,7 @@ type MapEntitiesQuery<'w, 's> = Query<
         Option<&'static Rotation>,
         Option<&'static Scale>,
         Option<&'static Sprite>,
+        Option<&'static BoxCollider>,
         Option<&'static Tint>,
         Option<&'static SerializedLuaSetup>,
         Option<&'static DynamicText>,
@@ -199,6 +201,7 @@ fn sync_map_entities(
         rot,
         scale,
         sprite,
+        collider,
         tint,
         lua_setup,
         dynamic_text,
@@ -236,6 +239,7 @@ fn sync_map_entities(
                 def.tint = tint_arr;
                 def.lua_setup = lua_setup_callback;
                 def.dynamic_text = dynamic_text_entry.clone();
+                def.collider = collider.map(collider_to_entry);
             }
         } else {
             map_data.entities.push(EntityDef {
@@ -245,6 +249,7 @@ fn sync_map_entities(
                 rotation_deg: rot.map(|r| r.degrees),
                 scale: scale.map(|s| [s.scale.x, s.scale.y]),
                 sprite: sprite.map(sprite_to_entry),
+                collider: collider.map(collider_to_entry),
                 registered_as,
                 tint: tint_arr,
                 animation_key,

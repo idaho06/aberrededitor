@@ -6,10 +6,11 @@
 //! - [`tilemap_tex_path`] / [`tilemap_stem`] — derive texture paths from tilemap folder paths.
 //! - [`to_relative`] — converts an absolute path (e.g., from `rfd`) to a CWD-relative path.
 use aberredengine::bevy_ecs::prelude::Entity;
+use aberredengine::components::boxcollider::BoxCollider;
 use aberredengine::components::group::Group;
 use aberredengine::components::persistent::Persistent;
 use aberredengine::components::sprite::Sprite;
-use aberredengine::resources::mapdata::SpriteEntry;
+use aberredengine::resources::mapdata::{BoxColliderEntry, SpriteEntry};
 
 /// Build a display label for an entity: `Entity #<id> [group] [Persistent]`.
 pub fn entity_label(
@@ -45,6 +46,15 @@ pub fn sprite_to_entry(s: &Sprite) -> SpriteEntry {
         origin: Some([s.origin.x, s.origin.y]),
         flip_h: s.flip_h,
         flip_v: s.flip_v,
+    }
+}
+
+/// Converts a `BoxCollider` component to its serializable map entry.
+pub fn collider_to_entry(collider: &BoxCollider) -> BoxColliderEntry {
+    BoxColliderEntry {
+        size: [collider.size.x, collider.size.y],
+        offset: Some([collider.offset.x, collider.offset.y]),
+        origin: Some([collider.origin.x, collider.origin.y]),
     }
 }
 
