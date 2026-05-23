@@ -65,6 +65,15 @@ use aberredengine::systems::GameCtx;
 
 pub fn editor_update(ctx: &mut GameCtx, _dt: f32, input: &InputState) {
     let wants_mouse = ctx.world_signals.has_flag(sig::IMGUI_WANTS_MOUSE);
+
+    // Cancel any active placement mode on Escape.
+    if input.action_back.just_pressed
+        && matches!(current_tool(&ctx.app_state), EditorTool::AddEntity | EditorTool::AddCollider)
+    {
+        exit_placement_mode(&ctx.app_state);
+        return;
+    }
+
     match current_tool(&ctx.app_state) {
         EditorTool::Click => {
             // Entity picking — left mouse click (Action1 rebound to mouse-only in editor_enter).
@@ -235,10 +244,10 @@ fn handle_drag(
     if input.action_1.active {
         update_selection_drag(&ctx.app_state, current_point);
     }
-    if input.action_1.just_released {
-        if let Some(drag_rect) = finish_selection_drag(&ctx.app_state, current_point) {
-            on_finish(ctx, drag_rect);
-        }
+    if input.action_1.just_released
+        && let Some(drag_rect) = finish_selection_drag(&ctx.app_state, current_point)
+    {
+        on_finish(ctx, drag_rect);
     }
 }
 
@@ -267,10 +276,10 @@ fn handle_add_entity_click(ctx: &mut GameCtx, input: &InputState, wants_mouse: b
 }
 
 fn handle_add_collider_drag(ctx: &mut GameCtx, input: &InputState, wants_mouse: bool) {
-    handle_drag(ctx, input, wants_mouse, dispatch_collider_creation);
-    if input.action_1.just_released {
+    handle_drag(ctx, input, wants_mouse, |ctx, drag_rect| {
+        dispatch_collider_creation(ctx, drag_rect);
         exit_placement_mode(&ctx.app_state);
-    }
+    });
 }
 
 fn dispatch_collider_creation(ctx: &mut GameCtx, drag_rect: SelectionDragRect) {

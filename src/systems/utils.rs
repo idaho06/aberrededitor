@@ -42,8 +42,8 @@ pub fn sprite_to_entry(s: &Sprite) -> SpriteEntry {
         texture_key: s.tex_key.to_string(),
         width: s.width,
         height: s.height,
-        offset: Some([s.offset.x, s.offset.y]),
-        origin: Some([s.origin.x, s.origin.y]),
+        offset: nonzero_vec2(s.offset.x, s.offset.y),
+        origin: nonzero_vec2(s.origin.x, s.origin.y),
         flip_h: s.flip_h,
         flip_v: s.flip_v,
     }
@@ -53,9 +53,16 @@ pub fn sprite_to_entry(s: &Sprite) -> SpriteEntry {
 pub fn collider_to_entry(collider: &BoxCollider) -> BoxColliderEntry {
     BoxColliderEntry {
         size: [collider.size.x, collider.size.y],
-        offset: Some([collider.offset.x, collider.offset.y]),
-        origin: Some([collider.origin.x, collider.origin.y]),
+        offset: nonzero_vec2(collider.offset.x, collider.offset.y),
+        origin: nonzero_vec2(collider.origin.x, collider.origin.y),
     }
+}
+
+/// Returns `None` for a zero vector (the engine's canonical serialization of `(0, 0)`),
+/// otherwise `Some([x, y])`. Safe for exact zero comparisons — these values are
+/// default-initialized or stored without intermediate arithmetic.
+fn nonzero_vec2(x: f32, y: f32) -> Option<[f32; 2]> {
+    if x == 0.0 && y == 0.0 { None } else { Some([x, y]) }
 }
 
 /// Returns the relative path to a tilemap's texture PNG: `<dir>/<stem>.png`.

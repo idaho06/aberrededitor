@@ -5,8 +5,8 @@
 use aberredengine::raylib::ffi::{MouseCursor, SetMouseCursor};
 use aberredengine::resources::appstate::AppState;
 
-/// Active entity-selection interaction mode.
-#[derive(Clone, Copy, Default, Eq, PartialEq)]
+/// Active editor tool (selection modes and entity-placement modes).
+#[derive(Clone, Copy, Default, Eq, PartialEq, Debug)]
 pub enum EditorTool {
     #[default]
     Click,
@@ -37,14 +37,14 @@ impl SelectionDragRect {
     }
 }
 
-/// Shared selection settings stored in `AppState`.
+/// Active tool state and current drag rectangle, stored in `AppState`.
 #[derive(Default)]
 pub struct EditorToolState {
     pub mode: EditorTool,
     pub drag_rect: Option<SelectionDragRect>,
 }
 
-/// `AppState` key for editor selection mode.
+/// `AppState` key for active editor tool state.
 pub type EditorToolMutex = std::sync::Mutex<EditorToolState>;
 
 fn lock_mode_state(app_state: &AppState) -> std::sync::MutexGuard<'_, EditorToolState> {
@@ -94,10 +94,15 @@ pub fn finish_selection_drag(app_state: &AppState, point: [f32; 2]) -> Option<Se
 
 pub fn reset_tool(app_state: &AppState) {
     *lock_mode_state(app_state) = EditorToolState::default();
+    unsafe { SetMouseCursor(MouseCursor::MOUSE_CURSOR_DEFAULT as i32); }
 }
 
 /// Enter a placement mode (AddEntity / AddCollider): sets the mode and switches the cursor to a crosshair.
 pub fn enter_placement_mode(app_state: &AppState, mode: EditorTool) {
+    debug_assert!(
+        matches!(mode, EditorTool::AddEntity | EditorTool::AddCollider),
+        "enter_placement_mode called with non-placement tool {mode:?}"
+    );
     set_tool(app_state, mode);
     unsafe { SetMouseCursor(MouseCursor::MOUSE_CURSOR_CROSSHAIR as i32); }
 }
