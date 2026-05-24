@@ -66,12 +66,12 @@ use aberredengine::systems::GameCtx;
 pub fn editor_update(ctx: &mut GameCtx, _dt: f32, input: &InputState) {
     let wants_mouse = ctx.world_signals.has_flag(sig::IMGUI_WANTS_MOUSE);
 
-    // Cancel any active placement mode on Escape.
+    // Cancel any active placement mode on Escape (suppressed when ImGui owns the keyboard).
     if input.action_back.just_pressed
+        && !ctx.world_signals.has_flag(sig::IMGUI_WANTS_KEYBOARD)
         && matches!(current_tool(&ctx.app_state), EditorTool::AddEntity | EditorTool::AddCollider)
     {
         exit_placement_mode(&ctx.app_state);
-        return;
     }
 
     match current_tool(&ctx.app_state) {
@@ -282,8 +282,10 @@ fn handle_add_entity_click(ctx: &mut GameCtx, input: &InputState, wants_mouse: b
 fn handle_add_collider_drag(ctx: &mut GameCtx, input: &InputState, wants_mouse: bool) {
     handle_drag(ctx, input, wants_mouse, |ctx, drag_rect| {
         dispatch_collider_creation(ctx, drag_rect);
-        exit_placement_mode(&ctx.app_state);
     });
+    if input.action_1.just_released {
+        exit_placement_mode(&ctx.app_state);
+    }
 }
 
 fn dispatch_collider_creation(ctx: &mut GameCtx, drag_rect: SelectionDragRect) {
