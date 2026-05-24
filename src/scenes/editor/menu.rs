@@ -17,6 +17,7 @@ use aberredengine::resources::worldsignals::WorldSignals;
 pub(super) struct MenuActions {
     pub open_about: bool,
     pub open_grid_preferences: bool,
+    pub open_quit: bool,
 }
 
 pub(super) fn draw_menu_bar(
@@ -27,6 +28,7 @@ pub(super) fn draw_menu_bar(
     let mut actions = MenuActions {
         open_about: false,
         open_grid_preferences: false,
+        open_quit: false,
     };
     let active_tool = current_tool(app_state);
     let (show_origin_axis, show_grid) = overlay_visibility(app_state);
@@ -48,6 +50,10 @@ pub(super) fn draw_menu_bar(
             }
             if ui.menu_item("Save Map As...") {
                 signals.set_flag(sig::ACTION_FILE_SAVE_AS);
+            }
+            ui.separator();
+            if ui.menu_item("Quit") {
+                actions.open_quit = true;
             }
         }
 
@@ -180,6 +186,25 @@ pub(super) fn draw_menu_bar(
         }
     }
     actions
+}
+
+pub(super) fn draw_quit_modal(ui: &imgui::Ui, signals: &mut WorldSignals) {
+    ui.modal_popup_config("Quit##editor")
+        .always_auto_resize(true)
+        .resizable(false)
+        .movable(false)
+        .build(|| {
+            ui.text("Remember to save before exit! See you soon!");
+            ui.separator();
+            if ui.button("Bye!") {
+                signals.set_flag("quit_game");
+                ui.close_current_popup();
+            }
+            ui.same_line();
+            if ui.button("Cancel") {
+                ui.close_current_popup();
+            }
+        });
 }
 
 pub(super) fn draw_about_modal(ui: &imgui::Ui) {

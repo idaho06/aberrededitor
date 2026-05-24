@@ -21,7 +21,7 @@ use super::entity_registry_panel::draw_entity_registry;
 use super::entity_selector_panel::draw_entity_selector;
 use super::font_panel::{draw_font_editor, draw_font_modals};
 use super::groups_panel::draw_groups_window;
-use super::menu::{draw_about_modal, draw_menu_bar};
+use super::menu::{draw_about_modal, draw_menu_bar, draw_quit_modal};
 use super::multi_entity_selector_panel::{
     draw_multi_entity_selector, draw_multi_entity_selector_modals,
 };
@@ -185,6 +185,9 @@ pub fn editor_gui(
     if menu_actions.open_about {
         ui.open_popup("About");
     }
+    if menu_actions.open_quit {
+        ui.open_popup("Quit##editor");
+    }
     if menu_actions.open_grid_preferences {
         ui.open_popup(GRID_PREFERENCES_POPUP_ID);
     }
@@ -202,6 +205,7 @@ pub fn editor_gui(
     draw_font_modals(ui, signals);
     draw_animation_modals(ui, signals);
     draw_about_modal(ui);
+    draw_quit_modal(ui, signals);
     draw_grid_preferences_modal(ui, app_state);
     draw_multi_entity_selector_modals(ui, app_state);
     draw_entity_delete_modal(ui, app_state);

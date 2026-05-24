@@ -12,12 +12,13 @@ pub(super) fn draw_entity_registry(ui: &imgui::Ui, signals: &mut WorldSignals) {
         return;
     }
 
-    let entries: Vec<&str> = signals
+    let mut entries: Vec<&str> = signals
         .entities
         .keys()
         .filter(|key| sig::is_user_entity_key(key))
         .map(String::as_str)
         .collect();
+    entries.sort_unstable();
 
     let mut window_open = true;
     let mut selected_key: Option<String> = None;
