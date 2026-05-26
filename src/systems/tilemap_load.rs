@@ -19,6 +19,7 @@ use aberredengine::components::cameratarget::CameraTarget;
 use aberredengine::components::group::Group;
 use aberredengine::components::mapposition::MapPosition;
 use aberredengine::components::tilemap::TileMap;
+use aberredengine::engine_app::EngineBuilder;
 use aberredengine::resources::appstate::AppState;
 use aberredengine::resources::mapdata::{EntityDef, MapData};
 use aberredengine::resources::texturestore::TextureStore;
@@ -78,6 +79,13 @@ pub type PendingLuaSetupLoadMutex = Mutex<PendingLuaSetupLoadState>;
 #[derive(Event)]
 pub struct LoadTilemapRequested {
     pub path: String,
+}
+
+pub fn register(builder: EngineBuilder) -> EngineBuilder {
+    builder
+        .add_observer(tilemap_load_observer)
+        .add_system(on_tilemap_added)
+        .add_system(tag_plain_map_entities)
 }
 
 pub fn tilemap_load_observer(

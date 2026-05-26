@@ -10,6 +10,7 @@ This file is the documentation counterpart to the "Critical constraints" section
 `Cargo.toml` sets `default-features = false` on `aberredengine`. The `lua` feature is off.
 
 **Do NOT import from:**
+
 - `aberredengine::resources::lua_runtime`
 - `aberredengine::systems::lua_commands`
 
@@ -48,6 +49,7 @@ loading (textures, tilemaps, fonts) requires Raylib at load time and must go thr
 observer registered via `.add_observer()`.
 
 Pattern for loading an asset on demand:
+
 1. GUI or `editor_update` triggers `MyLoadRequested { path }`.
 2. Observer function takes `mut raylib: RaylibAccess` — this is only available in observers.
 3. Observer loads the asset and inserts it into the appropriate store.
@@ -56,13 +58,16 @@ See `src/systems/tilemap_load.rs` and `src/systems/map_ops.rs` for working examp
 
 ---
 
-## 4. Manual resource insertion (MapData, TilemapStore)
+## 4. Manual resource and AppState insertion
 
-The engine does **not** pre-insert `TilemapStore` or `MapData`. Both must be inserted as Bevy
-resources in `load_assets` (`src/systems/load_assets.rs`).
+The engine does **not** pre-insert the editor-owned startup resources created in
+`load_assets` (`src/systems/load_assets.rs`). Today that includes `TextureStore`, `MapData`,
+and `EditorState`.
 
-Similarly, `EntitySelectorCache` is NOT a Bevy resource — it lives in `AppState` as
-`SelectorMutex` (inserted via `app_state.insert(...)` in `load_assets`).
+Similarly, the editor's caches are **not** Bevy resources. They live in `AppState` as mutexes,
+for example `RenderableSelectorMutex`, `MultiEntitySelectionMutex`, `AsyncFileDialogMutex`,
+`GroupListMutex`, `AnimationStoreMutex`, `TemplateSelectorMutex`, `PendingLuaSetupLoadMutex`,
+`EditorToolMutex`, `OverlaySettingsMutex`, and `PendingMutex`.
 
 If you add a new store or cache and forget to insert it, the first `app_state.get::<T>()` call
 will panic with a confusing message. Always insert in `load_assets`.
@@ -121,7 +126,7 @@ The engine auto-inserts `FontStore`. Do NOT insert it again in `load_assets`.
 Two callback styles exist and **must not be mixed**:
 
 | Registration method | Signature | Example |
-|---|---|---|
+| --- | --- | --- |
 | `on_setup`, `add_observer`, `add_system` | Bevy system — params **by value** | `fn f(ctx: GameCtx)` |
 | Scene `on_enter/update/exit` | Plain fn pointer — params **by ref** | `fn f(ctx: &mut GameCtx)` |
 | `gui_callback` | Fixed signature | `fn f(&Ui, &mut WorldSignals, &TextureStore, &FontStore, &AppState)` |

@@ -36,6 +36,7 @@ use aberredengine::components::sprite::Sprite;
 use aberredengine::components::tilemap::TileMap;
 use aberredengine::components::tint::Tint;
 use aberredengine::components::zindex::ZIndex;
+use aberredengine::engine_app::EngineBuilder;
 use aberredengine::events::spawnmap::SpawnMapRequested;
 use aberredengine::raylib::prelude::Vector2;
 use aberredengine::resources::animationstore::{AnimationResource, AnimationStore};
@@ -80,6 +81,24 @@ pub struct LoadMapRequested {
 #[derive(Event)]
 pub struct SaveMapRequested {
     pub path: String,
+}
+
+pub fn register(builder: EngineBuilder) -> EngineBuilder {
+    builder
+        .add_observer(new_map_observer)
+        .add_observer(load_map_observer)
+        .add_observer(save_map_observer)
+        .add_observer(add_texture_observer)
+        .add_observer(rename_texture_key_observer)
+        .add_observer(remove_texture_observer)
+        .add_observer(add_font_observer)
+        .add_observer(rename_font_key_observer)
+        .add_observer(remove_font_observer)
+        .add_observer(preview_mapdata_observer)
+        .add_observer(add_animation_observer)
+        .add_observer(update_animation_resource_observer)
+        .add_observer(rename_animation_key_observer)
+        .add_observer(remove_animation_observer)
 }
 
 #[allow(clippy::too_many_arguments)]

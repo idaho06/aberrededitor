@@ -19,14 +19,19 @@ receives `&mut WorldSignals`; observers receive `ResMut<WorldSignals>`. Both can
 **How to use in new code:**
 
 1. Add a constant to `src/signals.rs`:
+
    ```rust
    pub const MY_FEATURE_FLAG: &str = "gui:action:myfeature";
    ```
+
 2. In the GUI panel, set the flag when the user clicks a button:
+
    ```rust
    if ui.button("Do Thing") { signals.set_flag(sig::MY_FEATURE_FLAG); }
    ```
+
 3. In `editor_update()`, consume the flag and trigger an event:
+
    ```rust
    if ctx.world_signals.take_flag(sig::MY_FEATURE_FLAG) {
        ctx.commands.trigger(MyFeatureRequested { ... });
@@ -52,7 +57,8 @@ and a `.add_observer(foo_observer)` line in `main.rs`.
 
 **How to use in new code:**
 
-In `src/systems/entity_edit.rs` (or a new file for a new domain):
+In `src/systems/entity_edit/mod.rs` (with the observer body in the matching concern submodule):
+
 ```rust
 #[derive(Event)]
 pub struct UpdateMyComponentRequested {
@@ -74,6 +80,7 @@ pub fn update_my_component_observer(
 ```
 
 In `src/main.rs`:
+
 ```rust
 .add_observer(systems::entity_edit::update_my_component_observer)
 ```
@@ -98,17 +105,20 @@ calls `app_state.get::<FooMutex>().unwrap().lock().unwrap()`.
 **How to use in new code:**
 
 Define the cache type and alias:
+
 ```rust
 pub struct MyCache { pub items: Vec<String> }
 pub type MyCacheMutex = Mutex<MyCache>;
 ```
 
 Insert it in `load_assets()`:
+
 ```rust
 app_state.insert(MyCacheMutex::new(MyCache { items: vec![] }));
 ```
 
 Write a sync system:
+
 ```rust
 pub fn my_cache_sync_system(my_data: Res<MyData>, app_state: ResMut<AppState>) {
     if my_data.is_changed() {
@@ -123,6 +133,7 @@ pub fn my_cache_sync_system(my_data: Res<MyData>, app_state: ResMut<AppState>) {
 Register in `main.rs`: `.add_system(systems::my_module::my_cache_sync_system)`
 
 In the GUI callback:
+
 ```rust
 if let Some(mutex) = app_state.get::<MyCacheMutex>() {
     let cache = mutex.lock().unwrap();
@@ -137,49 +148,61 @@ if let Some(mutex) = app_state.get::<MyCacheMutex>() {
 **Problem:** The entity editor shows many fields at once. The user edits one field, then clicks
 "Apply". We need to know which fields changed and which to leave at their snapshot value.
 
-**Solution:** `PendingEditState` uses `Option<T>` as a dirty flag: `None` means "unedited, use
-the snapshot value"; `Some(v)` means "user changed this to v". Alongside each group of fields is
-a `commit_xyz: bool` that the GUI sets when the user triggers a commit action.
+**Solution:** `PendingEditState` is now a thin aggregate of per-component pending sub-structs.
+Each `Pending*` type lives next to its UI/commit logic in `src/scenes/editor/components/`.
+Inside those sub-structs, `Option<T>` still means "unchanged vs edited", but the aggregate no
+longer stores flat `pos_x` / `commit_*` fields itself. Instead, `PendingEditState::any_commit()`
+delegates to `is_dirty()` on each sub-struct plus a handful of entity-level action flags.
 
-**How to recognise it:** Fields like `pub pos_x: Option<f32>`, `pub commit_position: bool` in
-`PendingEditState`; code in `commit.rs` that reads `p.pos_x.unwrap_or(snap_x)`.
+**How to recognise it:** `PendingEditState` contains fields like `transform: PendingTransform`
+and `sprite: PendingSprite` in `pending_state.rs`; each component module defines its own
+`PendingMyComponent`; `commit.rs` delegates with calls like
+`components::transform::commit(ctx, entity, &snapshot, &p.transform)`.
 
-**How to use in new code** (adding a new editable component field):
+**How to use in new code** (adding a new editable component):
 
-In `pending_state.rs`:
+In `src/scenes/editor/components/my_component.rs`:
+
 ```rust
-// MyComponent
-pub my_value: Option<f32>,
-pub commit_my: bool,
-```
-
-In `entity_editor_panel.rs`, update the pending field when the widget changes:
-```rust
-if ui.input_float("Value", &mut display_value).build() {
-    pending.my_value = Some(display_value);
-}
-if ui.button("Apply") { pending.commit_my = true; }
-```
-
-In `commit.rs`, handle the commit:
-```rust
-if p.commit_my {
-    consume_my_commit(ctx, entity, &snapshot, &p);
+#[derive(Default, Clone)]
+pub(crate) struct PendingMyComponent {
+    pub value: Option<f32>,
+    pub remove: bool,
 }
 
-fn consume_my_commit(ctx: &mut GameCtx, entity: Entity, snapshot: &ComponentSnapshot, p: &PendingEditState) {
-    let snap_val = snapshot.my_value.unwrap_or(0.0);
-    ctx.commands.trigger(UpdateMyComponentRequested {
-        entity,
-        value: p.my_value.unwrap_or(snap_val),
-    });
+impl PendingMyComponent {
+    pub(crate) fn is_dirty(&self) -> bool {
+        self.value.is_some() || self.remove
+    }
 }
 ```
 
-Also add `|| self.commit_my` to `any_commit()`.
+In `pending_state.rs`, add the sub-struct to the aggregate and wire `any_commit()`:
+
+```rust
+pub my_component: PendingMyComponent,
+```
+
+```rust
+|| self.my_component.is_dirty()
+```
+
+In `entity_editor_panel.rs`, pass the sub-struct to the component-local draw helper:
+
+```rust
+components::my_component::draw_section(ui, &snap, &mut p.my_component);
+```
+
+In `commit.rs`, delegate to the component-local commit helper:
+
+```rust
+components::my_component::commit(ctx, entity, &snapshot, &p.my_component);
+```
 
 **Key rule:** Reset with `*self = Self::default()` after every commit and on selection change.
-Stale pending state will overwrite values the user did not intend to change.
+In practice this happens through `clear_entity_editor_pending()` after commit and from the
+selection-change system when the inspected entity changes. Stale pending state will overwrite
+values the user did not intend to change.
 
 ---
 
@@ -198,19 +221,26 @@ in `entity_inspector.rs`; `app_state.get::<ComponentSnapshot>()` in GUI panels.
 **How to use when adding a new component to the inspector:**
 
 1. Add a snapshot field to `ComponentSnapshot` in `editor_types.rs`:
+
    ```rust
    pub my_component: Option<MySnapshot>,
    ```
+
 2. Add the snapshot struct if needed:
+
    ```rust
    #[derive(Clone)]
    pub struct MySnapshot { pub value: f32 }
    ```
+
 3. In `entity_inspect_observer`, populate it:
+
    ```rust
    my_component: my_comp.map(|c| MySnapshot { value: c.value }),
    ```
+
 4. In the entity editor panel, read it:
+
    ```rust
    if let Some(ref my_snap) = snapshot.my_component { ... }
    ```
@@ -234,11 +264,13 @@ cannot cross the `AppState` boundary safely. Reconstruct with `Entity::from_bits
 **How to use in new code:**
 
 When spawning a user-placed entity:
+
 ```rust
 commands.spawn((MapEntity, MapPosition::new(x, y), ...));
 ```
 
 When querying only map entities:
+
 ```rust
 fn my_observer(query: Query<&MyComponent, With<MapEntity>>) { ... }
 ```
@@ -264,6 +296,7 @@ the same ECS events the old synchronous flow used.
 **How to use in new code:**
 
 1. Collect all non-path parameters before opening the dialog.
+
     ```rust
     let key = ctx
          .world_signals
@@ -271,18 +304,22 @@ the same ECS events the old synchronous flow used.
          .map(|s| s.to_owned())
          .unwrap_or_default();
     ```
+
 2. In `editor_update()`, enqueue a dialog request instead of opening `rfd::FileDialog` inline.
+
     ```rust
     if !key.is_empty() {
         request_async_dialog(&ctx.app_state, AsyncFileDialogRequest::AddTexture { key });
     }
     ```
+
     `request_async_dialog` returns `()`. If another dialog is already in flight it silently ignores the call (logs at debug level).
+
 3. In `src/systems/file_dialogs.rs`, add a request variant and a matching result variant if the
-    existing ones do not fit.
+   existing ones do not fit.
 4. Extend `build_dialog_task()` to create the correct `rfd::AsyncFileDialog` future.
 5. Extend `poll_async_dialogs()` to normalize the path with `to_relative()` and trigger the
-    downstream event that already owns the real mutation.
+   downstream event that already owns the real mutation.
 
 **Key rules:**
 

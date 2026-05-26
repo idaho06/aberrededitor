@@ -9,7 +9,9 @@
 //!
 //! Internal modules (private): each GUI panel is a separate `mod` with a `draw_*` function
 //! called from `editor_gui`. `commit` converts `PendingEditState` commits into ECS events.
+//! `components/` holds per-component pending sub-structs, draw sections, and commit helpers.
 mod animation_panel;
+pub(crate) mod components;
 mod commit;
 mod entity_editor_panel;
 mod entity_registry_panel;

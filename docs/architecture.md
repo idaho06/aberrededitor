@@ -5,7 +5,7 @@ two-layer separation between ECS and GUI is the key to working with this codebas
 
 ## The two-layer model
 
-```
+```text
 ┌─────────────────────────────────────────────────┐
 │  Bevy ECS  (owns all state and simulation)      │
 │                                                 │
@@ -59,17 +59,22 @@ display — entity selector hit list, animation store contents, group list, enti
 values stored inside `AppState`:
 
 | Mutex type | Populated by | Consumed by |
-|---|---|---|
-| `RenderableSelectorMutex` | `entity_pick_observer` | `draw_entity_selector` |
+| --- | --- | --- |
+| `RenderableSelectorMutex` | selection observers in `entity_selector.rs` | `draw_entity_selector` |
+| `MultiEntitySelectionMutex` | rectangle/group selection observers in `entity_selector.rs` | `draw_multi_entity_selector` |
 | `AnimationStoreMutex` | `animation_store_sync_system` | `draw_animation_store` |
 | `GroupListMutex` | `update_group_cache` | `draw_groups_window` |
 | `TemplateSelectorMutex` | `update_template_cache` | `draw_template_browser` |
-| `PendingMutex` | GUI panels | `consume_entity_editor_commits` |
+| `PendingMutex` | entity editor panels | `consume_entity_editor_commits` |
+| `OverlaySettingsMutex` | overlay toggle helpers and modal UI | `draw_world_overlays` |
+| `EditorToolMutex` | `editor_update()` tool handlers | click/drag tool flow in `editor_update()` |
 | `ComponentSnapshot` in AppState | `entity_inspect_observer` | `draw_entity_editor` |
-| `AsyncFileDialogMutex` | (self-contained bridge) | `poll_async_dialogs` |
+| `AsyncFileDialogMutex` | `request_async_dialog()` + worker thread | `poll_async_dialogs` |
 
 The Mutex provides interior mutability: the ECS system acquires the write lock, the GUI callback
 acquires the read lock. Both sides see up-to-date data without sharing mutable refs.
+Not every `AppState` entry is a live ECS mirror; some are control-plane caches that bridge GUI
+state (`PendingMutex`, `EditorToolMutex`, `AsyncFileDialogMutex`) across frames.
 
 ## Async file dialog bridge
 
@@ -120,7 +125,7 @@ frame, use a system. If it should happen once in response to a user action, use 
 
 ## Scene lifecycle
 
-```
+```text
 main()
   └─ EngineBuilder
        ├── on_setup: load_assets        (one-shot setup)
@@ -131,6 +136,7 @@ main()
 ```
 
 The intro scene transitions to the editor via:
+
 ```rust
 ctx.world_signals.set_string("scene", "editor".to_string());
 ctx.world_signals.set_flag("switch_scene");
@@ -149,10 +155,12 @@ a scene context.
 **Load:** `.map` JSON file → `load_map_observer` → inserts ECS components + populates
 `TextureStore`, `FontStore`, `AnimationStore`, `MapData`.
 
-**Edit:** GUI panels modify `PendingEditState` → `consume_entity_editor_commits` triggers
-`Update*Requested` / `Remove*Requested` events → observers update ECS components and re-trigger
-`InspectEntityRequested` → `entity_inspect_observer` rebuilds `ComponentSnapshot` in `AppState`
-→ GUI shows updated state next frame.
+**Edit:** GUI panels write into the per-component sub-structs inside `PendingEditState` →
+`consume_entity_editor_commits` clones the aggregate and delegates to
+`components::<name>::commit(...)` in `src/scenes/editor/components/` → those commit helpers
+trigger `Update*Requested` / `Remove*Requested` events → observers update ECS components and
+re-trigger `InspectEntityRequested` → `entity_inspect_observer` rebuilds `ComponentSnapshot` in
+`AppState` → GUI shows updated state next frame.
 
 **Save:** `save_map_observer` queries all `MapEntity` components → serializes to `EntityDef` list
 → writes `.map` JSON.
@@ -176,9 +184,11 @@ immediately. See `texture_panel.rs` and `font_panel.rs` for the correct pattern.
 ## Initialization sequence
 
 1. `main()` — configures `EngineBuilder`, registers all observers and systems, declares scenes
-2. `load_assets()` (`on_setup`) — loads shaders and the intro logo texture; inserts all
-   `AppState` mutex caches and ECS resources that the engine doesn't auto-insert (`MapData`,
-   `TilemapStore`, the various `Mutex<T>` caches)
+2. `load_assets()` (`on_setup`) — loads shaders and the intro logo texture; inserts the manual
+   ECS resources used by the editor (`TextureStore`, `MapData`, `EditorState`) plus all
+   `AppState` mutex caches (`RenderableSelectorMutex`, `MultiEntitySelectionMutex`,
+   `AsyncFileDialogMutex`, `GroupListMutex`, `AnimationStoreMutex`, `TemplateSelectorMutex`,
+   `PendingLuaSetupLoadMutex`, `EditorToolMutex`, `OverlaySettingsMutex`, `PendingMutex`)
 3. Intro scene runs, transitions to editor on input or timeout
 4. `editor_enter()` — configures camera and input bindings
 5. Every frame: all systems run (including `poll_async_dialogs()`) → `editor_update()` processes signals → `editor_gui()` draws ImGui

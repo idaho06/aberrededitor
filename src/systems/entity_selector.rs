@@ -29,6 +29,7 @@ use aberredengine::components::rotation::Rotation;
 use aberredengine::components::scale::Scale;
 use aberredengine::components::sprite::Sprite;
 use aberredengine::components::zindex::ZIndex;
+use aberredengine::engine_app::EngineBuilder;
 use aberredengine::raylib::prelude::Vector2;
 use aberredengine::resources::appstate::AppState;
 use aberredengine::resources::worldsignals::WorldSignals;
@@ -78,6 +79,15 @@ pub struct SelectGroupRequested {
 #[derive(Event)]
 pub struct SelectRegisteredEntityRequested {
     pub key: String,
+}
+
+pub fn register(builder: EngineBuilder) -> EngineBuilder {
+    builder
+        .add_observer(entity_pick_observer)
+        .add_observer(entity_rect_pick_observer)
+        .add_observer(select_entity_observer)
+        .add_observer(select_group_observer)
+        .add_observer(select_registered_entity_observer)
 }
 
 // ---------------------------------------------------------------------------

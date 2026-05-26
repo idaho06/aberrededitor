@@ -59,9 +59,75 @@ my_component: my_comp.map(|c| MyComponentSnapshot {
 }),
 ```
 
-## 5. Add Update and Remove events
+## 5. Create src/scenes/editor/components/my_component.rs
 
-In `src/systems/entity_edit.rs`:
+This is the main new file — it co-locates pending state, UI, and commit logic:
+
+```rust
+use crate::editor_types::ComponentSnapshot;
+use crate::systems::entity_edit::{RemoveMyComponentRequested, UpdateMyComponentRequested};
+use aberredengine::bevy_ecs::prelude::Entity;
+use aberredengine::imgui;
+use aberredengine::systems::GameCtx;
+use log::warn;
+use super::super::widgets::draw_float_input;
+
+#[derive(Default, Clone)]
+pub(crate) struct PendingMyComponent {
+    pub value: Option<f32>,
+    pub label: Option<String>,
+    pub commit: bool,
+    pub remove: bool,
+}
+
+impl PendingMyComponent {
+    pub(crate) fn is_dirty(&self) -> bool {
+        self.commit || self.remove
+    }
+}
+
+pub(crate) fn draw_section(
+    ui: &imgui::Ui,
+    snap: &ComponentSnapshot,
+    p: &mut PendingMyComponent,
+) {
+    let Some(ref my_snap) = snap.my_component else { return; };
+    ui.separator();
+    ui.text("MyComponent");
+    ui.same_line();
+    if ui.button("Del##my") { p.remove = true; }
+
+    if let Some(v) = draw_float_input(ui, "Value##my", p.value.unwrap_or(my_snap.value), 1.0) {
+        p.value = Some(v);
+        p.commit = true;
+    }
+}
+
+pub(crate) fn commit(
+    ctx: &mut GameCtx,
+    entity: Entity,
+    snap: &ComponentSnapshot,
+    p: &PendingMyComponent,
+) {
+    if p.remove {
+        ctx.commands.trigger(RemoveMyComponentRequested { entity });
+    } else if p.commit {
+        if let Some(ref my_snap) = snap.my_component {
+            ctx.commands.trigger(UpdateMyComponentRequested {
+                entity,
+                value: p.value.unwrap_or(my_snap.value),
+                label: p.label.clone().unwrap_or_else(|| my_snap.label.clone()),
+            });
+        } else {
+            warn!("consume_my_component_commit: snapshot missing for entity {}", entity.to_bits());
+        }
+    }
+}
+```
+
+## 6. Add Update and Remove events in entity_edit/mod.rs
+
+In `src/systems/entity_edit/mod.rs`:
 
 ```rust
 #[derive(Event)]
@@ -77,26 +143,25 @@ pub struct RemoveMyComponentRequested {
 }
 ```
 
-## 6. Add observer handlers
+## 7. Add observer handlers in the appropriate entity_edit submodule
 
-Still in `src/systems/entity_edit.rs`, use the macros for simple cases:
+In `src/systems/entity_edit/visual.rs` (or whichever concern fits), add:
 
 ```rust
-// For the update observer (if you need access to the full component):
-pub fn update_my_component_observer(
-    trigger: On<UpdateMyComponentRequested>,
-    mut query: Query<&mut MyComponent>,
-    mut commands: Commands,
-) {
-    let ev = trigger.event();
-    if let Ok(mut comp) = query.get_mut(ev.entity) {
-        comp.value = ev.value;
-        comp.label = ev.label.clone();
-    }
-    commands.trigger(InspectEntityRequested { entity: ev.entity });
-}
+use super::{RemoveMyComponentRequested, UpdateMyComponentRequested};
 
-// For the remove observer, use the macro:
+component_edit_observer!(
+    update_my_component_observer,
+    UpdateMyComponentRequested,
+    MyComponent,
+    "MyComponent",
+    |comp, event, entity| {
+        comp.value = event.value;
+        comp.label = event.label.clone();
+        debug!("update_my_component_observer: updated entity {}", entity.to_bits());
+    }
+);
+
 component_remove_observer!(
     remove_my_component_observer,
     RemoveMyComponentRequested,
@@ -105,21 +170,21 @@ component_remove_observer!(
 );
 ```
 
-Always call `refresh_inspector` (or trigger `InspectEntityRequested` directly) at the end of
-mutation observers so the GUI snapshot refreshes.
+Always call `super::refresh_inspector` at the end of `component_edit_observer!` (the macro
+does this automatically).
 
-## 7. Register observers in main.rs
+## 8. Register observers in entity_edit/mod.rs register()
 
-In `src/main.rs`:
+In the `register(builder)` function:
 
 ```rust
-.add_observer(systems::entity_edit::update_my_component_observer)
-.add_observer(systems::entity_edit::remove_my_component_observer)
+.add_observer(visual::update_my_component_observer)
+.add_observer(visual::remove_my_component_observer)
 ```
 
-## 8. Handle AddComponentRequested
+## 9. Handle AddComponentRequested in lifecycle.rs
 
-In the `add_component_observer` match in `src/systems/entity_edit.rs`:
+In `src/systems/entity_edit/lifecycle.rs`, in the `add_component_observer` match:
 
 ```rust
 ComponentKind::MyComponent => {
@@ -127,69 +192,36 @@ ComponentKind::MyComponent => {
 }
 ```
 
-## 9. Add pending fields
+## 10. Wire into PendingEditState aggregate
 
-In `src/scenes/editor/pending_state.rs`:
-
-```rust
-// MyComponent
-pub my_value: Option<f32>,
-pub my_label: Option<String>,
-pub commit_my: bool,
-pub remove_my: bool,
-```
-
-Add `|| self.commit_my || self.remove_my` to `any_commit()`.
-
-## 10. Wire the commit in commit.rs
-
-In `src/scenes/editor/commit.rs`, inside `consume_entity_editor_commits`:
+In `src/scenes/editor/pending_state.rs`, add the sub-struct field:
 
 ```rust
-if p.remove_my {
-    ctx.commands.trigger(RemoveMyComponentRequested { entity });
-} else if p.commit_my {
-    consume_my_commit(ctx, entity, &snapshot, &p);
-}
+pub my_component: PendingMyComponent,
 ```
 
-Add the helper:
+The `any_commit()` method calls `is_dirty()` on each sub-struct — add:
 
 ```rust
-fn consume_my_commit(ctx: &mut GameCtx, entity: Entity, snapshot: &ComponentSnapshot, p: &PendingEditState) {
-    let Some(ref snap) = snapshot.my_component else { return; };
-    ctx.commands.trigger(UpdateMyComponentRequested {
-        entity,
-        value: p.my_value.unwrap_or(snap.value),
-        label: p.my_label.clone().unwrap_or_else(|| snap.label.clone()),
-    });
-}
+|| self.my_component.is_dirty()
 ```
 
-## 11. Add the GUI widget block
+## 11. Wire into the components/ registry
 
-In `src/scenes/editor/entity_editor_panel.rs`, inside the per-component section pattern:
-
+In `src/scenes/editor/components/mod.rs`:
 ```rust
-if let Some(ref my_snap) = snapshot.my_component {
-    ui.separator();
-    ui.text("MyComponent");
-    ui.same_line();
-    if ui.small_button("X##remove_my") {
-        pending.remove_my = true;
-    }
-
-    let mut value = pending.my_value.unwrap_or(my_snap.value);
-    if draw_float_input(ui, "Value##my", &mut value, 1.0) {
-        pending.my_value = Some(value);
-        pending.commit_my = true;
-    }
-}
+pub(super) mod my_component;
 ```
 
-For the "Add Component" combo, `ComponentKind::MyComponent` will appear automatically once you
-added it to the enum in step 1 (assuming the combo list is derived from `ComponentKind`).
-Check `entity_editor_panel.rs` for how existing variants are listed.
+In `src/scenes/editor/entity_editor_panel.rs` (inside the scroll area):
+```rust
+components::my_component::draw_section(ui, &snap, &mut p.my_component);
+```
+
+In `src/scenes/editor/commit.rs` (in `consume_entity_editor_commits`):
+```rust
+components::my_component::commit(ctx, entity, &snapshot, &p.my_component);
+```
 
 ## 12. Add map serialization
 
@@ -210,8 +242,8 @@ if let Some(ref my_entry) = entity_def.my_component {
 
 ## Shortcut: string-typed components
 
-If the component stores only a single `String` value (like `LuaSetup` or `DynamicText` for its
-script/text content), the snapshot can be `Option<String>` instead of a dedicated snapshot struct:
+If the component stores only a single `String` value (like `LuaSetup`), the snapshot can be
+`Option<String>` instead of a dedicated snapshot struct:
 
 ```rust
 // In ComponentSnapshot:
@@ -219,14 +251,12 @@ pub lua_setup: Option<String>,
 ```
 
 The pending state is similarly just `Option<String>`, and the inspector widget is a plain
-`input_text` that writes back into the pending field on change. See `LuaSetup` in
-`entity_inspector.rs`, `entity_editor_panel.rs`, `pending_state.rs`, and `entity_edit.rs` as
-the reference implementation for this simpler pattern.
+`input_text`. See `LuaSetup` as the reference implementation.
 
 ## Verification
 
 - `cargo check` passes
 - Run the editor, select an entity, click "Add Component" → "MyComponent" appears in the list
 - After adding, the inspector shows the MyComponent section
-- Edit a value and click Apply → component updates in ECS
+- Edit a value → component updates in ECS
 - Save and reload the map → component persists
