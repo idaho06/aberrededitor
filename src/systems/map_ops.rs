@@ -22,11 +22,14 @@ use aberredengine::bevy_ecs;
 use aberredengine::bevy_ecs::prelude::{
     Commands, Entity, Event, NonSendMut, On, Query, Res, ResMut, With,
 };
+use aberredengine::bevy_ecs::query::Without;
 use aberredengine::components::animation::Animation;
 use aberredengine::components::boxcollider::BoxCollider;
 use aberredengine::components::dynamictext::DynamicText;
+use aberredengine::components::emittedparticle::EmittedParticle;
 use aberredengine::components::group::Group;
 use aberredengine::components::mapposition::MapPosition;
+use aberredengine::components::particleemitter::{EmitterShape, ParticleEmitter, TtlSpec};
 use aberredengine::components::rotation::Rotation;
 use aberredengine::components::scale::Scale;
 use aberredengine::components::sprite::Sprite;
@@ -39,8 +42,8 @@ use aberredengine::resources::animationstore::{AnimationResource, AnimationStore
 use aberredengine::resources::appstate::AppState;
 use aberredengine::resources::fontstore::FontStore;
 use aberredengine::resources::mapdata::{
-    AnimationEntry, DynamicTextEntry, EntityDef, FontEntry, MapData, TextureEntry, load_map,
-    save_map,
+    AnimationEntry, DynamicTextEntry, EntityDef, FontEntry, MapData, ParticleEmitterEntry,
+    ParticleEmitterShapeEntry, ParticleEmitterTtlEntry, TextureEntry, load_map, save_map,
 };
 use aberredengine::resources::texturestore::TextureStore;
 use aberredengine::resources::worldsignals::WorldSignals;
@@ -171,8 +174,9 @@ type MapEntitiesQuery<'w, 's> = Query<
         Option<&'static SerializedLuaSetup>,
         Option<&'static DynamicText>,
         Option<&'static Animation>,
+        Option<&'static ParticleEmitter>,
     ),
-    With<MapEntity>,
+    (With<MapEntity>, Without<EmittedParticle>),
 >;
 
 fn sync_map_entities(
@@ -206,6 +210,7 @@ fn sync_map_entities(
         lua_setup,
         dynamic_text,
         animation,
+        particle_emitter,
     ) in entities.iter()
     {
         let registered_as = user_keys
@@ -215,12 +220,14 @@ fn sync_map_entities(
 
         let tint_arr = tint.map(|t| [t.color.r, t.color.g, t.color.b, t.color.a]);
         let animation_key = animation.map(|a| a.animation_key.clone());
+        let particle_emitter_entry =
+            particle_emitter.map(|pe| particle_emitter_to_entry(pe, &user_keys));
         let lua_setup_callback = lua_setup.map(|l| l.callback.clone());
         let dynamic_text_entry = dynamic_text.map(|d| DynamicTextEntry {
-            text: d.text.to_string(),
+            text: d.initial_text.to_string(),
             font_key: d.font.to_string(),
             font_size: d.font_size,
-            color: [d.color.r, d.color.g, d.color.b, d.color.a],
+            color: [d.initial_color.r, d.initial_color.g, d.initial_color.b, d.initial_color.a],
         });
 
         if let Some(tilemap) = tilemap {
@@ -240,6 +247,7 @@ fn sync_map_entities(
                 def.lua_setup = lua_setup_callback;
                 def.dynamic_text = dynamic_text_entry.clone();
                 def.collider = collider.map(collider_to_entry);
+                def.particle_emitter = particle_emitter_entry.clone();
             }
         } else {
             map_data.entities.push(EntityDef {
@@ -255,9 +263,59 @@ fn sync_map_entities(
                 animation_key,
                 lua_setup: lua_setup_callback,
                 dynamic_text: dynamic_text_entry,
+                particle_emitter: particle_emitter_entry,
                 ..Default::default()
             });
         }
+    }
+}
+
+/// Convert a live [`ParticleEmitter`] component to a serialisable [`ParticleEmitterEntry`].
+///
+/// `user_keys` is a pre-built `(Entity, key)` list used to reverse-map template entity IDs
+/// to their WorldSignals registration keys.
+fn particle_emitter_to_entry(
+    pe: &ParticleEmitter,
+    user_keys: &[(Entity, &str)],
+) -> ParticleEmitterEntry {
+    let template_keys: Vec<String> = pe
+        .templates
+        .iter()
+        .filter_map(|e| {
+            user_keys
+                .iter()
+                .find(|(k, _)| k == e)
+                .map(|(_, key)| key.to_string())
+        })
+        .collect();
+
+    let shape = match pe.shape {
+        EmitterShape::Point => ParticleEmitterShapeEntry::Point,
+        EmitterShape::Rect { width, height } => ParticleEmitterShapeEntry::Rect { width, height },
+    };
+
+    let ttl = match pe.ttl {
+        TtlSpec::None => ParticleEmitterTtlEntry::None,
+        TtlSpec::Fixed(v) => ParticleEmitterTtlEntry::Fixed { value: v },
+        TtlSpec::Range { min, max } => ParticleEmitterTtlEntry::Range { min, max },
+    };
+
+    let offset = if pe.offset.x != 0.0 || pe.offset.y != 0.0 {
+        Some([pe.offset.x, pe.offset.y])
+    } else {
+        None
+    };
+
+    ParticleEmitterEntry {
+        template_keys,
+        shape,
+        offset,
+        particles_per_emission: pe.particles_per_emission,
+        emissions_per_second: pe.emissions_per_second,
+        emissions_remaining: pe.initial_emissions_remaining,
+        arc_degrees: [pe.arc_degrees.0, pe.arc_degrees.1],
+        speed_range: [pe.speed_range.0, pe.speed_range.1],
+        ttl,
     }
 }
 

@@ -8,8 +8,9 @@
 //! the inspector always shows the post-mutation state.
 use crate::components::serialized_lua_setup::SerializedLuaSetup;
 use crate::editor_types::{
-    AnimationSnapshot, ColliderSnapshot, ComponentSnapshot, DynamicTextSnapshot, PhaseSnapshot,
-    SpriteSnapshot, TimerSnapshot, TintSnapshot, TtlSnapshot,
+    AnimationSnapshot, ColliderSnapshot, ComponentSnapshot, DynamicTextSnapshot,
+    EmitterShapeKind, ParticleEmitterSnapshot, PhaseSnapshot, SpriteSnapshot, TimerSnapshot,
+    TintSnapshot, TtlKind, TtlSnapshot,
 };
 use crate::signals as sig;
 use aberredengine::bevy_ecs;
@@ -20,6 +21,7 @@ use aberredengine::components::boxcollider::BoxCollider;
 use aberredengine::components::dynamictext::DynamicText;
 use aberredengine::components::group::Group;
 use aberredengine::components::mapposition::MapPosition;
+use aberredengine::components::particleemitter::{EmitterShape, ParticleEmitter, TtlSpec};
 use aberredengine::components::persistent::Persistent;
 use aberredengine::components::phase::Phase;
 use aberredengine::components::rotation::Rotation;
@@ -75,6 +77,7 @@ pub fn entity_inspect_observer(
             Option<&Tint>,
             Option<&SerializedLuaSetup>,
             Option<&DynamicText>,
+            Option<&ParticleEmitter>,
         ),
     )>,
     tilemap_roots: Query<(), With<TileMap>>,
@@ -84,7 +87,7 @@ pub fn entity_inspect_observer(
     let entity = trigger.event().entity;
     let Ok((
         (pos, z, sprite, collider, group, rot, scale, animation),
-        (ttl, timer, phase, persistent, tilemap, child_of, tint, lua_setup, dynamic_text),
+        (ttl, timer, phase, persistent, tilemap, child_of, tint, lua_setup, dynamic_text, particle_emitter),
     )) = query.get(entity)
     else {
         return;
@@ -96,6 +99,51 @@ pub fn entity_inspect_observer(
         .filter(|(k, e)| **e == entity && sig::is_user_entity_key(k))
         .map(|(k, _)| k.clone())
         .collect();
+
+    // Reverse-map template entity IDs → WorldSignals keys for the particle emitter.
+    let particle_emitter_snap = particle_emitter.map(|pe| {
+        let template_keys: Vec<String> = pe
+            .templates
+            .iter()
+            .filter_map(|e| {
+                signals
+                    .entities
+                    .iter()
+                    .find(|(k, v)| **v == *e && sig::is_user_entity_key(k))
+                    .map(|(k, _)| k.clone())
+            })
+            .collect();
+
+        let (shape, shape_rect_w, shape_rect_h) = match pe.shape {
+            EmitterShape::Point => (EmitterShapeKind::Point, 0.0, 0.0),
+            EmitterShape::Rect { width, height } => (EmitterShapeKind::Rect, width, height),
+        };
+
+        let (ttl_kind, ttl_fixed, ttl_min, ttl_max) = match pe.ttl {
+            TtlSpec::None => (TtlKind::None, 0.0, 0.0, 0.0),
+            TtlSpec::Fixed(v) => (TtlKind::Fixed, v, 0.0, 0.0),
+            TtlSpec::Range { min, max } => (TtlKind::Range, 0.0, min, max),
+        };
+
+        ParticleEmitterSnapshot {
+            template_keys,
+            shape,
+            shape_rect_w,
+            shape_rect_h,
+            offset: [pe.offset.x, pe.offset.y],
+            particles_per_emission: pe.particles_per_emission,
+            emissions_per_second: pe.emissions_per_second,
+            emissions_remaining: pe.initial_emissions_remaining,
+            arc_min_deg: pe.arc_degrees.0,
+            arc_max_deg: pe.arc_degrees.1,
+            speed_min: pe.speed_range.0,
+            speed_max: pe.speed_range.1,
+            ttl_kind,
+            ttl_fixed,
+            ttl_min,
+            ttl_max,
+        }
+    });
 
     let snapshot = ComponentSnapshot {
         entity_bits: entity.to_bits(),
@@ -151,14 +199,15 @@ pub fn entity_inspect_observer(
         }),
         lua_setup: lua_setup.map(|l| l.callback.clone()),
         dynamic_text: dynamic_text.map(|d| DynamicTextSnapshot {
-            text: d.text.to_string(),
+            text: d.initial_text.to_string(),
             font_key: d.font.to_string(),
             font_size: d.font_size,
-            r: d.color.r,
-            g: d.color.g,
-            b: d.color.b,
-            a: d.color.a,
+            r: d.initial_color.r,
+            g: d.initial_color.g,
+            b: d.initial_color.b,
+            a: d.initial_color.a,
         }),
+        particle_emitter: particle_emitter_snap,
     };
 
     app_state.insert(snapshot);

@@ -8,8 +8,8 @@
 //!
 //! `draw_entity_delete_modal` renders the entity deletion confirmation popup.
 use super::pending_state::PendingMutex;
-use super::widgets::{draw_drag_float_input, draw_float_input, draw_text_buffer_input};
-use crate::editor_types::{ComponentKind, ComponentSnapshot};
+use super::widgets::{draw_drag_float_input, draw_float_input, draw_int_input, draw_text_buffer_input};
+use crate::editor_types::{ComponentKind, ComponentSnapshot, EmitterShapeKind, TtlKind};
 use crate::signals as sig;
 use crate::systems::animation_store_sync::AnimationStoreMutex;
 use aberredengine::imgui;
@@ -17,6 +17,8 @@ use aberredengine::resources::appstate::AppState;
 use aberredengine::resources::fontstore::FontStore;
 use aberredengine::resources::texturestore::TextureStore;
 use aberredengine::resources::worldsignals::WorldSignals;
+
+const WARNING_TEXT_COLOR: [f32; 4] = [1.0, 0.45, 0.3, 1.0];
 
 pub(super) fn draw_entity_editor(
     ui: &imgui::Ui,
@@ -149,6 +151,11 @@ pub(super) fn draw_entity_editor(
                     snap.dynamic_text.is_none(),
                     "DynamicText",
                     ComponentKind::DynamicText,
+                ),
+                (
+                    snap.particle_emitter.is_none(),
+                    "Particle Emitter",
+                    ComponentKind::ParticleEmitter,
                 ),
             ]
             .into_iter()
@@ -634,6 +641,282 @@ pub(super) fn draw_entity_editor(
                         }
                         if ui.is_item_deactivated_after_edit() {
                             p.commit_dynamic_text = true;
+                        }
+                    }
+
+                    // ── Particle Emitter ────────────────────────────────────
+                    if let Some(ref pe) = snap.particle_emitter {
+                        ui.separator();
+                        ui.text("Particle Emitter");
+                        ui.same_line();
+                        if ui.small_button("Del##del_pe") {
+                            p.remove_particle_emitter = true;
+                        }
+
+                        // Shape
+                        let mut shape = p.pe_shape.unwrap_or(pe.shape);
+                        ui.text("Shape:");
+                        ui.same_line();
+                        if ui.radio_button_bool("Point##pe_shape", shape == EmitterShapeKind::Point) {
+                            p.pe_shape = Some(EmitterShapeKind::Point);
+                            p.commit_particle_emitter = true;
+                        }
+                        ui.same_line();
+                        if ui.radio_button_bool("Rect##pe_shape", shape == EmitterShapeKind::Rect) {
+                            p.pe_shape = Some(EmitterShapeKind::Rect);
+                            p.commit_particle_emitter = true;
+                        }
+                        shape = p.pe_shape.unwrap_or(pe.shape);
+                        if shape == EmitterShapeKind::Rect {
+                            if let Some(v) = draw_float_input(
+                                ui,
+                                "W##pe_rect_w",
+                                p.pe_shape_rect_w.unwrap_or(pe.shape_rect_w),
+                                1.0,
+                            ) {
+                                p.pe_shape_rect_w = Some(v);
+                                p.commit_particle_emitter = true;
+                            }
+                            if let Some(v) = draw_float_input(
+                                ui,
+                                "H##pe_rect_h",
+                                p.pe_shape_rect_h.unwrap_or(pe.shape_rect_h),
+                                1.0,
+                            ) {
+                                p.pe_shape_rect_h = Some(v);
+                                p.commit_particle_emitter = true;
+                            }
+                        }
+
+                        // Offset
+                        if let Some(v) = draw_float_input(
+                            ui,
+                            "Off X##pe_off_x",
+                            p.pe_offset_x.unwrap_or(pe.offset[0]),
+                            1.0,
+                        ) {
+                            p.pe_offset_x = Some(v);
+                            p.commit_particle_emitter = true;
+                        }
+                        if let Some(v) = draw_float_input(
+                            ui,
+                            "Off Y##pe_off_y",
+                            p.pe_offset_y.unwrap_or(pe.offset[1]),
+                            1.0,
+                        ) {
+                            p.pe_offset_y = Some(v);
+                            p.commit_particle_emitter = true;
+                        }
+
+                        // Rate / burst
+                        if let Some(v) = draw_float_input(
+                            ui,
+                            "Rate/s##pe_rate",
+                            p.pe_emissions_per_second.unwrap_or(pe.emissions_per_second),
+                            0.5,
+                        ) {
+                            p.pe_emissions_per_second = Some(v);
+                            p.commit_particle_emitter = true;
+                        }
+                        if let Some(v) = draw_int_input(
+                            ui,
+                            "Burst##pe_burst",
+                            p.pe_particles_per_emission
+                                .unwrap_or(pe.particles_per_emission)
+                                as i32,
+                        ) {
+                            p.pe_particles_per_emission = Some(v.max(1) as u32);
+                            p.commit_particle_emitter = true;
+                        }
+
+                        // Remaining (number or max)
+                        let current_remaining =
+                            p.pe_emissions_remaining.unwrap_or(pe.emissions_remaining);
+                        let is_max = current_remaining == u32::MAX;
+                        ui.text("Remaining:");
+                        if ui.radio_button_bool("##pe_remaining_num", !is_max) && is_max {
+                            p.pe_emissions_remaining = Some(100);
+                            p.commit_particle_emitter = true;
+                        }
+                        ui.same_line();
+                        if !is_max
+                            && let Some(v) = draw_int_input(
+                                ui,
+                                "Count##pe_remaining",
+                                current_remaining as i32,
+                            )
+                        {
+                            p.pe_emissions_remaining = Some(v.max(0) as u32);
+                            p.commit_particle_emitter = true;
+                        }
+                        if ui.radio_button_bool("Max (∞)##pe_remaining_max", is_max) && !is_max {
+                            p.pe_emissions_remaining = Some(u32::MAX);
+                            p.commit_particle_emitter = true;
+                        }
+
+                        // Arc
+                        if let Some(v) = draw_float_input(
+                            ui,
+                            "Arc min°##pe_arc_min",
+                            p.pe_arc_min.unwrap_or(pe.arc_min_deg),
+                            1.0,
+                        ) {
+                            p.pe_arc_min = Some(v);
+                            p.commit_particle_emitter = true;
+                        }
+                        if let Some(v) = draw_float_input(
+                            ui,
+                            "Arc max°##pe_arc_max",
+                            p.pe_arc_max.unwrap_or(pe.arc_max_deg),
+                            1.0,
+                        ) {
+                            p.pe_arc_max = Some(v);
+                            p.commit_particle_emitter = true;
+                        }
+
+                        // Speed
+                        if let Some(v) = draw_float_input(
+                            ui,
+                            "Spd min##pe_spd_min",
+                            p.pe_speed_min.unwrap_or(pe.speed_min),
+                            1.0,
+                        ) {
+                            p.pe_speed_min = Some(v);
+                            p.commit_particle_emitter = true;
+                        }
+                        if let Some(v) = draw_float_input(
+                            ui,
+                            "Spd max##pe_spd_max",
+                            p.pe_speed_max.unwrap_or(pe.speed_max),
+                            1.0,
+                        ) {
+                            p.pe_speed_max = Some(v);
+                            p.commit_particle_emitter = true;
+                        }
+
+                        // TTL
+                        let mut ttl_kind = p.pe_ttl_kind.unwrap_or(pe.ttl_kind);
+                        ui.text("TTL:");
+                        ui.same_line();
+                        if ui.radio_button_bool("None##pe_ttl", ttl_kind == TtlKind::None) {
+                            p.pe_ttl_kind = Some(TtlKind::None);
+                            p.commit_particle_emitter = true;
+                        }
+                        ui.same_line();
+                        if ui.radio_button_bool("Fixed##pe_ttl", ttl_kind == TtlKind::Fixed) {
+                            p.pe_ttl_kind = Some(TtlKind::Fixed);
+                            p.commit_particle_emitter = true;
+                        }
+                        ui.same_line();
+                        if ui.radio_button_bool("Range##pe_ttl", ttl_kind == TtlKind::Range) {
+                            p.pe_ttl_kind = Some(TtlKind::Range);
+                            p.commit_particle_emitter = true;
+                        }
+                        ttl_kind = p.pe_ttl_kind.unwrap_or(pe.ttl_kind);
+                        match ttl_kind {
+                            TtlKind::Fixed => {
+                                if let Some(v) = draw_float_input(
+                                    ui,
+                                    "TTL s##pe_ttl_fixed",
+                                    p.pe_ttl_fixed.unwrap_or(pe.ttl_fixed),
+                                    0.1,
+                                ) {
+                                    p.pe_ttl_fixed = Some(v.max(0.0));
+                                    p.commit_particle_emitter = true;
+                                }
+                            }
+                            TtlKind::Range => {
+                                if let Some(v) = draw_float_input(
+                                    ui,
+                                    "TTL min##pe_ttl_min",
+                                    p.pe_ttl_min.unwrap_or(pe.ttl_min),
+                                    0.1,
+                                ) {
+                                    p.pe_ttl_min = Some(v.max(0.0));
+                                    p.commit_particle_emitter = true;
+                                }
+                                if let Some(v) = draw_float_input(
+                                    ui,
+                                    "TTL max##pe_ttl_max",
+                                    p.pe_ttl_max.unwrap_or(pe.ttl_max),
+                                    0.1,
+                                ) {
+                                    p.pe_ttl_max = Some(v.max(0.0));
+                                    p.commit_particle_emitter = true;
+                                }
+                            }
+                            TtlKind::None => {}
+                        }
+
+                        // Template keys
+                        ui.separator();
+                        ui.text("Templates:");
+                        let current_keys = p
+                            .pe_template_keys
+                            .clone()
+                            .unwrap_or_else(|| pe.template_keys.clone());
+                        let known_entity_keys: Vec<String> = signals
+                            .entities
+                            .keys()
+                            .filter(|key| sig::is_user_entity_key(key))
+                            .cloned()
+                            .collect();
+                        let mut new_keys = current_keys.clone();
+                        let mut keys_changed = false;
+                        let mut keys_committed = false;
+                        let mut remove_idx: Option<usize> = None;
+                        let mut unresolved_keys: Vec<String> = Vec::new();
+                        for (i, key) in current_keys.iter().enumerate() {
+                            let mut buf = key.clone();
+                            ui.set_next_item_width(-30.0);
+                            if ui.input_text(&format!("##pe_tkey_{i}"), &mut buf).build() {
+                                new_keys[i] = buf.clone();
+                                keys_changed = true;
+                            }
+                            if ui.is_item_deactivated_after_edit() {
+                                new_keys[i] = buf.clone();
+                                keys_changed = true;
+                                keys_committed = true;
+                            }
+                            ui.same_line();
+                            if ui.small_button(format!("-##pe_tkey_rm_{i}")) {
+                                remove_idx = Some(i);
+                            }
+
+                            let display_key = new_keys[i].trim();
+                            if display_key.is_empty() {
+                                ui.text_disabled("Enter a registered entity key.");
+                            } else if !known_entity_keys.iter().any(|known| known == display_key) {
+                                unresolved_keys.push(display_key.to_owned());
+                                ui.text_colored(
+                                    WARNING_TEXT_COLOR,
+                                    format!("Unresolved key: {display_key}"),
+                                );
+                            }
+                        }
+                        if let Some(idx) = remove_idx {
+                            new_keys.remove(idx);
+                            keys_changed = true;
+                            keys_committed = true;
+                        }
+                        if ui.button("Add Template##pe_tkey_add") {
+                            new_keys.push(String::new());
+                            keys_changed = true;
+                        }
+                        if !unresolved_keys.is_empty() {
+                            ui.text_colored(
+                                WARNING_TEXT_COLOR,
+                                format!(
+                                    "Warning: unresolved template keys will be skipped on apply: {}",
+                                    unresolved_keys.join(", ")
+                                ),
+                            );
+                        }
+                        if keys_changed {
+                            p.pe_template_keys = Some(new_keys);
+                            if keys_committed {
+                                p.commit_particle_emitter = true;
+                            }
                         }
                     }
                 });

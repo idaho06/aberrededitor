@@ -78,6 +78,8 @@ fn main() -> Result<(), String> {
         .add_observer(systems::entity_selector::select_group_observer)
         .add_observer(systems::entity_selector::select_registered_entity_observer)
         .add_observer(systems::entity_inspector::entity_inspect_observer)
+        .add_observer(systems::entity_edit::remove_particle_emitter_observer)
+        .add_observer(systems::entity_edit::update_particle_emitter_observer)
         .configure_schedule(systems::window_resize::configure_resize_schedule)
         .add_system(systems::animation_store_sync::animation_store_sync_system)
         .add_system(systems::camera_sync::editor_camera_sync_system)

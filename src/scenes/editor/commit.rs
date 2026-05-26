@@ -20,11 +20,12 @@ use crate::systems::entity_edit::{
     RemoveEntityRequested, RemoveGroupRequested, RemoveLuaSetupRequested,
     RemoveMapPositionRequested, RemovePersistentRequested, RemovePhaseRequested,
     RemoveRotationRequested, RemoveScaleRequested, RemoveSpriteRequested, RemoveTileMapRequested,
-    RemoveTimerRequested, RemoveTintRequested, RemoveTtlRequested, RemoveZIndexRequested,
-    UnregisterEntityRequested, UpdateAnimationRequested, UpdateBoxColliderRequested,
-    UpdateDynamicTextRequested, UpdateGroupRequested, UpdateLuaSetupRequested,
-    UpdateMapPositionRequested, UpdateRotationRequested, UpdateScaleRequested,
-    UpdateSpriteRequested, UpdateTintRequested, UpdateZIndexRequested,
+    RemoveParticleEmitterRequested, RemoveTimerRequested, RemoveTintRequested, RemoveTtlRequested,
+    RemoveZIndexRequested, UnregisterEntityRequested, UpdateAnimationRequested,
+    UpdateBoxColliderRequested, UpdateDynamicTextRequested, UpdateGroupRequested,
+    UpdateLuaSetupRequested, UpdateMapPositionRequested, UpdateParticleEmitterRequested,
+    UpdateRotationRequested, UpdateScaleRequested, UpdateSpriteRequested, UpdateTintRequested,
+    UpdateZIndexRequested,
 };
 use crate::systems::entity_inspector::InspectEntityRequested;
 use aberredengine::bevy_ecs::prelude::Entity;
@@ -138,6 +139,12 @@ pub(super) fn consume_entity_editor_commits(ctx: &mut GameCtx) {
         ctx.commands.trigger(RemoveDynamicTextRequested { entity });
     } else if p.commit_dynamic_text {
         consume_dynamic_text_commit(ctx, entity, &snapshot, &p);
+    }
+    if p.remove_particle_emitter {
+        ctx.commands
+            .trigger(RemoveParticleEmitterRequested { entity });
+    } else if p.commit_particle_emitter {
+        consume_particle_emitter_commit(ctx, entity, &snapshot, &p);
     }
     if p.remove_tilemap {
         ctx.commands.trigger(RemoveTileMapRequested { entity });
@@ -420,6 +427,49 @@ fn consume_dynamic_text_commit(
         g: (g * 255.0).round() as u8,
         b: (b * 255.0).round() as u8,
         a: (a * 255.0).round() as u8,
+    });
+}
+
+fn consume_particle_emitter_commit(
+    ctx: &mut GameCtx,
+    entity: Entity,
+    snapshot: &ComponentSnapshot,
+    p: &PendingEditState,
+) {
+    let Some(ref pe) = snapshot.particle_emitter else {
+        warn!(
+            "consume_particle_emitter_commit: snapshot missing ParticleEmitter for entity {}",
+            entity.to_bits()
+        );
+        return;
+    };
+
+    ctx.commands.trigger(UpdateParticleEmitterRequested {
+        entity,
+        template_keys: p
+            .pe_template_keys
+            .clone()
+            .unwrap_or_else(|| pe.template_keys.clone()),
+        shape: p.pe_shape.unwrap_or(pe.shape),
+        shape_rect_w: p.pe_shape_rect_w.unwrap_or(pe.shape_rect_w),
+        shape_rect_h: p.pe_shape_rect_h.unwrap_or(pe.shape_rect_h),
+        offset: [
+            p.pe_offset_x.unwrap_or(pe.offset[0]),
+            p.pe_offset_y.unwrap_or(pe.offset[1]),
+        ],
+        particles_per_emission: p
+            .pe_particles_per_emission
+            .unwrap_or(pe.particles_per_emission),
+        emissions_per_second: p.pe_emissions_per_second.unwrap_or(pe.emissions_per_second),
+        emissions_remaining: p.pe_emissions_remaining.unwrap_or(pe.emissions_remaining),
+        arc_min_deg: p.pe_arc_min.unwrap_or(pe.arc_min_deg),
+        arc_max_deg: p.pe_arc_max.unwrap_or(pe.arc_max_deg),
+        speed_min: p.pe_speed_min.unwrap_or(pe.speed_min),
+        speed_max: p.pe_speed_max.unwrap_or(pe.speed_max),
+        ttl_kind: p.pe_ttl_kind.unwrap_or(pe.ttl_kind),
+        ttl_fixed: p.pe_ttl_fixed.unwrap_or(pe.ttl_fixed),
+        ttl_min: p.pe_ttl_min.unwrap_or(pe.ttl_min),
+        ttl_max: p.pe_ttl_max.unwrap_or(pe.ttl_max),
     });
 }
 

@@ -15,7 +15,7 @@
 //! snapshot is refreshed within the same frame's command queue.
 use super::entity_inspector::InspectEntityRequested;
 use crate::components::serialized_lua_setup::SerializedLuaSetup;
-use crate::editor_types::ComponentKind;
+use crate::editor_types::{ComponentKind, EmitterShapeKind, TtlKind};
 use crate::systems::entity_selector::{
     MultiEntitySelectionMutex, apply_selection, clear_selector_state,
 };
@@ -29,6 +29,7 @@ use aberredengine::components::dynamictext::DynamicText;
 use aberredengine::components::globaltransform2d::GlobalTransform2D;
 use aberredengine::components::group::Group;
 use aberredengine::components::mapposition::MapPosition;
+use aberredengine::components::particleemitter::{EmitterShape, ParticleEmitter, TtlSpec};
 use aberredengine::components::persistent::Persistent;
 use aberredengine::components::phase::Phase;
 use aberredengine::components::rotation::Rotation;
@@ -221,6 +222,33 @@ pub struct UpdateDynamicTextRequested {
     pub g: u8,
     pub b: u8,
     pub a: u8,
+}
+
+#[derive(Event)]
+pub struct RemoveParticleEmitterRequested {
+    pub entity: Entity,
+}
+
+#[derive(Event)]
+pub struct UpdateParticleEmitterRequested {
+    pub entity: Entity,
+    pub template_keys: Vec<String>,
+    pub shape: EmitterShapeKind,
+    pub shape_rect_w: f32,
+    pub shape_rect_h: f32,
+    pub offset: [f32; 2],
+    pub particles_per_emission: u32,
+    pub emissions_per_second: f32,
+    /// `u32::MAX` means unlimited.
+    pub emissions_remaining: u32,
+    pub arc_min_deg: f32,
+    pub arc_max_deg: f32,
+    pub speed_min: f32,
+    pub speed_max: f32,
+    pub ttl_kind: TtlKind,
+    pub ttl_fixed: f32,
+    pub ttl_min: f32,
+    pub ttl_max: f32,
 }
 
 #[derive(Event)]
@@ -613,10 +641,14 @@ component_edit_observer!(
     DynamicText,
     "DynamicText",
     |dt, event, entity| {
-        dt.text = Arc::from(event.text.as_str());
+        let text: Arc<str> = Arc::from(event.text.as_str());
+        let color = Color::new(event.r, event.g, event.b, event.a);
+        dt.text = Arc::clone(&text);
+        dt.initial_text = text;
         dt.font = Arc::from(event.font_key.as_str());
         dt.font_size = event.font_size;
-        dt.color = Color::new(event.r, event.g, event.b, event.a);
+        dt.color = color;
+        dt.initial_color = color;
         debug!(
             "update_dynamic_text_observer: updated entity {} text='{}' font='{}'",
             entity.to_bits(),
@@ -625,6 +657,93 @@ component_edit_observer!(
         );
     }
 );
+
+component_remove_observer!(
+    remove_particle_emitter_observer,
+    RemoveParticleEmitterRequested,
+    ParticleEmitter,
+    "ParticleEmitter"
+);
+
+pub fn update_particle_emitter_observer(
+    trigger: On<UpdateParticleEmitterRequested>,
+    world_signals: Res<WorldSignals>,
+    existing: Query<Option<&ParticleEmitter>>,
+    mut commands: Commands,
+) {
+    let ev = trigger.event();
+    let entity = ev.entity;
+
+    let templates: Vec<_> = ev
+        .template_keys
+        .iter()
+        .filter_map(|k| {
+            let e = world_signals.get_entity(k).copied();
+            if e.is_none() {
+                warn!(
+                    "update_particle_emitter_observer: template key '{}' not found; skipping",
+                    k
+                );
+            }
+            e
+        })
+        .collect();
+
+    let shape = match ev.shape {
+        EmitterShapeKind::Point => EmitterShape::Point,
+        EmitterShapeKind::Rect => EmitterShape::Rect {
+            width: ev.shape_rect_w,
+            height: ev.shape_rect_h,
+        },
+    };
+
+    let ttl = match ev.ttl_kind {
+        TtlKind::None => TtlSpec::None,
+        TtlKind::Fixed => TtlSpec::Fixed(ev.ttl_fixed),
+        TtlKind::Range => TtlSpec::Range {
+            min: ev.ttl_min,
+            max: ev.ttl_max,
+        },
+    };
+
+    let arc_degrees = if ev.arc_min_deg <= ev.arc_max_deg {
+        (ev.arc_min_deg, ev.arc_max_deg)
+    } else {
+        (ev.arc_max_deg, ev.arc_min_deg)
+    };
+    let speed_range = if ev.speed_min <= ev.speed_max {
+        (ev.speed_min, ev.speed_max)
+    } else {
+        (ev.speed_max, ev.speed_min)
+    };
+
+    let time_since_emit = existing
+        .get(entity)
+        .ok()
+        .flatten()
+        .map(|pe| pe.time_since_emit)
+        .unwrap_or(0.0);
+
+    commands.entity(entity).insert(ParticleEmitter {
+        templates,
+        shape,
+        offset: Vector2 { x: ev.offset[0], y: ev.offset[1] },
+        particles_per_emission: ev.particles_per_emission,
+        emissions_per_second: ev.emissions_per_second,
+        emissions_remaining: ev.emissions_remaining,
+        initial_emissions_remaining: ev.emissions_remaining,
+        arc_degrees,
+        speed_range,
+        ttl,
+        time_since_emit,
+    });
+
+    debug!(
+        "update_particle_emitter_observer: updated entity {} emitter",
+        entity.to_bits()
+    );
+    refresh_inspector(&mut commands, entity);
+}
 
 pub fn add_component_observer(
     trigger: On<AddComponentRequested>,
@@ -692,6 +811,9 @@ pub fn add_component_observer(
             commands
                 .entity(entity)
                 .insert(DynamicText::new("", font_key, 16.0, Color::WHITE));
+        }
+        ComponentKind::ParticleEmitter => {
+            commands.entity(entity).insert(ParticleEmitter::default());
         }
     }
     debug!(

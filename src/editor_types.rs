@@ -27,6 +27,7 @@ pub enum ComponentKind {
     Tint,
     LuaSetup,
     DynamicText,
+    ParticleEmitter,
 }
 
 // ---------------------------------------------------------------------------
@@ -115,6 +116,45 @@ pub struct DynamicTextSnapshot {
     pub a: u8,
 }
 
+/// Shape discriminant used by the editor — mirrors the engine's `EmitterShape`.
+#[derive(Clone, Copy, PartialEq, Debug, Default)]
+pub enum EmitterShapeKind {
+    #[default]
+    Point,
+    Rect,
+}
+
+/// TTL discriminant used by the editor — mirrors the engine's `TtlSpec`.
+#[derive(Clone, Copy, PartialEq, Debug, Default)]
+pub enum TtlKind {
+    #[default]
+    None,
+    Fixed,
+    Range,
+}
+
+/// Snapshot of a `ParticleEmitter` component stored in `AppState` for GUI reads.
+#[derive(Clone)]
+pub struct ParticleEmitterSnapshot {
+    pub template_keys: Vec<String>,
+    pub shape: EmitterShapeKind,
+    pub shape_rect_w: f32,
+    pub shape_rect_h: f32,
+    pub offset: [f32; 2],
+    pub particles_per_emission: u32,
+    pub emissions_per_second: f32,
+    /// `u32::MAX` means "unlimited / infinite".
+    pub emissions_remaining: u32,
+    pub arc_min_deg: f32,
+    pub arc_max_deg: f32,
+    pub speed_min: f32,
+    pub speed_max: f32,
+    pub ttl_kind: TtlKind,
+    pub ttl_fixed: f32,
+    pub ttl_min: f32,
+    pub ttl_max: f32,
+}
+
 impl DynamicTextSnapshot {
     /// Returns the RGBA channels normalised to `[0.0, 1.0]` for use with ImGui colour editors.
     pub fn color_normalized(&self) -> [f32; 4] {
@@ -171,4 +211,5 @@ pub struct ComponentSnapshot {
     pub tint: Option<TintSnapshot>,
     pub lua_setup: Option<String>,
     pub dynamic_text: Option<DynamicTextSnapshot>,
+    pub particle_emitter: Option<ParticleEmitterSnapshot>,
 }

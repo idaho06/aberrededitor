@@ -1,4 +1,4 @@
-use crate::editor_types::ComponentKind;
+use crate::editor_types::{ComponentKind, EmitterShapeKind, TtlKind};
 use std::sync::Mutex;
 
 /// Typed owner of transient entity-editor pending values and commit flags.
@@ -90,6 +90,26 @@ pub(crate) struct PendingEditState {
     pub pending_register_key: Option<String>,
     pub commit_registration: bool,
     pub remove_registration: bool,
+    // ParticleEmitter
+    pub pe_template_keys: Option<Vec<String>>,
+    pub pe_shape: Option<EmitterShapeKind>,
+    pub pe_shape_rect_w: Option<f32>,
+    pub pe_shape_rect_h: Option<f32>,
+    pub pe_offset_x: Option<f32>,
+    pub pe_offset_y: Option<f32>,
+    pub pe_particles_per_emission: Option<u32>,
+    pub pe_emissions_per_second: Option<f32>,
+    pub pe_emissions_remaining: Option<u32>,
+    pub pe_arc_min: Option<f32>,
+    pub pe_arc_max: Option<f32>,
+    pub pe_speed_min: Option<f32>,
+    pub pe_speed_max: Option<f32>,
+    pub pe_ttl_kind: Option<TtlKind>,
+    pub pe_ttl_fixed: Option<f32>,
+    pub pe_ttl_min: Option<f32>,
+    pub pe_ttl_max: Option<f32>,
+    pub commit_particle_emitter: bool,
+    pub remove_particle_emitter: bool,
     // Add component
     pub add_component: Option<ComponentKind>,
     pub add_combo_selection: usize,
@@ -130,6 +150,8 @@ impl PendingEditState {
             || self.select_tilemap_parent
             || self.commit_registration
             || self.remove_registration
+            || self.commit_particle_emitter
+            || self.remove_particle_emitter
             || self.add_component.is_some()
     }
 }
