@@ -52,6 +52,10 @@ pub(super) fn draw_menu_bar(
                 signals.set_flag(sig::ACTION_FILE_SAVE_AS);
             }
             ui.separator();
+            if ui.menu_item("Map Properties...") {
+                signals.set_flag(sig::UI_MAP_PROPERTIES_OPEN);
+            }
+            ui.separator();
             if ui.menu_item("Quit") {
                 actions.open_quit = true;
             }

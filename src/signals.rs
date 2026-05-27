@@ -114,6 +114,10 @@ pub const UI_ENTITY_EDITOR_OPEN: &str = "ui:entity_editor:open";
 pub const UI_TEMPLATE_BROWSER_OPEN: &str = "ui:template_browser:open";
 pub const TEMPLATE_SELECT_ENTITY: &str = "gui:template_browser:select_entity";
 
+// ---- Map properties panel ----
+pub const UI_MAP_PROPERTIES_OPEN: &str = "ui:map_properties:open";
+pub const ACTION_MAP_PROPERTIES_APPLY: &str = "gui:action:map_properties:apply";
+
 /// All `WorldSignals.entities` keys that are used internally by the editor.
 /// These are excluded from `EntityDef.registered_as` when saving a map.
 pub const EDITOR_INTERNAL_ENTITY_KEYS: &[&str] =

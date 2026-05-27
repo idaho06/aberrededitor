@@ -21,6 +21,7 @@ use super::entity_registry_panel::draw_entity_registry;
 use super::entity_selector_panel::draw_entity_selector;
 use super::font_panel::{draw_font_editor, draw_font_modals};
 use super::groups_panel::draw_groups_window;
+use super::map_properties_panel::{MapPropertiesMutex, draw_map_properties_panel};
 use super::menu::{draw_about_modal, draw_menu_bar, draw_quit_modal};
 use super::multi_entity_selector_panel::{
     draw_multi_entity_selector, draw_multi_entity_selector_modals,
@@ -52,7 +53,7 @@ use crate::systems::file_dialogs::{AsyncFileDialogRequest, request_async_dialog}
 use crate::systems::map_ops::{
     AddAnimationRequested, NewMapRequested, PreviewMapDataRequested, RemoveAnimationRequested,
     RemoveTextureRequested, RenameAnimationKeyRequested, RenameTextureKeyRequested,
-    SaveMapRequested, UpdateAnimationResourceRequested,
+    SaveMapRequested, UpdateAnimationResourceRequested, UpdateMapMetadataRequested,
 };
 use aberredengine::events::switchdebug::SwitchDebugEvent;
 use aberredengine::imgui;
@@ -156,6 +157,7 @@ pub fn editor_gui(
         draw_animation_store(ui, signals, textures, app_state);
     draw_texture_viewer(ui, signals, textures, fonts);
     draw_map_preview(ui, signals);
+    draw_map_properties_panel(ui, signals, app_state);
     draw_groups_window(ui, signals, app_state);
     draw_entity_registry(ui, signals);
     draw_entity_selector(ui, signals, app_state);
@@ -337,6 +339,27 @@ fn handle_file_actions(ctx: &mut GameCtx) {
 
     if ctx.world_signals.take_flag(sig::ACTION_FILE_LOAD_TILEMAP) {
         request_async_dialog(&ctx.app_state, AsyncFileDialogRequest::LoadTilemapFolder);
+    }
+
+    if ctx.world_signals.take_flag(sig::ACTION_MAP_PROPERTIES_APPLY)
+        && let Some(mutex) = ctx.app_state.get::<MapPropertiesMutex>()
+        && let Ok(state) = mutex.lock()
+    {
+        let name = state.pending_name.as_ref().unwrap_or(&state.name).clone();
+        let description = state.pending_description.as_ref().unwrap_or(&state.description).clone();
+        let author = state.pending_author.as_ref().unwrap_or(&state.author).clone();
+        let version = state.pending_version.as_ref().unwrap_or(&state.version).clone();
+        let background_color = state
+            .pending_bg_color
+            .map(|[r, g, b]| [(r * 255.0).round() as u8, (g * 255.0).round() as u8, (b * 255.0).round() as u8])
+            .or(state.background_color);
+        ctx.commands.trigger(UpdateMapMetadataRequested {
+            name,
+            description,
+            author,
+            version,
+            background_color,
+        });
     }
 }
 

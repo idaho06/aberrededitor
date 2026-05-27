@@ -19,6 +19,7 @@ mod entity_selector_panel;
 mod font_panel;
 mod groups_panel;
 mod lifecycle;
+pub(crate) mod map_properties_panel;
 mod menu;
 mod multi_entity_selector_panel;
 mod overlay;

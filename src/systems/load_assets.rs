@@ -7,6 +7,7 @@
 //! - Inserting all `Mutex<T>` caches into `AppState` so they are available before any system runs.
 //! - Inserting `MapData` and `EditorState` Bevy resources.
 //! - Advancing the game state to `Playing` to begin the scene loop.
+use crate::scenes::editor::map_properties_panel::MapPropertiesMutex;
 use crate::scenes::editor::pending_state::{PendingEditState, PendingMutex};
 use crate::scenes::editor::{
     EditorState, EditorToolMutex, EditorToolState, OverlaySettingsMutex, OverlaySettingsState,
@@ -89,6 +90,7 @@ pub fn load_assets(
     app_state.insert(OverlaySettingsMutex::new(OverlaySettingsState::default()));
     commands.insert_resource(EditorState::default());
     app_state.insert(PendingMutex::new(PendingEditState::default()));
+    app_state.insert(MapPropertiesMutex::new(Default::default()));
 
     next_state.set(GameStates::Playing);
 }

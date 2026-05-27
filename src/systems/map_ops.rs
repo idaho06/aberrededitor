@@ -17,6 +17,7 @@
 //! - [`GROUP_TILES`] — group name for individual tile entities inside a tilemap.
 //! - [`GROUP_TILEMAP_ROOTS`] — group name for tilemap root entities.
 use crate::components::serialized_lua_setup::SerializedLuaSetup;
+use crate::scenes::editor::map_properties_panel::MapPropertiesMutex;
 use crate::signals as sig;
 use aberredengine::bevy_ecs;
 use aberredengine::bevy_ecs::prelude::{
@@ -38,8 +39,9 @@ use aberredengine::components::tint::Tint;
 use aberredengine::components::zindex::ZIndex;
 use aberredengine::engine_app::EngineBuilder;
 use aberredengine::events::spawnmap::SpawnMapRequested;
-use aberredengine::raylib::prelude::Vector2;
+use aberredengine::raylib::prelude::{Color, Vector2};
 use aberredengine::resources::animationstore::{AnimationResource, AnimationStore};
+use aberredengine::resources::gameconfig::GameConfig;
 use aberredengine::resources::appstate::AppState;
 use aberredengine::resources::fontstore::FontStore;
 use aberredengine::resources::mapdata::{
@@ -83,10 +85,21 @@ pub struct SaveMapRequested {
     pub path: String,
 }
 
+/// Write new metadata values to `MapData` and apply background color to `GameConfig`.
+#[derive(Event)]
+pub struct UpdateMapMetadataRequested {
+    pub name: String,
+    pub description: String,
+    pub author: String,
+    pub version: String,
+    pub background_color: Option<[u8; 3]>,
+}
+
 pub fn register(builder: EngineBuilder) -> EngineBuilder {
     builder
         .add_observer(new_map_observer)
         .add_observer(load_map_observer)
+        .add_observer(update_map_metadata_observer)
         .add_observer(save_map_observer)
         .add_observer(add_texture_observer)
         .add_observer(rename_texture_key_observer)
@@ -116,12 +129,16 @@ pub fn new_map_observer(
     texture_store.paths.clear();
     font_store.clear();
     anim_store.animations.clear();
+    let default_map = MapData::default();
+    if let Some(mutex) = app_state.get::<MapPropertiesMutex>() {
+        mutex.lock().unwrap().reset_from_map(&default_map);
+    }
     reset_editor_map(
         &mut commands,
         &map_entities,
         &mut world_signals,
         &mut app_state,
-        MapData::default(),
+        default_map,
     );
     info!("new_map_observer: cleared map");
 }
@@ -156,6 +173,9 @@ pub fn load_map_observer(
         &mut app_state,
         map.clone(),
     );
+    if let Some(mutex) = app_state.get::<MapPropertiesMutex>() {
+        mutex.lock().unwrap().reset_from_map(&map);
+    }
     if let Some(mutex) = app_state.get::<PendingLuaSetupLoadMutex>() {
         mutex.lock().unwrap().reset_from_map(&map);
     }
@@ -352,6 +372,29 @@ pub fn save_map_observer(
     } else {
         info!("save_map_observer: saved map to '{}'", path);
     }
+}
+
+pub fn update_map_metadata_observer(
+    trigger: On<UpdateMapMetadataRequested>,
+    mut map_data: ResMut<MapData>,
+    mut config: ResMut<GameConfig>,
+    app_state: Res<AppState>,
+) {
+    let ev = trigger.event();
+    map_data.name = ev.name.clone();
+    map_data.description = ev.description.clone();
+    map_data.author = ev.author.clone();
+    map_data.version = ev.version.clone();
+    map_data.background_color = ev.background_color;
+    if let Some([r, g, b]) = ev.background_color {
+        config.background_color = Color::new(r, g, b, 255);
+    } else {
+        config.background_color = Color::BLACK;
+    }
+    if let Some(mutex) = app_state.get::<MapPropertiesMutex>() {
+        mutex.lock().unwrap().reset_from_map(&map_data);
+    }
+    info!("update_map_metadata_observer: updated map metadata");
 }
 
 /// Clears tile entities, resets tilemap store, inserts fresh map data, and
