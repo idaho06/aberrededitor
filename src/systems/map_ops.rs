@@ -58,12 +58,18 @@ use std::sync::Arc;
 use crate::components::map_entity::MapEntity;
 use crate::systems::entity_selector::clear_selector_state;
 use crate::systems::tilemap_load::PendingLuaSetupLoadMutex;
-use crate::systems::utils::{collider_to_entry, sprite_to_entry, to_relative};
+use crate::systems::utils::{collider_to_entry, sprite_to_entry, tilemap_stem, to_relative};
 
 /// Group name assigned to individual tile entities spawned by a tilemap.
 pub const GROUP_TILES: &str = "tiles";
 /// Group name assigned to the root entity of a loaded tilemap.
 pub const GROUP_TILEMAP_ROOTS: &str = "tilemap-roots";
+// Title is synced imperatively at each MAP_CURRENT_PATH mutation site.
+// If you add a new path that sets MAP_CURRENT_PATH, call sync_window_title there too.
+fn sync_window_title(raylib: &mut RaylibAccess, title: &str) {
+    let (rl, th) = (&mut *raylib.rl, &*raylib.th);
+    rl.set_window_title(th, title);
+}
 
 // ---------------------------------------------------------------------------
 // Map lifecycle events
@@ -124,6 +130,8 @@ pub fn new_map_observer(
     mut texture_store: ResMut<TextureStore>,
     mut font_store: NonSendMut<FontStore>,
     mut anim_store: ResMut<AnimationStore>,
+    mut raylib: RaylibAccess,
+    config: Res<GameConfig>,
 ) {
     texture_store.map.clear();
     texture_store.paths.clear();
@@ -140,6 +148,8 @@ pub fn new_map_observer(
         &mut app_state,
         default_map,
     );
+    world_signals.remove_string(sig::MAP_CURRENT_PATH);
+    sync_window_title(&mut raylib, &config.window_title);
     info!("new_map_observer: cleared map");
 }
 
@@ -153,6 +163,7 @@ pub fn load_map_observer(
     mut texture_store: ResMut<TextureStore>,
     mut font_store: NonSendMut<FontStore>,
     mut anim_store: ResMut<AnimationStore>,
+    mut raylib: RaylibAccess,
 ) {
     let path = &trigger.event().path;
     let map = match load_map(path) {
@@ -193,6 +204,8 @@ pub fn load_map_observer(
         });
     }
     commands.trigger(SpawnMapRequested { map });
+    world_signals.set_string(sig::MAP_CURRENT_PATH, path.clone());
+    sync_window_title(&mut raylib, tilemap_stem(path));
     info!("load_map_observer: loaded map from '{}'", path);
 }
 
@@ -360,9 +373,10 @@ fn particle_emitter_to_entry(
 
 pub fn save_map_observer(
     trigger: On<SaveMapRequested>,
+    mut raylib: RaylibAccess,
     mut map_data: ResMut<MapData>,
     map_entities: MapEntitiesQuery,
-    world_signals: Res<WorldSignals>,
+    mut world_signals: ResMut<WorldSignals>,
 ) {
     sync_map_entities(&mut map_data, &map_entities, &world_signals);
 
@@ -370,6 +384,8 @@ pub fn save_map_observer(
     if let Err(e) = save_map(path, &map_data) {
         warn!("save_map_observer: failed to save '{}': {}", path, e);
     } else {
+        world_signals.set_string(sig::MAP_CURRENT_PATH, path.clone());
+        sync_window_title(&mut raylib, tilemap_stem(path));
         info!("save_map_observer: saved map to '{}'", path);
     }
 }

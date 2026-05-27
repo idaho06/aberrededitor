@@ -12,8 +12,7 @@
 //! - A worker thread awaits that future with a small `futures` executor and sends the result
 //!   back through a `crossbeam-channel` receiver.
 //! - [`poll_async_dialogs`] runs every frame, drains any completed result, normalizes paths via
-//!   `to_relative()`, updates `WorldSignals` when necessary, and triggers the same domain
-//!   events that the old blocking flow used.
+//!   `to_relative()`, and triggers the same domain events that the old blocking flow used.
 //!
 //! The bridge is intentionally narrow: it handles only native file picker orchestration.
 //! Map loading, saving, texture/font insertion, and tilemap loading still happen in their
@@ -25,15 +24,13 @@
 //! - Canceling a dialog yields `None` and is treated as a no-op.
 //! - Clearing the bridge on scene exit drops the receiver so a late completion is ignored
 //!   instead of mutating editor state after the scene is gone.
-use crate::signals as sig;
 use crate::systems::map_ops::{
     AddFontRequested, AddTextureRequested, LoadMapRequested, SaveMapRequested,
 };
 use crate::systems::tilemap_load::LoadTilemapRequested;
 use crate::systems::utils::to_relative;
-use aberredengine::bevy_ecs::prelude::{Commands, Res, ResMut};
+use aberredengine::bevy_ecs::prelude::{Commands, Res};
 use aberredengine::resources::appstate::AppState;
-use aberredengine::resources::worldsignals::WorldSignals;
 use crossbeam_channel::{self, Receiver, TryRecvError};
 use log::{debug, warn};
 use std::future::Future;
@@ -47,9 +44,9 @@ use std::sync::Mutex;
 /// `LoadMapRequested` or `AddTextureRequested`.
 #[derive(Debug)]
 pub enum AsyncFileDialogRequest {
-    /// Pick a `.map` file to load and update `MAP_CURRENT_PATH` on success.
+    /// Pick a `.map` file to load.
     OpenMap,
-    /// Pick a `.map` output path and update `MAP_CURRENT_PATH` on success.
+    /// Pick a `.map` output path to save.
     SaveMapAs,
     /// Pick a folder to load as a tilemap root.
     LoadTilemapFolder,
@@ -141,7 +138,6 @@ pub fn clear_async_dialog(app_state: &AppState) {
 /// events the editor used before the async migration.
 pub fn poll_async_dialogs(
     mut commands: Commands,
-    mut world_signals: ResMut<WorldSignals>,
     app_state: Res<AppState>,
 ) {
     let Some(result) = drain_completed(&app_state) else {
@@ -151,12 +147,10 @@ pub fn poll_async_dialogs(
     match result {
         AsyncFileDialogResult::OpenMap { path } => {
             let path = to_relative(&path);
-            world_signals.set_string(sig::MAP_CURRENT_PATH, path.clone());
             commands.trigger(LoadMapRequested { path });
         }
         AsyncFileDialogResult::SaveMapAs { path } => {
             let path = to_relative(&path);
-            world_signals.set_string(sig::MAP_CURRENT_PATH, path.clone());
             commands.trigger(SaveMapRequested { path });
         }
         AsyncFileDialogResult::LoadTilemapFolder { path } => {
