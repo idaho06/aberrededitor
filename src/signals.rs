@@ -29,6 +29,9 @@ pub const EDITOR_CAMERA: &str = "editor:camera";
 // ---- Map file path ----
 pub const MAP_CURRENT_PATH: &str = "map:current_path";
 
+// ---- Application lifecycle actions ----
+pub const ACTION_QUIT: &str = "gui:action:quit";
+
 // ---- File menu actions ----
 pub const ACTION_FILE_NEW_MAP: &str = "gui:action:file:new_map";
 pub const ACTION_FILE_OPEN_MAP: &str = "gui:action:file:open_map";

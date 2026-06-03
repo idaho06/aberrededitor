@@ -201,7 +201,7 @@ pub(super) fn draw_quit_modal(ui: &imgui::Ui, signals: &mut WorldSignals) {
             ui.text("Remember to save before exit! See you soon!");
             ui.separator();
             if ui.button("Bye!") {
-                signals.set_flag("quit_game");
+                signals.set_flag(sig::ACTION_QUIT);
                 ui.close_current_popup();
             }
             ui.same_line();

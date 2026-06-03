@@ -54,11 +54,12 @@ pub fn load_assets(
     let (rl, th) = (&mut *raylib.rl, &*raylib.th);
 
     let mut load_shader = |name: &str, src: &str| {
-        let shader = rl.load_shader_from_memory(th, None, Some(src));
-        if shader.is_shader_valid() {
-            shaders.add(name, shader);
-        } else {
-            log::warn!("load_assets: {} shader failed validation", name);
+        match rl.load_shader_from_memory(th, None, Some(src)) {
+            Ok(shader) if shader.is_shader_valid() => {
+                shaders.add(name, shader);
+            }
+            Ok(_) => log::warn!("load_assets: {} shader failed validation", name),
+            Err(e) => log::warn!("load_assets: {} shader load error: {}", name, e),
         }
     };
     load_shader("glitch", SHADER_GLITCH_SRC);

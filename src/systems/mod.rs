@@ -20,6 +20,7 @@ pub mod file_dialogs;
 pub mod group_selector;
 pub mod load_assets;
 pub mod map_ops;
+pub mod quit;
 pub mod template_selector;
 pub mod tilemap_load;
 pub mod utils;

@@ -30,7 +30,8 @@ fn main() -> Result<(), String> {
         .add_system(systems::camera_sync::editor_camera_sync_system)
         .add_system(systems::editor_camera::editor_camera_system)
         .add_system(systems::file_dialogs::poll_async_dialogs)
-        .add_system(systems::group_selector::update_group_cache);
+        .add_system(systems::group_selector::update_group_cache)
+        .add_system(systems::quit::quit_handler);
 
     systems::tilemap_load::register(b)
         .add_system(systems::template_selector::update_template_cache)
