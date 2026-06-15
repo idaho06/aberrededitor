@@ -162,6 +162,7 @@ pub fn poll_async_dialogs(
             commands.trigger(AddTextureRequested {
                 key,
                 path: to_relative(&path),
+                filter: None,
             });
         }
         AsyncFileDialogResult::AddFont {

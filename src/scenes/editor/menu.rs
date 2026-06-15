@@ -17,6 +17,7 @@ use aberredengine::resources::worldsignals::WorldSignals;
 pub(super) struct MenuActions {
     pub open_about: bool,
     pub open_grid_preferences: bool,
+    pub open_render_preferences: bool,
     pub open_quit: bool,
 }
 
@@ -28,6 +29,7 @@ pub(super) fn draw_menu_bar(
     let mut actions = MenuActions {
         open_about: false,
         open_grid_preferences: false,
+        open_render_preferences: false,
         open_quit: false,
     };
     let active_tool = current_tool(app_state);
@@ -150,11 +152,14 @@ pub(super) fn draw_menu_bar(
             }
         }
 
-        if let Some(_preferences) = ui.begin_menu("Preferences")
-            && ui.menu_item("Grid")
-        {
-            prepare_grid_preferences(app_state);
-            actions.open_grid_preferences = true;
+        if let Some(_preferences) = ui.begin_menu("Preferences") {
+            if ui.menu_item("Grid") {
+                prepare_grid_preferences(app_state);
+                actions.open_grid_preferences = true;
+            }
+            if ui.menu_item("Render") {
+                actions.open_render_preferences = true;
+            }
         }
 
         if let Some(_selection) = ui.begin_menu("Selection") {

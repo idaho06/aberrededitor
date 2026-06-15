@@ -8,6 +8,7 @@
 use super::texture_viewer_panel::open_texture_viewer;
 use crate::signals as sig;
 use aberredengine::imgui;
+use aberredengine::resources::texturefilter::TextureFilter;
 use aberredengine::resources::texturestore::TextureStore;
 use aberredengine::resources::worldsignals::WorldSignals;
 
@@ -79,6 +80,28 @@ pub(super) fn draw_texture_editor(
                             if ui.small_button("Remove") {
                                 signals.set_string(sig::TEX_REMOVE_KEY, key.as_str());
                                 open_remove_popup = true;
+                            }
+
+                            ui.text("Filter:");
+                            ui.same_line();
+                            let filter_options = TextureFilter::ALL.map(TextureFilter::as_str);
+                            let current_filter = textures.filter(key.as_str()).as_str();
+                            let mut filter_idx = filter_options
+                                .iter()
+                                .position(|f| *f == current_filter)
+                                .unwrap_or(0);
+                            ui.set_next_item_width(-1.0);
+                            if ui.combo_simple_string(
+                                "##filter",
+                                &mut filter_idx,
+                                &filter_options,
+                            ) {
+                                signals.set_string(sig::TEX_FILTER_CHANGE_KEY, key.as_str());
+                                signals.set_string(
+                                    sig::TEX_FILTER_CHANGE_VALUE,
+                                    filter_options[filter_idx],
+                                );
+                                signals.set_flag(sig::ACTION_TEXTURE_CHANGE_FILTER);
                             }
                         });
                     }

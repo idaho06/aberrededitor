@@ -24,6 +24,7 @@ fn main() -> Result<(), String> {
     let b = systems::map_ops::register(b);
     let b = systems::entity_selector::register(b);
     let b = systems::entity_edit::register(b);
+    let b = systems::render_prefs::register(b);
     let b = b
         .configure_schedule(systems::window_resize::configure_resize_schedule)
         .add_system(systems::animation_store_sync::animation_store_sync_system)

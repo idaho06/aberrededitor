@@ -48,6 +48,7 @@ use aberredengine::resources::mapdata::{
     AnimationEntry, DynamicTextEntry, EntityDef, FontEntry, MapData, ParticleEmitterEntry,
     ParticleEmitterShapeEntry, ParticleEmitterTtlEntry, TextureEntry, load_map, save_map,
 };
+use aberredengine::resources::texturefilter::TextureFilter;
 use aberredengine::resources::texturestore::TextureStore;
 use aberredengine::resources::worldsignals::WorldSignals;
 use aberredengine::systems::RaylibAccess;
@@ -110,6 +111,7 @@ pub fn register(builder: EngineBuilder) -> EngineBuilder {
         .add_observer(add_texture_observer)
         .add_observer(rename_texture_key_observer)
         .add_observer(remove_texture_observer)
+        .add_observer(change_texture_filter_observer)
         .add_observer(add_font_observer)
         .add_observer(rename_font_key_observer)
         .add_observer(remove_font_observer)
@@ -194,6 +196,7 @@ pub fn load_map_observer(
         commands.trigger(AddTextureRequested {
             key: tex.key.clone(),
             path: tex.path.clone(),
+            filter: tex.filter.clone(),
         });
     }
     for font in &map.fonts {
@@ -451,6 +454,9 @@ pub struct AddTextureRequested {
     pub key: String,
     /// Relative-to-CWD path (converted via `to_relative` before triggering).
     pub path: String,
+    /// Texture sampling filter: "nearest" (default), "bilinear", "trilinear",
+    /// "anisotropic_4x", "anisotropic_8x", or "anisotropic_16x".
+    pub filter: Option<String>,
 }
 
 /// Rename a texture key in `TextureStore`, `TextureStore.paths`, and `MapData.textures`.
@@ -466,6 +472,16 @@ pub struct RemoveTextureRequested {
     pub key: String,
 }
 
+/// Change the sampling filter of an already-loaded texture in `TextureStore` and
+/// `MapData.textures`.
+#[derive(Event)]
+pub struct ChangeTextureFilterRequested {
+    pub key: String,
+    /// Texture sampling filter: "nearest", "bilinear", "trilinear",
+    /// "anisotropic_4x", "anisotropic_8x", or "anisotropic_16x".
+    pub filter: String,
+}
+
 pub fn add_texture_observer(
     trigger: On<AddTextureRequested>,
     mut raylib: RaylibAccess,
@@ -474,6 +490,7 @@ pub fn add_texture_observer(
 ) {
     let key = &trigger.event().key;
     let path = &trigger.event().path;
+    let filter_str = &trigger.event().filter;
     if texture_store.map.contains_key(key.as_str()) {
         return;
     }
@@ -482,12 +499,13 @@ pub fn add_texture_observer(
         Ok(texture) => {
             let rel_path = to_relative(path);
             info!("add_texture_observer: added '{}' from '{}'", key, rel_path);
-            texture_store.insert(key, texture);
-            texture_store.paths.insert(key.clone(), rel_path.clone());
+            let filter = TextureFilter::from_opt_str_or_warn(filter_str.as_deref(), key);
+            texture_store.insert(key, texture, filter, Some(rel_path.clone()));
             if !map_data.textures.iter().any(|e| e.key == *key) {
                 map_data.textures.push(TextureEntry {
                     key: key.clone(),
                     path: rel_path,
+                    filter: filter_str.clone(),
                 });
             }
         }
@@ -514,11 +532,10 @@ pub fn rename_texture_key_observer(
         );
         return;
     }
+    let filter = texture_store.filter(old_key.as_str());
+    let path = texture_store.paths.get(old_key.as_str()).cloned();
     if let Some(texture) = texture_store.remove(old_key.as_str()) {
-        texture_store.insert(new_key, texture);
-        if let Some(p) = texture_store.paths.remove(old_key.as_str()) {
-            texture_store.paths.insert(new_key.clone(), p);
-        }
+        texture_store.insert(new_key, texture, filter, path);
     } else {
         warn!(
             "rename_texture_key_observer: key '{}' not found in TextureStore",
@@ -544,9 +561,32 @@ pub fn remove_texture_observer(
 ) {
     let key = &trigger.event().key;
     texture_store.remove(key.as_str());
-    texture_store.paths.remove(key.as_str());
     map_data.textures.retain(|e| e.key != *key);
     info!("remove_texture_observer: removed '{}'", key);
+}
+
+pub fn change_texture_filter_observer(
+    trigger: On<ChangeTextureFilterRequested>,
+    mut texture_store: ResMut<TextureStore>,
+    mut map_data: ResMut<MapData>,
+) {
+    let key = &trigger.event().key;
+    let filter_str = &trigger.event().filter;
+    let filter = TextureFilter::from_opt_str_or_warn(Some(filter_str.as_str()), key);
+    if !texture_store.set_filter(key.as_str(), filter) {
+        warn!(
+            "change_texture_filter_observer: key '{}' not found in TextureStore",
+            key
+        );
+        return;
+    }
+    if let Some(entry) = map_data.textures.iter_mut().find(|e| e.key == *key) {
+        entry.filter = Some(filter_str.clone());
+    }
+    info!(
+        "change_texture_filter_observer: set filter of '{}' to '{}'",
+        key, filter_str
+    );
 }
 
 // ---------------------------------------------------------------------------

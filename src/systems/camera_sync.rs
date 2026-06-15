@@ -3,9 +3,16 @@
 //! Writes camera target, zoom, rotation, offset, render size, and letterbox parameters every
 //! frame so editor systems and GUI overlays can convert between render, world, and window-space
 //! coordinates.
+//!
+//! Also mirrors `GameConfig.pixel_snap_camera` into `render_prefs::RenderPrefsMutex` (in
+//! `AppState`) whenever `GameConfig` changes, so the Render Preferences modal can display it.
 use crate::signals as sig;
+use crate::systems::render_prefs::RenderPrefsMutex;
+use aberredengine::bevy_ecs::change_detection::DetectChanges;
 use aberredengine::bevy_ecs::prelude::{Res, ResMut};
+use aberredengine::resources::appstate::AppState;
 use aberredengine::resources::camera2d::Camera2DRes;
+use aberredengine::resources::gameconfig::GameConfig;
 use aberredengine::resources::screensize::ScreenSize;
 use aberredengine::resources::windowsize::WindowSize;
 use aberredengine::resources::worldsignals::WorldSignals;
@@ -17,6 +24,8 @@ pub fn editor_camera_sync_system(
     camera: Res<Camera2DRes>,
     screen: Res<ScreenSize>,
     window: Res<WindowSize>,
+    config: Res<GameConfig>,
+    app_state: Res<AppState>,
     mut signals: ResMut<WorldSignals>,
 ) {
     let lb = window.calculate_letterbox(screen.w as u32, screen.h as u32);
@@ -33,4 +42,10 @@ pub fn editor_camera_sync_system(
     signals.set_scalar(sig::WIN_SCALE, lb_scale);
     signals.set_scalar(sig::WIN_OFFSET_X, lb.x);
     signals.set_scalar(sig::WIN_OFFSET_Y, lb.y);
+
+    if config.is_changed()
+        && let Some(mutex) = app_state.get::<RenderPrefsMutex>()
+    {
+        *mutex.lock().unwrap() = config.pixel_snap_camera;
+    }
 }

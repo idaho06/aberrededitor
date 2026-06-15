@@ -19,6 +19,7 @@ use crate::systems::entity_selector::{
 };
 use crate::systems::file_dialogs::{AsyncFileDialogMutex, AsyncFileDialogState};
 use crate::systems::group_selector::{GroupListCache, GroupListMutex};
+use crate::systems::render_prefs::RenderPrefsMutex;
 use crate::systems::template_selector::{TemplateSelectorCache, TemplateSelectorMutex};
 use crate::systems::tilemap_load::{PendingLuaSetupLoadMutex, PendingLuaSetupLoadState};
 use aberredengine::bevy_ecs::prelude::{Commands, NonSendMut, ResMut};
@@ -28,6 +29,7 @@ use aberredengine::resources::gameconfig::GameConfig;
 use aberredengine::resources::gamestate::{GameStates, NextGameState};
 use aberredengine::resources::mapdata::MapData;
 use aberredengine::resources::shaderstore::ShaderStore;
+use aberredengine::resources::texturefilter::TextureFilter;
 use aberredengine::resources::texturestore::TextureStore;
 use aberredengine::systems::RaylibAccess;
 use log::info;
@@ -71,7 +73,12 @@ pub fn load_assets(
     let texture = rl
         .load_texture_from_image(th, &image)
         .expect("Failed to upload embedded texture");
-    texture_store.insert("aberred_engine_isometric_alpha", texture);
+    texture_store.insert(
+        "aberred_engine_isometric_alpha",
+        texture,
+        TextureFilter::Nearest,
+        None,
+    );
     commands.insert_resource(texture_store);
     commands.insert_resource(MapData::default());
     app_state.insert(RenderableSelectorMutex::new(
@@ -92,6 +99,7 @@ pub fn load_assets(
     commands.insert_resource(EditorState::default());
     app_state.insert(PendingMutex::new(PendingEditState::default()));
     app_state.insert(MapPropertiesMutex::new(Default::default()));
+    app_state.insert(RenderPrefsMutex::new(config.pixel_snap_camera));
 
     next_state.set(GameStates::Playing);
 }

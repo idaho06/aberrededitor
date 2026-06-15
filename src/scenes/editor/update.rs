@@ -27,8 +27,9 @@ use super::multi_entity_selector_panel::{
     draw_multi_entity_selector, draw_multi_entity_selector_modals,
 };
 use super::overlay::{
-    GRID_PREFERENCES_POPUP_ID, corners_aabb, draw_grid_preferences_modal,
-    draw_selection_drag_overlay, render_to_world,
+    GRID_PREFERENCES_POPUP_ID, RENDER_PREFERENCES_POPUP_ID, corners_aabb,
+    draw_grid_preferences_modal, draw_render_preferences_modal, draw_selection_drag_overlay,
+    render_to_world,
 };
 use super::template_browser_panel::draw_template_browser;
 use super::texture_panel::{draw_texture_editor, draw_texture_modals};
@@ -51,10 +52,12 @@ use crate::systems::entity_selector::{
 };
 use crate::systems::file_dialogs::{AsyncFileDialogRequest, request_async_dialog};
 use crate::systems::map_ops::{
-    AddAnimationRequested, NewMapRequested, PreviewMapDataRequested, RemoveAnimationRequested,
-    RemoveTextureRequested, RenameAnimationKeyRequested, RenameTextureKeyRequested,
-    SaveMapRequested, UpdateAnimationResourceRequested, UpdateMapMetadataRequested,
+    AddAnimationRequested, ChangeTextureFilterRequested, NewMapRequested,
+    PreviewMapDataRequested, RemoveAnimationRequested, RemoveTextureRequested,
+    RenameAnimationKeyRequested, RenameTextureKeyRequested, SaveMapRequested,
+    UpdateAnimationResourceRequested, UpdateMapMetadataRequested,
 };
+use crate::systems::render_prefs::TogglePixelSnapCameraRequested;
 use aberredengine::events::switchdebug::SwitchDebugEvent;
 use aberredengine::imgui;
 use aberredengine::resources::appstate::AppState;
@@ -193,6 +196,9 @@ pub fn editor_gui(
     if menu_actions.open_grid_preferences {
         ui.open_popup(GRID_PREFERENCES_POPUP_ID);
     }
+    if menu_actions.open_render_preferences {
+        ui.open_popup(RENDER_PREFERENCES_POPUP_ID);
+    }
     if open_delete_popup {
         ui.open_popup("Delete Entity##entity_editor");
     }
@@ -209,6 +215,7 @@ pub fn editor_gui(
     draw_about_modal(ui);
     draw_quit_modal(ui, signals);
     draw_grid_preferences_modal(ui, app_state);
+    draw_render_preferences_modal(ui, signals, app_state);
     draw_multi_entity_selector_modals(ui, app_state);
     draw_entity_delete_modal(ui, app_state);
     draw_selection_drag_overlay(ui, signals, app_state);
@@ -407,6 +414,21 @@ fn handle_texture_actions(ctx: &mut GameCtx) {
             request_async_dialog(&ctx.app_state, AsyncFileDialogRequest::AddTexture { key });
         }
     }
+
+    if ctx.world_signals.take_flag(sig::ACTION_TEXTURE_CHANGE_FILTER) {
+        let key = ctx
+            .world_signals
+            .get_string(sig::TEX_FILTER_CHANGE_KEY)
+            .map(|s| s.to_owned());
+        let filter = ctx
+            .world_signals
+            .get_string(sig::TEX_FILTER_CHANGE_VALUE)
+            .map(|s| s.to_owned());
+        if let (Some(key), Some(filter)) = (key, filter) {
+            ctx.commands
+                .trigger(ChangeTextureFilterRequested { key, filter });
+        }
+    }
 }
 
 fn handle_font_actions(ctx: &mut GameCtx) {
@@ -465,6 +487,13 @@ fn handle_view_actions(ctx: &mut GameCtx) {
         .take_flag(sig::ACTION_VIEW_PREVIEW_MAPDATA)
     {
         ctx.commands.trigger(PreviewMapDataRequested);
+    }
+
+    if ctx
+        .world_signals
+        .take_flag(sig::ACTION_RENDER_TOGGLE_PIXEL_SNAP)
+    {
+        ctx.commands.trigger(TogglePixelSnapCameraRequested);
     }
 }
 

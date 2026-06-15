@@ -54,11 +54,14 @@ pub const TEX_ADD_KEY_BUF: &str = "gui:texture_editor:add_key_buf";
 pub const TEX_RENAME_SRC: &str = "gui:texture_editor:rename_src";
 pub const TEX_RENAME_BUF: &str = "gui:texture_editor:rename_buf";
 pub const TEX_REMOVE_KEY: &str = "gui:texture_editor:remove_key";
+pub const TEX_FILTER_CHANGE_KEY: &str = "gui:texture_editor:filter_change_key";
+pub const TEX_FILTER_CHANGE_VALUE: &str = "gui:texture_editor:filter_change_value";
 
 // ---- Texture editor actions ----
 pub const ACTION_TEXTURE_ADD_BROWSE: &str = "gui:action:texture:add_browse";
 pub const ACTION_TEXTURE_RENAME: &str = "gui:action:texture:rename";
 pub const ACTION_TEXTURE_REMOVE: &str = "gui:action:texture:remove";
+pub const ACTION_TEXTURE_CHANGE_FILTER: &str = "gui:action:texture:change_filter";
 
 // ---- Font store editor ----
 pub const UI_FONT_STORE_OPEN: &str = "ui:font_store:open";
@@ -94,6 +97,9 @@ pub const ACTION_ANIM_UPDATE: &str = "gui:action:anim:update";
 // ---- Map data preview ----
 pub const MAPDATA_PREVIEW_JSON: &str = "gui:mapdata_preview_json";
 pub const UI_PREVIEW_MAPDATA_OPEN: &str = "gui:view:preview_mapdata_open";
+
+// ---- Render preferences ----
+pub const ACTION_RENDER_TOGGLE_PIXEL_SNAP: &str = "gui:action:render:toggle_pixel_snap";
 
 // ---- Entity selector ----
 pub const UI_ENTITY_SELECTOR_OPEN: &str = "ui:entity_selector:open";

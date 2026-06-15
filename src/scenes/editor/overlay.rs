@@ -8,6 +8,7 @@ use super::current_selection_drag;
 use crate::editor_types::SelectionCorners;
 use crate::signals as sig;
 use crate::systems::entity_selector::MultiEntitySelectionMutex;
+use crate::systems::render_prefs::RenderPrefsMutex;
 use aberredengine::imgui;
 use aberredengine::raylib::prelude::{Camera2D, Color, Vector2};
 use aberredengine::resources::appstate::AppState;
@@ -17,6 +18,7 @@ use aberredengine::systems::scene_dispatch::WorldDraw;
 use log::trace;
 
 pub(super) const GRID_PREFERENCES_POPUP_ID: &str = "Grid Preferences##overlay";
+pub(super) const RENDER_PREFERENCES_POPUP_ID: &str = "Render Preferences##overlay";
 const ORIGIN_AXIS_COLOR: Color = Color {
     r: 178,
     g: 178,
@@ -269,6 +271,34 @@ pub(super) fn draw_grid_preferences_modal(ui: &imgui::Ui, app_state: &AppState) 
             ui.same_line();
             if ui.button("Cancel##grid_preferences_cancel") {
                 state.grid_draft = state.grid;
+                ui.close_current_popup();
+            }
+        });
+}
+
+pub(super) fn draw_render_preferences_modal(
+    ui: &imgui::Ui,
+    signals: &mut WorldSignals,
+    app_state: &AppState,
+) {
+    ui.modal_popup_config(RENDER_PREFERENCES_POPUP_ID)
+        .always_auto_resize(true)
+        .resizable(false)
+        .movable(false)
+        .build(|| {
+            let mut pixel_snap = *app_state
+                .get::<RenderPrefsMutex>()
+                .expect("RenderPrefsMutex not in AppState")
+                .lock()
+                .unwrap();
+            if ui.checkbox("Snap camera to pixels", &mut pixel_snap) {
+                signals.set_flag(sig::ACTION_RENDER_TOGGLE_PIXEL_SNAP);
+            }
+            ui.text_disabled("Reduces sprite atlas bleeding; disable for smooth rotation/zoom.");
+
+            ui.spacing();
+            ui.separator();
+            if ui.button("Close##render_preferences_close") {
                 ui.close_current_popup();
             }
         });

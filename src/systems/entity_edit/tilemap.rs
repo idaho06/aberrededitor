@@ -126,6 +126,7 @@ pub fn bake_tilemap_observer(
         map_data.textures.push(TextureEntry {
             key: stem.to_string(),
             path: tilemap_tex_path(&tilemap_path, stem),
+            filter: None,
         });
     }
 
