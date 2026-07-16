@@ -26,7 +26,7 @@ fn main() -> Result<(), String> {
     let b = systems::entity_edit::register(b);
     let b = systems::render_prefs::register(b);
     let b = b
-        .configure_schedule(systems::window_resize::configure_resize_schedule)
+        .add_observer(systems::window_resize::on_window_resized)
         .add_system(systems::animation_store_sync::animation_store_sync_system)
         .add_system(systems::camera_sync::editor_camera_sync_system)
         .add_system(systems::editor_camera::editor_camera_system)

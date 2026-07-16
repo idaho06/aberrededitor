@@ -45,7 +45,7 @@ pub struct EditorToolState {
 }
 
 /// `AppState` key for active editor tool state.
-pub type EditorToolMutex = std::sync::Mutex<EditorToolState>;
+pub type EditorToolMutex = std::sync::Arc<std::sync::Mutex<EditorToolState>>;
 
 fn lock_mode_state(app_state: &AppState) -> std::sync::MutexGuard<'_, EditorToolState> {
     app_state

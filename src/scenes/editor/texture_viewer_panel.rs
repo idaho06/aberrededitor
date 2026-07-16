@@ -9,9 +9,10 @@
 //! raw `.id` field. See `docs/architecture.md` for the full explanation.
 use crate::signals as sig;
 use aberredengine::imgui;
-use aberredengine::resources::fontstore::FontStore;
-use aberredengine::resources::texturestore::TextureStore;
-use aberredengine::resources::worldsignals::WorldSignals;
+use aberredengine::resources::render::fontstore::FontStore;
+use aberredengine::resources::render::texturestore::TextureStore;
+use aberredengine::resources::signal_intents::SignalIntents;
+use aberredengine::resources::worldsignals::SignalSnapshot;
 
 const CHECKER_TILE_SIZE: f32 = 16.0;
 const CHECKER_LIGHT: [f32; 4] = [0.40, 0.40, 0.40, 1.0];
@@ -24,28 +25,31 @@ struct ResolvedViewerTexture {
     path: String,
 }
 
-pub(super) fn open_texture_viewer(signals: &mut WorldSignals, kind: &str, key: &str) {
-    signals.set_string(sig::TEXTURE_VIEWER_SOURCE_KIND, kind);
-    signals.set_string(sig::TEXTURE_VIEWER_SOURCE_KEY, key);
-    signals.set_flag(sig::UI_TEXTURE_VIEWER_OPEN);
+pub(super) fn open_texture_viewer(intents: &mut SignalIntents, kind: &str, key: &str) {
+    intents.set_string(sig::TEXTURE_VIEWER_SOURCE_KIND, kind);
+    intents.set_string(sig::TEXTURE_VIEWER_SOURCE_KEY, key);
+    intents.set_flag(sig::UI_TEXTURE_VIEWER_OPEN);
 }
 
 pub(super) fn draw_texture_viewer(
     ui: &imgui::Ui,
-    signals: &mut WorldSignals,
+    signals: &SignalSnapshot,
+    intents: &mut SignalIntents,
     textures: &TextureStore,
     fonts: &FontStore,
 ) {
-    if !signals.has_flag(sig::UI_TEXTURE_VIEWER_OPEN) {
+    if !signals.flags.contains(sig::UI_TEXTURE_VIEWER_OPEN) {
         return;
     }
 
     let mut window_open = true;
     let source_kind = signals
-        .get_string(sig::TEXTURE_VIEWER_SOURCE_KIND)
+        .strings
+        .get(sig::TEXTURE_VIEWER_SOURCE_KIND)
         .map(String::as_str);
     let source_key = signals
-        .get_string(sig::TEXTURE_VIEWER_SOURCE_KEY)
+        .strings
+        .get(sig::TEXTURE_VIEWER_SOURCE_KEY)
         .map(String::as_str)
         .unwrap_or("");
 
@@ -80,7 +84,7 @@ pub(super) fn draw_texture_viewer(
         });
 
     if !window_open {
-        signals.take_flag(sig::UI_TEXTURE_VIEWER_OPEN);
+        intents.clear_flag(sig::UI_TEXTURE_VIEWER_OPEN);
     }
 }
 

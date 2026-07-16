@@ -4,7 +4,7 @@ use crate::signals as sig;
 use crate::systems::entity_edit::{RemoveParticleEmitterRequested, UpdateParticleEmitterRequested};
 use aberredengine::bevy_ecs::prelude::Entity;
 use aberredengine::imgui;
-use aberredengine::resources::worldsignals::WorldSignals;
+use aberredengine::resources::worldsignals::SignalSnapshot;
 use aberredengine::systems::GameCtx;
 use log::warn;
 
@@ -43,7 +43,7 @@ pub(crate) fn draw_section(
     ui: &imgui::Ui,
     snap: &ComponentSnapshot,
     p: &mut PendingParticleEmitter,
-    signals: &WorldSignals,
+    signals: &SignalSnapshot,
 ) {
     let Some(ref pe) = snap.particle_emitter else {
         return;

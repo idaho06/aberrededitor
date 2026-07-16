@@ -131,7 +131,7 @@ pub struct RenderableSelectorCache {
 }
 
 /// `AppState` key for the selector hit-list cache. Acquired via `app_state.get::<RenderableSelectorMutex>()`.
-pub type RenderableSelectorMutex = std::sync::Mutex<RenderableSelectorCache>;
+pub type RenderableSelectorMutex = std::sync::Arc<std::sync::Mutex<RenderableSelectorCache>>;
 
 /// Cached multi-selection result set for the dedicated multi-entity UI.
 #[derive(Default)]
@@ -146,7 +146,7 @@ pub struct MultiEntitySelectionCache {
 }
 
 /// `AppState` key for the multi-selection result cache.
-pub type MultiEntitySelectionMutex = std::sync::Mutex<MultiEntitySelectionCache>;
+pub type MultiEntitySelectionMutex = std::sync::Arc<std::sync::Mutex<MultiEntitySelectionCache>>;
 
 /// Transient modal buffers and pending apply requests for multi-selection bulk edits.
 #[derive(Default)]

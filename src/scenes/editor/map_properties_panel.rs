@@ -3,7 +3,8 @@ use crate::signals as sig;
 use aberredengine::imgui;
 use aberredengine::resources::appstate::AppState;
 use aberredengine::resources::mapdata::MapData;
-use aberredengine::resources::worldsignals::WorldSignals;
+use aberredengine::resources::signal_intents::SignalIntents;
+use aberredengine::resources::worldsignals::SignalSnapshot;
 use std::sync::{Arc, Mutex};
 
 #[derive(Default)]
@@ -42,10 +43,11 @@ pub type MapPropertiesMutex = Arc<Mutex<MapPropertiesState>>;
 
 pub fn draw_map_properties_panel(
     ui: &imgui::Ui,
-    signals: &mut WorldSignals,
+    signals: &SignalSnapshot,
+    intents: &mut SignalIntents,
     app_state: &AppState,
 ) {
-    if !signals.has_flag(sig::UI_MAP_PROPERTIES_OPEN) {
+    if !signals.flags.contains(sig::UI_MAP_PROPERTIES_OPEN) {
         return;
     }
     let Some(mutex) = app_state.get::<MapPropertiesMutex>() else {
@@ -132,11 +134,11 @@ pub fn draw_map_properties_panel(
             ui.separator();
 
             if ui.button("Apply") {
-                signals.set_flag(sig::ACTION_MAP_PROPERTIES_APPLY);
+                intents.set_flag(sig::ACTION_MAP_PROPERTIES_APPLY);
             }
         });
 
     if !window_open {
-        signals.take_flag(sig::UI_MAP_PROPERTIES_OPEN);
+        intents.clear_flag(sig::UI_MAP_PROPERTIES_OPEN);
     }
 }

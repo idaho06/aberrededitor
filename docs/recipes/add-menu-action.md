@@ -22,17 +22,17 @@ In `src/scenes/editor/menu.rs`, inside `draw_menu_bar`, add to the appropriate m
 // Inside ui.menu("View") { ... }
 ui.separator();
 if ui.menu_item("My Feature") {
-    signals.set_flag(sig::ACTION_MY_FEATURE);
+    intents.set_flag(sig::ACTION_MY_FEATURE);
 }
 ```
 
-`menu_item` returns `true` when the item is clicked. Setting a flag is the standard way to
-communicate the click back to `editor_update`.
+`menu_item` returns `true` when the item is clicked. Queuing an intent flag is the standard way to
+communicate the click back to `editor_update` (one tick later — see `docs/patterns.md` §1).
 
 If the action is a toggle (like Debug Mode), use:
 ```rust
-if ui.menu_item_config("My Toggle").selected(signals.has_flag(sig::MY_TOGGLE_STATE)).build() {
-    signals.set_flag(sig::ACTION_MY_TOGGLE);
+if ui.menu_item_config("My Toggle").selected(signals.flags.contains(sig::MY_TOGGLE_STATE)).build() {
+    intents.set_flag(sig::ACTION_MY_TOGGLE);
 }
 ```
 

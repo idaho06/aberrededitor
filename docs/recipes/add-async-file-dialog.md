@@ -118,6 +118,9 @@ AsyncFileDialogResult::AddSound { key, volume, path } => {
 This is the place to enforce the relative-path invariant. Do not store absolute paths in
 `MapData`, `TextureStore`, `FontStore`, or any other persistent state.
 
+In the current editor this normalization happens in `poll_async_dialogs()` itself, not in
+`editor_update()` and not inside `build_dialog_task()`.
+
 ## 7. Keep loading and saving in observers
 
 The async dialog bridge should not load textures, mutate stores, or write files directly. Keep
@@ -139,6 +142,10 @@ it to another module, remember the two wiring points:
 - Register `poll_async_dialogs()` as a per-frame system in `main.rs`.
 
 Without both, requests will either fail immediately or never complete.
+
+The bridge also assumes one dialog at a time. If you need queueing or visible feedback for a
+suppressed request, build that on top of the existing bridge state instead of spawning multiple
+native dialogs.
 
 ## Verification
 

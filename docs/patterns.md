@@ -1,20 +1,27 @@
 # Design Patterns
 
-Seven recurring patterns appear throughout the codebase. Recognising them makes the code
+Eight recurring patterns appear throughout the codebase. Recognising them makes the code
 predictable; using them correctly when extending keeps the codebase coherent.
 
 ---
 
-## 1. Signal bus (WorldSignals)
+## 1. Signal bus (WorldSignals / SignalSnapshot / SignalIntents)
 
-**Problem:** The GUI callback and ECS observers cannot share mutable references. They need a
-neutral channel to pass flags, values, and entity references between each other.
+**Problem:** The GUI callback (render thread) and ECS observers (logic thread) cannot share
+mutable references across threads. They need a neutral channel to pass flags, values, and entity
+references between each other.
 
-**Solution:** `WorldSignals` is a typed key-value store held as a Bevy resource. The GUI callback
-receives `&mut WorldSignals`; observers receive `ResMut<WorldSignals>`. Both can read and write.
+**Solution:** `WorldSignals` is the live, logic-side typed key-value store (a Bevy resource);
+observers and `editor_update()` read/write it via `ResMut<WorldSignals>` exactly as before. The GUI
+callback, on the render thread, never sees `WorldSignals` directly — it receives a one-tick-stale
+`&SignalSnapshot` (plain field access, no getters: `signals.flags.contains(k)`,
+`signals.scalars.get(k)`) and writes through `&mut SignalIntents` (`intents.set_flag(k)`,
+`intents.set_scalar(k, v)`, `intents.clear_flag(k)`), applied to `WorldSignals` at the start of the
+next logic tick.
 
-**How to recognise it:** Calls to `signals.set_flag(...)`, `signals.take_flag(...)`,
-`signals.get_string(...)`, `ctx.world_signals.get_entity(...)`.
+**How to recognise it:** Logic-side: `ctx.world_signals.take_flag(...)`,
+`ctx.world_signals.set_string(...)`. GUI-side: `signals.flags.contains(sig::MY_FLAG)`,
+`intents.set_flag(sig::MY_FLAG)`.
 
 **How to use in new code:**
 
@@ -24,13 +31,13 @@ receives `&mut WorldSignals`; observers receive `ResMut<WorldSignals>`. Both can
    pub const MY_FEATURE_FLAG: &str = "gui:action:myfeature";
    ```
 
-2. In the GUI panel, set the flag when the user clicks a button:
+2. In the GUI panel, queue the flag when the user clicks a button:
 
    ```rust
-   if ui.button("Do Thing") { signals.set_flag(sig::MY_FEATURE_FLAG); }
+   if ui.button("Do Thing") { intents.set_flag(sig::MY_FEATURE_FLAG); }
    ```
 
-3. In `editor_update()`, consume the flag and trigger an event:
+3. In `editor_update()` (logic thread, one tick later), consume the flag and trigger an event:
 
    ```rust
    if ctx.world_signals.take_flag(sig::MY_FEATURE_FLAG) {
@@ -38,8 +45,10 @@ receives `&mut WorldSignals`; observers receive `ResMut<WorldSignals>`. Both can
    }
    ```
 
-**Key rule:** All signal key strings must be constants in `signals.rs`. Never write raw string
-literals for keys elsewhere in the codebase.
+**Key rules:** All signal key strings must be constants in `signals.rs`. Never write raw string
+literals for keys elsewhere in the codebase. Any panel that sets a flag and expects to see the
+effect the *same* frame will observe a one-tick delay now — this is fine for open-flag-gated
+panels (the common case) but audit any read-after-write pattern you add.
 
 ---
 
@@ -85,20 +94,25 @@ In `src/main.rs`:
 .add_observer(systems::entity_edit::update_my_component_observer)
 ```
 
-**Key rule:** Always re-trigger `InspectEntityRequested` at the end of a component-mutation
-observer so the GUI snapshot is refreshed immediately.
+**Key rule:** Any observer that changes inspector-visible state should re-trigger
+`InspectEntityRequested` (or call the shared helper that does so) before it returns, so the GUI
+snapshot stays authoritative.
 
 ---
 
-## 3. AppState mutex cache
+## 3. AppState `Arc<Mutex<T>>` cache
 
-**Problem:** The GUI callback receives `&AppState` (immutable). It cannot call ECS queries to
-fetch entity data, group lists, or store contents.
+**Problem:** The GUI callback receives `&AppState` — a **clone** taken every frame as part of the
+render thread's `DrawableSnapshot` (`AppState::insert` requires `T: Clone`). It cannot call ECS
+queries to fetch entity data, group lists, or store contents, and a plain `Mutex<T>` wouldn't
+survive being cloned into the snapshot with live data intact.
 
-**Solution:** A per-frame system (or observer) writes data into a `Mutex<T>` stored inside
-`AppState`. The GUI acquires the read lock without needing mutation.
+**Solution:** A per-frame system (or observer) writes data into an `Arc<Mutex<T>>` stored inside
+`AppState`. The `Arc` is what makes the type `Clone` — cloning it just bumps the refcount, so the
+render-side snapshot's copy and the logic-side original share the same `Mutex`-guarded data. The
+GUI acquires the read lock without needing mutation.
 
-**How to recognise it:** `pub type FooMutex = Mutex<FooCache>;` in a systems file; a
+**How to recognise it:** `pub type FooMutex = Arc<Mutex<FooCache>>;` in a systems file; a
 `foo_sync_system` that calls `app_state.get::<FooMutex>()` and populates it; GUI code that
 calls `app_state.get::<FooMutex>().unwrap().lock().unwrap()`.
 
@@ -108,13 +122,13 @@ Define the cache type and alias:
 
 ```rust
 pub struct MyCache { pub items: Vec<String> }
-pub type MyCacheMutex = Mutex<MyCache>;
+pub type MyCacheMutex = std::sync::Arc<std::sync::Mutex<MyCache>>;
 ```
 
 Insert it in `load_assets()`:
 
 ```rust
-app_state.insert(MyCacheMutex::new(MyCache { items: vec![] }));
+app_state.insert(MyCacheMutex::new(std::sync::Mutex::new(MyCache { items: vec![] })));
 ```
 
 Write a sync system:
@@ -140,6 +154,10 @@ if let Some(mutex) = app_state.get::<MyCacheMutex>() {
     for item in &cache.items { ui.text(item); }
 }
 ```
+
+**Key rule:** GUI (render thread) and observers/systems (logic thread) now genuinely contend on
+these mutexes. Keep lock scopes short — never hold a lock across a whole panel draw — and never
+lock two different `AppState` mutexes in inconsistent orders across call sites.
 
 ---
 
@@ -201,12 +219,43 @@ components::my_component::commit(ctx, entity, &snapshot, &p.my_component);
 
 **Key rule:** Reset with `*self = Self::default()` after every commit and on selection change.
 In practice this happens through `clear_entity_editor_pending()` after commit and from the
-selection-change system when the inspected entity changes. Stale pending state will overwrite
-values the user did not intend to change.
+selection-change system when the inspected entity changes. Stale pending state will otherwise
+leak across selections or overwrite values the user did not intend to change.
 
 ---
 
-## 5. ComponentSnapshot serialization
+## 5. Selector caches and multi-selection state
+
+**Problem:** The editor has several selection entry points (click, rectangle, group, registry),
+but the GUI panels need one stable place to read the latest hit list and any bulk-edit buffers.
+
+**Solution:** Normalize every selection source through the observers in
+`src/systems/entity_selector.rs`. Store single-selection results in `RenderableSelectorMutex` and
+multi-selection results in `MultiEntitySelectionMutex`. Both caches carry a `SelectorSource` so
+the GUI can explain where the result set came from, and the multi-selection cache embeds a
+`MultiEntityBulkEditState` for move and Z-index modal buffers.
+
+**How to recognise it:** `PickEntitiesAtPointRequested`, `PickEntitiesInRectRequested`,
+`SelectGroupRequested`, or `SelectRegisteredEntityRequested` events feeding
+`RenderableSelectorCache` / `MultiEntitySelectionCache` in `entity_selector.rs`.
+
+**How to use in new code:**
+
+1. Add a new selection event only if an existing source cannot represent it.
+2. Resolve the event into entities inside `entity_selector.rs`, not in the GUI callback.
+3. Populate the aligned cache fields (`hits`, `labels`, `corner_sets`, and source metadata)
+    under the matching mutex.
+4. If the selection can lead to bulk actions, extend `MultiEntityBulkEditState` rather than
+    inventing a second temporary store.
+5. Trigger `InspectEntityRequested` only for flows that truly collapse to a single selected
+    entity.
+
+**Key rule:** Keep the GUI read-only with respect to selection results. Panels may queue a new
+selection intent, but they should not mutate the selector caches directly.
+
+---
+
+## 6. ComponentSnapshot serialization
 
 **Problem:** The entity editor needs consistent access to all of an entity's component data across
 multiple ImGui frames, but ECS queries cannot run inside the GUI callback.
@@ -245,12 +294,16 @@ in `entity_inspector.rs`; `app_state.get::<ComponentSnapshot>()` in GUI panels.
    if let Some(ref my_snap) = snapshot.my_component { ... }
    ```
 
-**Key rule:** `ComponentSnapshot` stores `entity_bits: u64` instead of `Entity` because `Entity`
-cannot cross the `AppState` boundary safely. Reconstruct with `Entity::from_bits(snapshot.entity_bits)`.
+**Key rules:**
+
+- `ComponentSnapshot` stores `entity_bits: u64` instead of `Entity` because `Entity` cannot cross
+    the `AppState` boundary safely. Reconstruct with `Entity::from_bits(snapshot.entity_bits)`.
+- Keep the `entity_inspect_observer` query tuple and snapshot-population code in lockstep with
+    the fields you add. This is the only place the GUI's read model is assembled.
 
 ---
 
-## 6. MapEntity marker
+## 7. MapEntity marker
 
 **Problem:** The ECS world contains both user-placed map entities and internal editor entities
 (camera, shader nodes, intro screen sprites). Queries for "all entities" would catch internal ones.
@@ -280,7 +333,7 @@ as a filter for serialization.
 
 ---
 
-## 7. Async dialog bridge
+## 8. Async dialog bridge
 
 **Problem:** Native file dialogs are initiated from user actions, but opening them directly in
 `editor_update()` blocks the frame loop. The GUI callback also cannot own them because it should

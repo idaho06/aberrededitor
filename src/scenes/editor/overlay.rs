@@ -13,7 +13,8 @@ use aberredengine::imgui;
 use aberredengine::raylib::prelude::{Camera2D, Color, Vector2};
 use aberredengine::resources::appstate::AppState;
 use aberredengine::resources::screensize::ScreenSize;
-use aberredengine::resources::worldsignals::WorldSignals;
+use aberredengine::resources::signal_intents::SignalIntents;
+use aberredengine::resources::worldsignals::{SignalSnapshot, WorldSignals};
 use aberredengine::systems::scene_dispatch::WorldDraw;
 use log::trace;
 
@@ -86,7 +87,7 @@ impl Default for OverlaySettingsState {
     }
 }
 
-pub(crate) type OverlaySettingsMutex = std::sync::Mutex<OverlaySettingsState>;
+pub(crate) type OverlaySettingsMutex = std::sync::Arc<std::sync::Mutex<OverlaySettingsState>>;
 
 fn lock_overlay_settings(app_state: &AppState) -> std::sync::MutexGuard<'_, OverlaySettingsState> {
     app_state
@@ -135,7 +136,7 @@ pub(crate) fn draw_world_overlays(
     camera: &Camera2D,
     screen: &ScreenSize,
     app_state: &AppState,
-    signals: &WorldSignals,
+    signals: &SignalSnapshot,
 ) {
     let state = lock_overlay_settings(app_state);
     let show_axis = state.show_origin_axis;
@@ -278,7 +279,7 @@ pub(super) fn draw_grid_preferences_modal(ui: &imgui::Ui, app_state: &AppState) 
 
 pub(super) fn draw_render_preferences_modal(
     ui: &imgui::Ui,
-    signals: &mut WorldSignals,
+    intents: &mut SignalIntents,
     app_state: &AppState,
 ) {
     ui.modal_popup_config(RENDER_PREFERENCES_POPUP_ID)
@@ -292,7 +293,7 @@ pub(super) fn draw_render_preferences_modal(
                 .lock()
                 .unwrap();
             if ui.checkbox("Snap camera to pixels", &mut pixel_snap) {
-                signals.set_flag(sig::ACTION_RENDER_TOGGLE_PIXEL_SNAP);
+                intents.set_flag(sig::ACTION_RENDER_TOGGLE_PIXEL_SNAP);
             }
             ui.text_disabled("Reduces sprite atlas bleeding; disable for smooth rotation/zoom.");
 
@@ -313,10 +314,10 @@ fn draw_selection_outline(d: &mut dyn WorldDraw, app_state: &AppState) {
 
 fn draw_multi_entity_outlines(
     d: &mut dyn WorldDraw,
-    signals: &WorldSignals,
+    signals: &SignalSnapshot,
     app_state: &AppState,
 ) {
-    if !signals.has_flag(sig::UI_MULTI_ENTITY_SELECTOR_OPEN) {
+    if !signals.flags.contains(sig::UI_MULTI_ENTITY_SELECTOR_OPEN) {
         return;
     }
     let Some(mutex) = app_state.get::<MultiEntitySelectionMutex>() else {
@@ -345,7 +346,7 @@ fn draw_quad_outline(d: &mut dyn WorldDraw, points: [[f32; 2]; 4]) {
 
 pub(super) fn draw_selection_drag_overlay(
     ui: &imgui::Ui,
-    signals: &WorldSignals,
+    signals: &SignalSnapshot,
     app_state: &AppState,
 ) {
     let Some(drag_rect) = current_selection_drag(app_state) else {
@@ -372,47 +373,34 @@ pub(super) fn draw_selection_drag_overlay(
     side([min_x, max_y], [min_x, min_y]);
 }
 
-struct CameraParams {
-    target_x: f32,
-    target_y: f32,
-    zoom: f32,
-    rotation_rad: f32,
-    offset_x: f32,
-    offset_y: f32,
-}
+/// Logic-thread variant, reading camera state from a live `WorldSignals`. Used by
+/// `drag_rect_to_world_aabb` (`editor_update`'s tool handlers), which has no
+/// `SignalSnapshot` available.
+pub(super) fn render_to_world_live(signals: &WorldSignals, render_x: f32, render_y: f32) -> [f32; 2] {
+    let offset_x = signals.get_scalar(sig::CAM_OFFSET_X).unwrap_or(0.0);
+    let offset_y = signals.get_scalar(sig::CAM_OFFSET_Y).unwrap_or(0.0);
+    let zoom = signals.get_scalar(sig::CAM_ZOOM).unwrap_or(1.0);
+    let rotation_rad = signals
+        .get_scalar(sig::CAM_ROTATION)
+        .unwrap_or(0.0)
+        .to_radians();
+    let target_x = signals.get_scalar(sig::CAM_TARGET_X).unwrap_or(0.0);
+    let target_y = signals.get_scalar(sig::CAM_TARGET_Y).unwrap_or(0.0);
 
-impl CameraParams {
-    fn from_signals(signals: &WorldSignals) -> Self {
-        Self {
-            target_x: signals.get_scalar(sig::CAM_TARGET_X).unwrap_or(0.0),
-            target_y: signals.get_scalar(sig::CAM_TARGET_Y).unwrap_or(0.0),
-            zoom: signals.get_scalar(sig::CAM_ZOOM).unwrap_or(1.0),
-            rotation_rad: signals
-                .get_scalar(sig::CAM_ROTATION)
-                .unwrap_or(0.0)
-                .to_radians(),
-            offset_x: signals.get_scalar(sig::CAM_OFFSET_X).unwrap_or(0.0),
-            offset_y: signals.get_scalar(sig::CAM_OFFSET_Y).unwrap_or(0.0),
-        }
-    }
-}
-
-pub(super) fn render_to_world(signals: &WorldSignals, render_x: f32, render_y: f32) -> [f32; 2] {
-    let cam = CameraParams::from_signals(signals);
-    let translated_x = (render_x - cam.offset_x) / cam.zoom;
-    let translated_y = (render_y - cam.offset_y) / cam.zoom;
-    let cos_a = cam.rotation_rad.cos();
-    let sin_a = cam.rotation_rad.sin();
+    let translated_x = (render_x - offset_x) / zoom;
+    let translated_y = (render_y - offset_y) / zoom;
+    let cos_a = rotation_rad.cos();
+    let sin_a = rotation_rad.sin();
     [
-        translated_x * cos_a - translated_y * sin_a + cam.target_x,
-        translated_x * sin_a + translated_y * cos_a + cam.target_y,
+        translated_x * cos_a - translated_y * sin_a + target_x,
+        translated_x * sin_a + translated_y * cos_a + target_y,
     ]
 }
 
-fn render_to_screen(signals: &WorldSignals, render_x: f32, render_y: f32) -> [f32; 2] {
-    let lb_scale = signals.get_scalar(sig::WIN_SCALE).unwrap_or(1.0);
-    let lb_x = signals.get_scalar(sig::WIN_OFFSET_X).unwrap_or(0.0);
-    let lb_y = signals.get_scalar(sig::WIN_OFFSET_Y).unwrap_or(0.0);
+fn render_to_screen(signals: &SignalSnapshot, render_x: f32, render_y: f32) -> [f32; 2] {
+    let lb_scale = signals.scalars.get(sig::WIN_SCALE).copied().unwrap_or(1.0);
+    let lb_x = signals.scalars.get(sig::WIN_OFFSET_X).copied().unwrap_or(0.0);
+    let lb_y = signals.scalars.get(sig::WIN_OFFSET_Y).copied().unwrap_or(0.0);
     [render_x * lb_scale + lb_x, render_y * lb_scale + lb_y]
 }
 

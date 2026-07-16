@@ -6,8 +6,8 @@ use crate::components::map_entity::MapEntity;
 use crate::components::serialized_lua_setup::SerializedLuaSetup;
 use crate::editor_types::ComponentKind;
 use crate::systems::entity_selector::{apply_selection, clear_selector_state};
-use crate::systems::utils::entity_label;
-use aberredengine::bevy_ecs::prelude::{Commands, NonSend, On, Query, Res, ResMut};
+use crate::systems::utils::{default_font_key, default_texture_key, entity_label};
+use aberredengine::bevy_ecs::prelude::{Commands, On, Query, Res, ResMut};
 use aberredengine::components::animation::Animation;
 use aberredengine::components::boxcollider::BoxCollider;
 use aberredengine::components::dynamictext::DynamicText;
@@ -23,8 +23,7 @@ use aberredengine::components::ttl::Ttl;
 use aberredengine::components::zindex::ZIndex;
 use aberredengine::raylib::prelude::{Color, Vector2};
 use aberredengine::resources::appstate::AppState;
-use aberredengine::resources::fontstore::FontStore;
-use aberredengine::resources::texturestore::TextureStore;
+use aberredengine::resources::mapdata::MapData;
 use aberredengine::resources::worldsignals::WorldSignals;
 use log::debug;
 use std::sync::Arc;
@@ -127,8 +126,7 @@ pub fn remove_entity_observer(
 
 pub fn add_component_observer(
     trigger: On<AddComponentRequested>,
-    textures: Res<TextureStore>,
-    fonts: NonSend<FontStore>,
+    map_data: Res<MapData>,
     mut commands: Commands,
 ) {
     let event = trigger.event();
@@ -151,8 +149,7 @@ pub fn add_component_observer(
             ec.insert(Scale::default());
         }
         ComponentKind::Sprite => {
-            let tex_key: Arc<str> =
-                Arc::from(textures.map.keys().min().map(|k| k.as_str()).unwrap_or(""));
+            let tex_key: Arc<str> = Arc::from(default_texture_key(&map_data).unwrap_or(""));
             ec.insert(Sprite {
                 tex_key,
                 width: 32.0,
@@ -182,13 +179,7 @@ pub fn add_component_observer(
             ec.insert(SerializedLuaSetup::new(""));
         }
         ComponentKind::DynamicText => {
-            let font_key = fonts
-                .meta
-                .keys()
-                .min()
-                .map(|k| k.as_str())
-                .unwrap_or("")
-                .to_owned();
+            let font_key = default_font_key(&map_data).unwrap_or("").to_owned();
             ec.insert(DynamicText::new("", font_key, 16.0, Color::WHITE));
         }
         ComponentKind::ParticleEmitter => {

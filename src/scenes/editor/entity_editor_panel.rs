@@ -13,18 +13,20 @@ use crate::signals as sig;
 use crate::systems::animation_store_sync::AnimationStoreMutex;
 use aberredengine::imgui;
 use aberredengine::resources::appstate::AppState;
-use aberredengine::resources::fontstore::FontStore;
-use aberredengine::resources::texturestore::TextureStore;
-use aberredengine::resources::worldsignals::WorldSignals;
+use aberredengine::resources::render::fontstore::FontStore;
+use aberredengine::resources::render::texturestore::TextureStore;
+use aberredengine::resources::signal_intents::SignalIntents;
+use aberredengine::resources::worldsignals::SignalSnapshot;
 
 pub(super) fn draw_entity_editor(
     ui: &imgui::Ui,
-    signals: &mut WorldSignals,
+    signals: &SignalSnapshot,
+    intents: &mut SignalIntents,
     textures: &TextureStore,
     fonts: &FontStore,
     app_state: &AppState,
 ) -> bool {
-    if !signals.has_flag(sig::UI_ENTITY_EDITOR_OPEN) {
+    if !signals.flags.contains(sig::UI_ENTITY_EDITOR_OPEN) {
         return false;
     }
 
@@ -225,7 +227,7 @@ pub(super) fn draw_entity_editor(
         });
 
     if !window_open {
-        signals.take_flag(sig::UI_ENTITY_EDITOR_OPEN);
+        intents.clear_flag(sig::UI_ENTITY_EDITOR_OPEN);
     }
     open_delete_popup
 }

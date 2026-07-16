@@ -8,10 +8,16 @@ use crate::systems::group_selector::GroupListMutex;
 use crate::systems::utils::display_group_name;
 use aberredengine::imgui;
 use aberredengine::resources::appstate::AppState;
-use aberredengine::resources::worldsignals::WorldSignals;
+use aberredengine::resources::signal_intents::SignalIntents;
+use aberredengine::resources::worldsignals::SignalSnapshot;
 
-pub(super) fn draw_groups_window(ui: &imgui::Ui, signals: &mut WorldSignals, app_state: &AppState) {
-    if !signals.has_flag(sig::UI_GROUPS_WINDOW_OPEN) {
+pub(super) fn draw_groups_window(
+    ui: &imgui::Ui,
+    signals: &SignalSnapshot,
+    intents: &mut SignalIntents,
+    app_state: &AppState,
+) {
+    if !signals.flags.contains(sig::UI_GROUPS_WINDOW_OPEN) {
         return;
     }
 
@@ -50,9 +56,9 @@ pub(super) fn draw_groups_window(ui: &imgui::Ui, signals: &mut WorldSignals, app
         });
 
     if let Some(raw_name) = selected_group {
-        signals.set_string(sig::GROUPS_SELECTED_GROUP, &raw_name);
+        intents.set_string(sig::GROUPS_SELECTED_GROUP, &raw_name);
     }
     if !window_open {
-        signals.take_flag(sig::UI_GROUPS_WINDOW_OPEN);
+        intents.clear_flag(sig::UI_GROUPS_WINDOW_OPEN);
     }
 }

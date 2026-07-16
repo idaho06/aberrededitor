@@ -12,7 +12,7 @@ use rustc_hash::FxHashMap;
 
 /// `AppState` key for the animation store mirror. Keyed by animation name, value is the full
 /// `AnimationResource`. Populated by `animation_store_sync_system` on every change to `AnimationStore`.
-pub type AnimationStoreMutex = std::sync::Mutex<FxHashMap<String, AnimationResource>>;
+pub type AnimationStoreMutex = std::sync::Arc<std::sync::Mutex<FxHashMap<String, AnimationResource>>>;
 
 pub fn animation_store_sync_system(anim_store: Res<AnimationStore>, app_state: ResMut<AppState>) {
     if !anim_store.is_changed() {

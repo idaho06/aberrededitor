@@ -1,9 +1,10 @@
 use super::{BakeTilemapRequested, RemoveTileMapRequested};
 use crate::systems::entity_selector::clear_selector_state;
 use crate::systems::map_ops::GROUP_TILES;
-use crate::systems::utils::{sprite_to_entry, tilemap_stem, tilemap_tex_path};
+use crate::systems::utils::{find_texture, sprite_to_entry, tilemap_stem, tilemap_tex_path};
 use aberredengine::bevy_ecs::hierarchy::{ChildOf, Children};
-use aberredengine::bevy_ecs::prelude::{Commands, On, Query, ResMut};
+use aberredengine::bevy_ecs::prelude::{Commands, MessageWriter, On, Query, ResMut};
+use aberredengine::events::render_assets::RenderAssetCmd;
 use aberredengine::components::globaltransform2d::GlobalTransform2D;
 use aberredengine::components::group::Group;
 use aberredengine::components::mapposition::MapPosition;
@@ -14,7 +15,6 @@ use aberredengine::components::tilemap::TileMap;
 use aberredengine::components::zindex::ZIndex;
 use aberredengine::resources::appstate::AppState;
 use aberredengine::resources::mapdata::{EntityDef, MapData, TextureEntry};
-use aberredengine::resources::texturestore::TextureStore;
 use aberredengine::resources::worldsignals::WorldSignals;
 use crate::components::map_entity::MapEntity;
 use log::{debug, info, warn};
@@ -24,7 +24,7 @@ pub fn remove_tilemap_observer(
     mut commands: Commands,
     tilemap_query: Query<&TileMap>,
     mut map_data: ResMut<MapData>,
-    mut texture_store: ResMut<TextureStore>,
+    mut asset_cmds: MessageWriter<RenderAssetCmd>,
     mut world_signals: ResMut<WorldSignals>,
     mut app_state: ResMut<AppState>,
 ) {
@@ -36,7 +36,7 @@ pub fn remove_tilemap_observer(
         map_data
             .entities
             .retain(|e| e.tilemap_path.as_deref() != Some(tilemap_path.as_str()));
-        texture_store.paths.remove(&stem);
+        asset_cmds.write(RenderAssetCmd::RemoveTexture { key: stem.clone() });
         debug!(
             "remove_tilemap_observer: removed tilemap '{}' (entity {})",
             stem,
@@ -122,7 +122,7 @@ pub fn bake_tilemap_observer(
         .retain(|e| e.tilemap_path.as_deref() != Some(&tilemap_path));
 
     // Register the tilemap's texture so it's saved with the map and reloaded next time.
-    if !map_data.textures.iter().any(|e| e.key == stem) {
+    if find_texture(&map_data, stem).is_none() {
         map_data.textures.push(TextureEntry {
             key: stem.to_string(),
             path: tilemap_tex_path(&tilemap_path, stem),

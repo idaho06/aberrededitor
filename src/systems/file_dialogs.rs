@@ -35,7 +35,7 @@ use crossbeam_channel::{self, Receiver, TryRecvError};
 use log::{debug, warn};
 use std::future::Future;
 use std::pin::Pin;
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex};
 
 /// User-intent dialog requests emitted from the editor scene.
 ///
@@ -88,7 +88,7 @@ pub struct AsyncFileDialogState {
 }
 
 /// `AppState` handle for the async dialog bridge.
-pub type AsyncFileDialogMutex = Mutex<AsyncFileDialogState>;
+pub type AsyncFileDialogMutex = Arc<Mutex<AsyncFileDialogState>>;
 
 type DialogTask = Pin<Box<dyn Future<Output = Option<AsyncFileDialogResult>> + Send>>;
 

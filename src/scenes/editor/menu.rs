@@ -8,11 +8,13 @@
 use super::overlay::{
     overlay_visibility, prepare_grid_preferences, toggle_grid, toggle_origin_axis,
 };
+use super::update::toggle_flag;
 use super::{EditorTool, current_tool, set_tool};
 use crate::signals as sig;
 use aberredengine::imgui;
 use aberredengine::resources::appstate::AppState;
-use aberredengine::resources::worldsignals::WorldSignals;
+use aberredengine::resources::signal_intents::SignalIntents;
+use aberredengine::resources::worldsignals::SignalSnapshot;
 
 pub(super) struct MenuActions {
     pub open_about: bool,
@@ -23,7 +25,8 @@ pub(super) struct MenuActions {
 
 pub(super) fn draw_menu_bar(
     ui: &imgui::Ui,
-    signals: &mut WorldSignals,
+    signals: &SignalSnapshot,
+    intents: &mut SignalIntents,
     app_state: &AppState,
 ) -> MenuActions {
     let mut actions = MenuActions {
@@ -37,25 +40,25 @@ pub(super) fn draw_menu_bar(
     if let Some(_mb) = ui.begin_main_menu_bar() {
         if let Some(_file) = ui.begin_menu("File") {
             if ui.menu_item("New Map") {
-                signals.set_flag(sig::ACTION_FILE_NEW_MAP);
+                intents.set_flag(sig::ACTION_FILE_NEW_MAP);
             }
             if ui.menu_item("Open Map...") {
-                signals.set_flag(sig::ACTION_FILE_OPEN_MAP);
+                intents.set_flag(sig::ACTION_FILE_OPEN_MAP);
             }
             ui.separator();
             if ui.menu_item("Add Tilemap...") {
-                signals.set_flag(sig::ACTION_FILE_LOAD_TILEMAP);
+                intents.set_flag(sig::ACTION_FILE_LOAD_TILEMAP);
             }
             ui.separator();
             if ui.menu_item("Save Map") {
-                signals.set_flag(sig::ACTION_FILE_SAVE);
+                intents.set_flag(sig::ACTION_FILE_SAVE);
             }
             if ui.menu_item("Save Map As...") {
-                signals.set_flag(sig::ACTION_FILE_SAVE_AS);
+                intents.set_flag(sig::ACTION_FILE_SAVE_AS);
             }
             ui.separator();
             if ui.menu_item("Map Properties...") {
-                signals.set_flag(sig::UI_MAP_PROPERTIES_OPEN);
+                intents.set_flag(sig::UI_MAP_PROPERTIES_OPEN);
             }
             ui.separator();
             if ui.menu_item("Quit") {
@@ -65,7 +68,7 @@ pub(super) fn draw_menu_bar(
 
         if let Some(_view) = ui.begin_menu("View") {
             if ui.menu_item("Reset Zoom") {
-                signals.set_flag(sig::ACTION_VIEW_RESET_ZOOM);
+                intents.set_flag(sig::ACTION_VIEW_RESET_ZOOM);
             }
             if ui
                 .menu_item_config("Origin Axis")
@@ -81,73 +84,73 @@ pub(super) fn draw_menu_bar(
             if ui
                 .menu_item_config("Toggle Debug Mode")
                 .shortcut("F11")
-                .selected(signals.has_flag(sig::UI_DEBUG_ACTIVE))
+                .selected(signals.flags.contains(sig::UI_DEBUG_ACTIVE))
                 .build()
             {
-                signals.set_flag(sig::ACTION_VIEW_TOGGLE_DEBUG);
+                intents.set_flag(sig::ACTION_VIEW_TOGGLE_DEBUG);
             }
             ui.separator();
             if ui
                 .menu_item_config("Texture Store")
-                .selected(signals.has_flag(sig::UI_TEXTURE_EDITOR_OPEN))
+                .selected(signals.flags.contains(sig::UI_TEXTURE_EDITOR_OPEN))
                 .build()
             {
-                signals.toggle_flag(sig::UI_TEXTURE_EDITOR_OPEN);
+                toggle_flag(signals, intents, sig::UI_TEXTURE_EDITOR_OPEN);
             }
             if ui
                 .menu_item_config("Font Store")
-                .selected(signals.has_flag(sig::UI_FONT_STORE_OPEN))
+                .selected(signals.flags.contains(sig::UI_FONT_STORE_OPEN))
                 .build()
             {
-                signals.toggle_flag(sig::UI_FONT_STORE_OPEN);
+                toggle_flag(signals, intents, sig::UI_FONT_STORE_OPEN);
             }
             if ui
                 .menu_item_config("Animation Store")
-                .selected(signals.has_flag(sig::UI_ANIMATION_STORE_OPEN))
+                .selected(signals.flags.contains(sig::UI_ANIMATION_STORE_OPEN))
                 .build()
             {
-                signals.toggle_flag(sig::UI_ANIMATION_STORE_OPEN);
+                toggle_flag(signals, intents, sig::UI_ANIMATION_STORE_OPEN);
             }
             ui.separator();
             if ui
                 .menu_item_config("Entity Selector")
-                .selected(signals.has_flag(sig::UI_ENTITY_SELECTOR_OPEN))
+                .selected(signals.flags.contains(sig::UI_ENTITY_SELECTOR_OPEN))
                 .build()
             {
-                signals.toggle_flag(sig::UI_ENTITY_SELECTOR_OPEN);
+                toggle_flag(signals, intents, sig::UI_ENTITY_SELECTOR_OPEN);
             }
             if ui
                 .menu_item_config("Groups")
-                .selected(signals.has_flag(sig::UI_GROUPS_WINDOW_OPEN))
+                .selected(signals.flags.contains(sig::UI_GROUPS_WINDOW_OPEN))
                 .build()
             {
-                signals.toggle_flag(sig::UI_GROUPS_WINDOW_OPEN);
+                toggle_flag(signals, intents, sig::UI_GROUPS_WINDOW_OPEN);
             }
             if ui
                 .menu_item_config("Entity Registry")
-                .selected(signals.has_flag(sig::UI_ENTITY_REGISTRY_OPEN))
+                .selected(signals.flags.contains(sig::UI_ENTITY_REGISTRY_OPEN))
                 .build()
             {
-                signals.toggle_flag(sig::UI_ENTITY_REGISTRY_OPEN);
+                toggle_flag(signals, intents, sig::UI_ENTITY_REGISTRY_OPEN);
             }
             if ui
                 .menu_item_config("Templates")
-                .selected(signals.has_flag(sig::UI_TEMPLATE_BROWSER_OPEN))
+                .selected(signals.flags.contains(sig::UI_TEMPLATE_BROWSER_OPEN))
                 .build()
             {
-                signals.toggle_flag(sig::UI_TEMPLATE_BROWSER_OPEN);
+                toggle_flag(signals, intents, sig::UI_TEMPLATE_BROWSER_OPEN);
             }
             ui.separator();
-            let preview_open = signals.has_flag(sig::UI_PREVIEW_MAPDATA_OPEN);
+            let preview_open = signals.flags.contains(sig::UI_PREVIEW_MAPDATA_OPEN);
             if ui
                 .menu_item_config("Preview Map Data")
                 .selected(preview_open)
                 .build()
             {
                 if preview_open {
-                    signals.take_flag(sig::UI_PREVIEW_MAPDATA_OPEN);
+                    intents.clear_flag(sig::UI_PREVIEW_MAPDATA_OPEN);
                 } else {
-                    signals.set_flag(sig::ACTION_VIEW_PREVIEW_MAPDATA);
+                    intents.set_flag(sig::ACTION_VIEW_PREVIEW_MAPDATA);
                 }
             }
         }
@@ -181,10 +184,10 @@ pub(super) fn draw_menu_bar(
 
         if let Some(_entity) = ui.begin_menu("Entity") {
             if ui.menu_item("Add") {
-                signals.set_flag(sig::ACTION_ENTITY_ADD);
+                intents.set_flag(sig::ACTION_ENTITY_ADD);
             }
             if ui.menu_item("Add Collider") {
-                signals.set_flag(sig::ACTION_ENTITY_ADD_COLLIDER);
+                intents.set_flag(sig::ACTION_ENTITY_ADD_COLLIDER);
             }
         }
 
@@ -197,7 +200,7 @@ pub(super) fn draw_menu_bar(
     actions
 }
 
-pub(super) fn draw_quit_modal(ui: &imgui::Ui, signals: &mut WorldSignals) {
+pub(super) fn draw_quit_modal(ui: &imgui::Ui, _signals: &SignalSnapshot, intents: &mut SignalIntents) {
     ui.modal_popup_config("Quit##editor")
         .always_auto_resize(true)
         .resizable(false)
@@ -206,7 +209,7 @@ pub(super) fn draw_quit_modal(ui: &imgui::Ui, signals: &mut WorldSignals) {
             ui.text("Remember to save before exit! See you soon!");
             ui.separator();
             if ui.button("Bye!") {
-                signals.set_flag(sig::ACTION_QUIT);
+                intents.set_flag(sig::ACTION_QUIT);
                 ui.close_current_popup();
             }
             ui.same_line();

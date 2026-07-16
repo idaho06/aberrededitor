@@ -29,7 +29,7 @@ use super::multi_entity_selector_panel::{
 use super::overlay::{
     GRID_PREFERENCES_POPUP_ID, RENDER_PREFERENCES_POPUP_ID, corners_aabb,
     draw_grid_preferences_modal, draw_render_preferences_modal, draw_selection_drag_overlay,
-    render_to_world,
+    render_to_world_live,
 };
 use super::template_browser_panel::draw_template_browser;
 use super::texture_panel::{draw_texture_editor, draw_texture_modals};
@@ -61,10 +61,11 @@ use crate::systems::render_prefs::TogglePixelSnapCameraRequested;
 use aberredengine::events::switchdebug::SwitchDebugEvent;
 use aberredengine::imgui;
 use aberredengine::resources::appstate::AppState;
-use aberredengine::resources::fontstore::FontStore;
+use aberredengine::resources::render::fontstore::FontStore;
 use aberredengine::resources::input::InputState;
-use aberredengine::resources::texturestore::TextureStore;
-use aberredengine::resources::worldsignals::WorldSignals;
+use aberredengine::resources::render::texturestore::TextureStore;
+use aberredengine::resources::signal_intents::SignalIntents;
+use aberredengine::resources::worldsignals::{SignalSnapshot, WorldSignals};
 use aberredengine::systems::GameCtx;
 
 pub fn editor_update(ctx: &mut GameCtx, _dt: f32, input: &InputState) {
@@ -136,38 +137,40 @@ pub fn editor_update(ctx: &mut GameCtx, _dt: f32, input: &InputState) {
 
 pub fn editor_gui(
     ui: &imgui::Ui,
-    signals: &mut WorldSignals,
+    signals: &SignalSnapshot,
+    intents: &mut SignalIntents,
     textures: &TextureStore,
     fonts: &FontStore,
     app_state: &AppState,
 ) {
     // Publish ImGui mouse-capture state so editor_update can suppress world picks next frame.
     if ui.io().want_capture_mouse {
-        signals.set_flag(sig::IMGUI_WANTS_MOUSE);
+        intents.set_flag(sig::IMGUI_WANTS_MOUSE);
     } else {
-        signals.clear_flag(sig::IMGUI_WANTS_MOUSE);
+        intents.clear_flag(sig::IMGUI_WANTS_MOUSE);
     }
     if ui.io().want_capture_keyboard {
-        signals.set_flag(sig::IMGUI_WANTS_KEYBOARD);
+        intents.set_flag(sig::IMGUI_WANTS_KEYBOARD);
     } else {
-        signals.clear_flag(sig::IMGUI_WANTS_KEYBOARD);
+        intents.clear_flag(sig::IMGUI_WANTS_KEYBOARD);
     }
 
-    let menu_actions = draw_menu_bar(ui, signals, app_state);
-    let (open_rename_popup, open_remove_popup) = draw_texture_editor(ui, signals, textures);
-    let (open_font_rename, open_font_remove) = draw_font_editor(ui, signals, fonts);
+    let menu_actions = draw_menu_bar(ui, signals, intents, app_state);
+    let (open_rename_popup, open_remove_popup) =
+        draw_texture_editor(ui, signals, intents, textures);
+    let (open_font_rename, open_font_remove) = draw_font_editor(ui, signals, intents, fonts);
     let (open_anim_rename, open_anim_remove) =
-        draw_animation_store(ui, signals, textures, app_state);
-    draw_texture_viewer(ui, signals, textures, fonts);
-    draw_map_preview(ui, signals);
-    draw_map_properties_panel(ui, signals, app_state);
-    draw_groups_window(ui, signals, app_state);
-    draw_entity_registry(ui, signals);
-    draw_entity_selector(ui, signals, app_state);
+        draw_animation_store(ui, signals, intents, textures, app_state);
+    draw_texture_viewer(ui, signals, intents, textures, fonts);
+    draw_map_preview(ui, signals, intents);
+    draw_map_properties_panel(ui, signals, intents, app_state);
+    draw_groups_window(ui, signals, intents, app_state);
+    draw_entity_registry(ui, signals, intents);
+    draw_entity_selector(ui, signals, intents, app_state);
     let (open_multi_move_popup, open_multi_z_popup) =
-        draw_multi_entity_selector(ui, signals, app_state);
-    let open_delete_popup = draw_entity_editor(ui, signals, textures, fonts, app_state);
-    draw_template_browser(ui, signals, app_state);
+        draw_multi_entity_selector(ui, signals, intents, app_state);
+    let open_delete_popup = draw_entity_editor(ui, signals, intents, textures, fonts, app_state);
+    draw_template_browser(ui, signals, intents, app_state);
 
     if open_rename_popup {
         ui.open_popup("Rename Key##texture_editor");
@@ -209,16 +212,29 @@ pub fn editor_gui(
         ui.open_popup("Adjust ZIndex##multi_selector");
     }
 
-    draw_texture_modals(ui, signals);
-    draw_font_modals(ui, signals);
-    draw_animation_modals(ui, signals);
+    draw_texture_modals(ui, signals, intents);
+    draw_font_modals(ui, signals, intents);
+    draw_animation_modals(ui, signals, intents);
     draw_about_modal(ui);
-    draw_quit_modal(ui, signals);
+    draw_quit_modal(ui, signals, intents);
     draw_grid_preferences_modal(ui, app_state);
-    draw_render_preferences_modal(ui, signals, app_state);
+    draw_render_preferences_modal(ui, intents, app_state);
     draw_multi_entity_selector_modals(ui, app_state);
     draw_entity_delete_modal(ui, app_state);
     draw_selection_drag_overlay(ui, signals, app_state);
+}
+
+/// Reads the current value of a boolean flag from a render-thread signal snapshot and, if it
+/// is set, queues an intent to clear it; otherwise queues an intent to set it.
+///
+/// Mirrors `WorldSignals::toggle_flag`, which is unavailable on the render thread since it
+/// has no live `&mut WorldSignals` — only a read-only snapshot plus a write-queue.
+pub(super) fn toggle_flag(signals: &SignalSnapshot, intents: &mut SignalIntents, key: &str) {
+    if signals.flags.contains(key) {
+        intents.clear_flag(key);
+    } else {
+        intents.set_flag(key);
+    }
 }
 
 fn consume_multi_entity_commits(ctx: &mut GameCtx) {
@@ -311,10 +327,10 @@ fn dispatch_collider_creation(ctx: &mut GameCtx, drag_rect: SelectionDragRect) {
 fn drag_rect_to_world_aabb(signals: &WorldSignals, drag_rect: SelectionDragRect) -> (f32, f32, f32, f32) {
     let ([min_render_x, min_render_y], [max_render_x, max_render_y]) = drag_rect.normalized();
     let corners = [
-        render_to_world(signals, min_render_x, min_render_y),
-        render_to_world(signals, max_render_x, min_render_y),
-        render_to_world(signals, max_render_x, max_render_y),
-        render_to_world(signals, min_render_x, max_render_y),
+        render_to_world_live(signals, min_render_x, min_render_y),
+        render_to_world_live(signals, max_render_x, min_render_y),
+        render_to_world_live(signals, max_render_x, max_render_y),
+        render_to_world_live(signals, min_render_x, max_render_y),
     ];
     corners_aabb(corners)
 }
@@ -545,8 +561,8 @@ fn handle_animation_actions(ctx: &mut GameCtx) {
     }
 }
 
-fn draw_map_preview(ui: &imgui::Ui, signals: &mut WorldSignals) {
-    if !signals.has_flag(sig::UI_PREVIEW_MAPDATA_OPEN) {
+fn draw_map_preview(ui: &imgui::Ui, signals: &SignalSnapshot, intents: &mut SignalIntents) {
+    if !signals.flags.contains(sig::UI_PREVIEW_MAPDATA_OPEN) {
         return;
     }
 
@@ -556,12 +572,13 @@ fn draw_map_preview(ui: &imgui::Ui, signals: &mut WorldSignals) {
         .opened(&mut window_open)
         .build(|| {
             if ui.button("Refresh") {
-                signals.set_flag(sig::ACTION_VIEW_PREVIEW_MAPDATA);
+                intents.set_flag(sig::ACTION_VIEW_PREVIEW_MAPDATA);
             }
             ui.separator();
 
             let mut json = signals
-                .get_string(sig::MAPDATA_PREVIEW_JSON)
+                .strings
+                .get(sig::MAPDATA_PREVIEW_JSON)
                 .cloned()
                 .unwrap_or_default();
             ui.input_text_multiline("##mapdata_json", &mut json, [-1.0, -1.0])
@@ -570,6 +587,6 @@ fn draw_map_preview(ui: &imgui::Ui, signals: &mut WorldSignals) {
         });
 
     if !window_open {
-        signals.take_flag(sig::UI_PREVIEW_MAPDATA_OPEN);
+        intents.clear_flag(sig::UI_PREVIEW_MAPDATA_OPEN);
     }
 }

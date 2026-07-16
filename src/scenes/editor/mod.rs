@@ -34,9 +34,9 @@ mod widgets;
 
 pub use lifecycle::{editor_enter, editor_exit};
 pub(crate) use overlay::draw_world_overlays;
-pub(crate) use overlay::{OverlaySettingsMutex, OverlaySettingsState};
+pub(crate) use overlay::OverlaySettingsMutex;
 pub(crate) use editor_tool::{
-    EditorTool, EditorToolMutex, EditorToolState, SelectionDragRect,
+    EditorTool, EditorToolMutex, SelectionDragRect,
     current_selection_drag, current_tool, enter_placement_mode, exit_placement_mode,
     finish_selection_drag, reset_tool, set_tool, start_selection_drag,
     update_selection_drag,

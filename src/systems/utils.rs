@@ -5,12 +5,16 @@
 //! - [`sprite_to_entry`] — converts a `Sprite` component to a serialisable `SpriteEntry`.
 //! - [`tilemap_tex_path`] / [`tilemap_stem`] — derive texture paths from tilemap folder paths.
 //! - [`to_relative`] — converts an absolute path (e.g., from `rfd`) to a CWD-relative path.
+//! - [`find_texture`]/[`find_texture_mut`]/[`default_texture_key`] and their font equivalents —
+//!   `MapData.textures`/`.fonts` lookups. `MapData` is the logic-side source of truth for which
+//!   texture/font keys exist (the render-side `TextureStore`/`FontStore` aren't queryable from
+//!   logic code); use these instead of re-deriving `.iter().find(...)` at each call site.
 use aberredengine::bevy_ecs::prelude::Entity;
 use aberredengine::components::boxcollider::BoxCollider;
 use aberredengine::components::group::Group;
 use aberredengine::components::persistent::Persistent;
 use aberredengine::components::sprite::Sprite;
-use aberredengine::resources::mapdata::{BoxColliderEntry, SpriteEntry};
+use aberredengine::resources::mapdata::{BoxColliderEntry, FontEntry, MapData, SpriteEntry, TextureEntry};
 
 /// Build a display label for an entity: `Entity #<id> [group] [Persistent]`.
 pub fn entity_label(
@@ -113,4 +117,36 @@ pub fn to_relative(path: &str) -> String {
         Some(result.to_string_lossy().into_owned())
     };
     make_relative().unwrap_or_else(|| path.to_owned())
+}
+
+/// Looks up a texture entry in `MapData.textures` by key.
+pub fn find_texture<'a>(map_data: &'a MapData, key: &str) -> Option<&'a TextureEntry> {
+    map_data.textures.iter().find(|e| e.key == key)
+}
+
+/// Looks up a mutable texture entry in `MapData.textures` by key.
+pub fn find_texture_mut<'a>(map_data: &'a mut MapData, key: &str) -> Option<&'a mut TextureEntry> {
+    map_data.textures.iter_mut().find(|e| e.key == key)
+}
+
+/// Returns the alphabetically-first texture key in `MapData.textures`, used as a sane
+/// default when adding a new `Sprite` component.
+pub fn default_texture_key(map_data: &MapData) -> Option<&str> {
+    map_data.textures.iter().map(|e| e.key.as_str()).min()
+}
+
+/// Looks up a font entry in `MapData.fonts` by key.
+pub fn find_font<'a>(map_data: &'a MapData, key: &str) -> Option<&'a FontEntry> {
+    map_data.fonts.iter().find(|e| e.key == key)
+}
+
+/// Looks up a mutable font entry in `MapData.fonts` by key.
+pub fn find_font_mut<'a>(map_data: &'a mut MapData, key: &str) -> Option<&'a mut FontEntry> {
+    map_data.fonts.iter_mut().find(|e| e.key == key)
+}
+
+/// Returns the alphabetically-first font key in `MapData.fonts`, used as a sane default
+/// when adding a new `DynamicText` component.
+pub fn default_font_key(map_data: &MapData) -> Option<&str> {
+    map_data.fonts.iter().map(|e| e.key.as_str()).min()
 }

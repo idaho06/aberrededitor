@@ -21,7 +21,7 @@ use crate::scenes::editor::map_properties_panel::MapPropertiesMutex;
 use crate::signals as sig;
 use aberredengine::bevy_ecs;
 use aberredengine::bevy_ecs::prelude::{
-    Commands, Entity, Event, NonSendMut, On, Query, Res, ResMut, With,
+    Commands, Entity, Event, MessageWriter, On, Query, Res, ResMut, With,
 };
 use aberredengine::bevy_ecs::query::Without;
 use aberredengine::components::animation::Animation;
@@ -38,38 +38,87 @@ use aberredengine::components::tilemap::TileMap;
 use aberredengine::components::tint::Tint;
 use aberredengine::components::zindex::ZIndex;
 use aberredengine::engine_app::EngineBuilder;
+use aberredengine::events::render_assets::RenderAssetCmd;
 use aberredengine::events::spawnmap::SpawnMapRequested;
 use aberredengine::raylib::prelude::{Color, Vector2};
 use aberredengine::resources::animationstore::{AnimationResource, AnimationStore};
-use aberredengine::resources::gameconfig::GameConfig;
+use aberredengine::resources::gameconfig::{GameConfig, GameConfigDefaults};
 use aberredengine::resources::appstate::AppState;
-use aberredengine::resources::fontstore::FontStore;
 use aberredengine::resources::mapdata::{
     AnimationEntry, DynamicTextEntry, EntityDef, FontEntry, MapData, ParticleEmitterEntry,
     ParticleEmitterShapeEntry, ParticleEmitterTtlEntry, TextureEntry, load_map, save_map,
 };
 use aberredengine::resources::texturefilter::TextureFilter;
-use aberredengine::resources::texturestore::TextureStore;
 use aberredengine::resources::worldsignals::WorldSignals;
-use aberredengine::systems::RaylibAccess;
-use aberredengine::systems::mapspawn::load_font_with_mipmaps;
 use log::{info, warn};
 use std::sync::Arc;
 
 use crate::components::map_entity::MapEntity;
 use crate::systems::entity_selector::clear_selector_state;
 use crate::systems::tilemap_load::PendingLuaSetupLoadMutex;
-use crate::systems::utils::{collider_to_entry, sprite_to_entry, tilemap_stem, to_relative};
+use crate::systems::utils::{
+    collider_to_entry, find_font, find_font_mut, find_texture, find_texture_mut, sprite_to_entry,
+    tilemap_stem, to_relative,
+};
 
 /// Group name assigned to individual tile entities spawned by a tilemap.
 pub const GROUP_TILES: &str = "tiles";
 /// Group name assigned to the root entity of a loaded tilemap.
 pub const GROUP_TILEMAP_ROOTS: &str = "tilemap-roots";
-// Title is synced imperatively at each MAP_CURRENT_PATH mutation site.
-// If you add a new path that sets MAP_CURRENT_PATH, call sync_window_title there too.
-fn sync_window_title(raylib: &mut RaylibAccess, title: &str) {
-    let (rl, th) = (&mut *raylib.rl, &*raylib.th);
-    rl.set_window_title(th, title);
+
+fn sync_window_title(config: &mut GameConfig, title: &str) {
+    config.window_title = title.to_string();
+}
+
+/// Queues `RemoveTexture`/`RemoveFont` for every asset in `old_map_data`, used by both
+/// `new_map_observer` and `load_map_observer` before installing the replacement `MapData`.
+fn queue_clear_assets(asset_cmds: &mut MessageWriter<RenderAssetCmd>, old_map_data: &MapData) {
+    for tex in &old_map_data.textures {
+        asset_cmds.write(RenderAssetCmd::RemoveTexture {
+            key: tex.key.clone(),
+        });
+    }
+    for font in &old_map_data.fonts {
+        asset_cmds.write(RenderAssetCmd::RemoveFont {
+            key: font.key.clone(),
+        });
+    }
+}
+
+
+/// Queues `RenderAssetCmd::Texture` for `key`/`path`/`filter_str`. Shared by
+/// `add_texture_observer` (which also dedup-checks and records the entry in `MapData`)
+/// and `load_map_observer` (which loads every entry from an already-installed `MapData`
+/// unconditionally, since dedup doesn't apply on a fresh load).
+fn queue_texture_load(
+    asset_cmds: &mut MessageWriter<RenderAssetCmd>,
+    key: &str,
+    path: String,
+    filter_str: Option<&str>,
+) {
+    let filter = TextureFilter::from_opt_str_or_warn(filter_str, key);
+    asset_cmds.write(RenderAssetCmd::Texture {
+        id: key.to_string(),
+        path,
+        filter,
+    });
+}
+
+/// Queues `RenderAssetCmd::Font` for `key`/`path`/`font_size`. Shared by
+/// `add_font_observer` and `load_map_observer` — see `queue_texture_load`.
+fn queue_font_load(
+    asset_cmds: &mut MessageWriter<RenderAssetCmd>,
+    key: &str,
+    path: String,
+    font_size: f32,
+    skip_if_loaded: bool,
+) {
+    asset_cmds.write(RenderAssetCmd::Font {
+        id: key.to_string(),
+        path,
+        size: font_size as i32,
+        skip_if_loaded,
+    });
 }
 
 // ---------------------------------------------------------------------------
@@ -129,15 +178,13 @@ pub fn new_map_observer(
     map_entities: Query<Entity, With<MapEntity>>,
     mut world_signals: ResMut<WorldSignals>,
     mut app_state: ResMut<AppState>,
-    mut texture_store: ResMut<TextureStore>,
-    mut font_store: NonSendMut<FontStore>,
+    old_map_data: Res<MapData>,
     mut anim_store: ResMut<AnimationStore>,
-    mut raylib: RaylibAccess,
-    config: Res<GameConfig>,
+    mut asset_cmds: MessageWriter<RenderAssetCmd>,
+    mut config: ResMut<GameConfig>,
+    defaults: Res<GameConfigDefaults>,
 ) {
-    texture_store.map.clear();
-    texture_store.paths.clear();
-    font_store.clear();
+    queue_clear_assets(&mut asset_cmds, &old_map_data);
     anim_store.animations.clear();
     let default_map = MapData::default();
     if let Some(mutex) = app_state.get::<MapPropertiesMutex>() {
@@ -151,7 +198,7 @@ pub fn new_map_observer(
         default_map,
     );
     world_signals.remove_string(sig::MAP_CURRENT_PATH);
-    sync_window_title(&mut raylib, &config.window_title);
+    sync_window_title(&mut config, &defaults.0.window_title);
     info!("new_map_observer: cleared map");
 }
 
@@ -162,10 +209,10 @@ pub fn load_map_observer(
     map_entities: Query<Entity, With<MapEntity>>,
     mut world_signals: ResMut<WorldSignals>,
     mut app_state: ResMut<AppState>,
-    mut texture_store: ResMut<TextureStore>,
-    mut font_store: NonSendMut<FontStore>,
+    old_map_data: Res<MapData>,
     mut anim_store: ResMut<AnimationStore>,
-    mut raylib: RaylibAccess,
+    mut asset_cmds: MessageWriter<RenderAssetCmd>,
+    mut config: ResMut<GameConfig>,
 ) {
     let path = &trigger.event().path;
     let map = match load_map(path) {
@@ -175,10 +222,23 @@ pub fn load_map_observer(
             return;
         }
     };
-    texture_store.map.clear();
-    texture_store.paths.clear();
-    font_store.clear();
+    queue_clear_assets(&mut asset_cmds, &old_map_data);
     anim_store.animations.clear();
+    // Queue the loads directly rather than triggering AddTextureRequested/AddFontRequested:
+    // reset_editor_map below installs the full, already-populated MapData, so the
+    // add_texture_observer/add_font_observer "skip if MapData already has this key" dedup
+    // guard would always short-circuit and the RenderAssetCmd would never be queued.
+    for tex in &map.textures {
+        queue_texture_load(
+            &mut asset_cmds,
+            &tex.key,
+            tex.path.clone(),
+            tex.filter.as_deref(),
+        );
+    }
+    for font in &map.fonts {
+        queue_font_load(&mut asset_cmds, &font.key, font.path.clone(), font.font_size, false);
+    }
     reset_editor_map(
         &mut commands,
         &map_entities,
@@ -192,23 +252,9 @@ pub fn load_map_observer(
     if let Some(mutex) = app_state.get::<PendingLuaSetupLoadMutex>() {
         mutex.lock().unwrap().reset_from_map(&map);
     }
-    for tex in &map.textures {
-        commands.trigger(AddTextureRequested {
-            key: tex.key.clone(),
-            path: tex.path.clone(),
-            filter: tex.filter.clone(),
-        });
-    }
-    for font in &map.fonts {
-        commands.trigger(AddFontRequested {
-            key: font.key.clone(),
-            path: font.path.clone(),
-            font_size: font.font_size,
-        });
-    }
     commands.trigger(SpawnMapRequested { map });
     world_signals.set_string(sig::MAP_CURRENT_PATH, path.clone());
-    sync_window_title(&mut raylib, tilemap_stem(path));
+    sync_window_title(&mut config, tilemap_stem(path));
     info!("load_map_observer: loaded map from '{}'", path);
 }
 
@@ -376,7 +422,7 @@ fn particle_emitter_to_entry(
 
 pub fn save_map_observer(
     trigger: On<SaveMapRequested>,
-    mut raylib: RaylibAccess,
+    mut config: ResMut<GameConfig>,
     mut map_data: ResMut<MapData>,
     map_entities: MapEntitiesQuery,
     mut world_signals: ResMut<WorldSignals>,
@@ -388,7 +434,7 @@ pub fn save_map_observer(
         warn!("save_map_observer: failed to save '{}': {}", path, e);
     } else {
         world_signals.set_string(sig::MAP_CURRENT_PATH, path.clone());
-        sync_window_title(&mut raylib, tilemap_stem(path));
+        sync_window_title(&mut config, tilemap_stem(path));
         info!("save_map_observer: saved map to '{}'", path);
     }
 }
@@ -484,40 +530,28 @@ pub struct ChangeTextureFilterRequested {
 
 pub fn add_texture_observer(
     trigger: On<AddTextureRequested>,
-    mut raylib: RaylibAccess,
-    mut texture_store: ResMut<TextureStore>,
+    mut asset_cmds: MessageWriter<RenderAssetCmd>,
     mut map_data: ResMut<MapData>,
 ) {
     let key = &trigger.event().key;
     let path = &trigger.event().path;
     let filter_str = &trigger.event().filter;
-    if texture_store.map.contains_key(key.as_str()) {
+    if find_texture(&map_data, key).is_some() {
         return;
     }
-    let (rl, th) = (&mut *raylib.rl, &*raylib.th);
-    match rl.load_texture(th, path) {
-        Ok(texture) => {
-            let rel_path = to_relative(path);
-            info!("add_texture_observer: added '{}' from '{}'", key, rel_path);
-            let filter = TextureFilter::from_opt_str_or_warn(filter_str.as_deref(), key);
-            texture_store.insert(key, texture, filter, Some(rel_path.clone()));
-            if !map_data.textures.iter().any(|e| e.key == *key) {
-                map_data.textures.push(TextureEntry {
-                    key: key.clone(),
-                    path: rel_path,
-                    filter: filter_str.clone(),
-                });
-            }
-        }
-        Err(e) => {
-            warn!("add_texture_observer: failed to load '{}': {}", path, e);
-        }
-    }
+    let rel_path = to_relative(path);
+    queue_texture_load(&mut asset_cmds, key, rel_path.clone(), filter_str.as_deref());
+    map_data.textures.push(TextureEntry {
+        key: key.clone(),
+        path: rel_path,
+        filter: filter_str.clone(),
+    });
+    info!("add_texture_observer: queued '{}' from '{}'", key, path);
 }
 
 pub fn rename_texture_key_observer(
     trigger: On<RenameTextureKeyRequested>,
-    mut texture_store: ResMut<TextureStore>,
+    mut asset_cmds: MessageWriter<RenderAssetCmd>,
     mut map_data: ResMut<MapData>,
 ) {
     let old_key = &trigger.event().old_key;
@@ -525,29 +559,25 @@ pub fn rename_texture_key_observer(
     if old_key == new_key {
         return;
     }
-    if texture_store.map.contains_key(new_key.as_str()) {
+    if find_texture(&map_data, new_key).is_some() {
         warn!(
             "rename_texture_key_observer: key '{}' already exists, skipping",
             new_key
         );
         return;
     }
-    let filter = texture_store.filter(old_key.as_str());
-    let path = texture_store.paths.get(old_key.as_str()).cloned();
-    if let Some(texture) = texture_store.remove(old_key.as_str()) {
-        texture_store.insert(new_key, texture, filter, path);
-    } else {
+    let Some(entry) = find_texture_mut(&mut map_data, old_key) else {
         warn!(
-            "rename_texture_key_observer: key '{}' not found in TextureStore",
+            "rename_texture_key_observer: key '{}' not found in MapData",
             old_key
         );
-    }
-    for entry in map_data.textures.iter_mut() {
-        if entry.key == *old_key {
-            entry.key = new_key.clone();
-            break;
-        }
-    }
+        return;
+    };
+    entry.key = new_key.clone();
+    asset_cmds.write(RenderAssetCmd::RenameTexture {
+        old_key: old_key.clone(),
+        new_key: new_key.clone(),
+    });
     info!(
         "rename_texture_key_observer: renamed '{}' -> '{}'",
         old_key, new_key
@@ -556,33 +586,35 @@ pub fn rename_texture_key_observer(
 
 pub fn remove_texture_observer(
     trigger: On<RemoveTextureRequested>,
-    mut texture_store: ResMut<TextureStore>,
+    mut asset_cmds: MessageWriter<RenderAssetCmd>,
     mut map_data: ResMut<MapData>,
 ) {
     let key = &trigger.event().key;
-    texture_store.remove(key.as_str());
+    asset_cmds.write(RenderAssetCmd::RemoveTexture { key: key.clone() });
     map_data.textures.retain(|e| e.key != *key);
     info!("remove_texture_observer: removed '{}'", key);
 }
 
 pub fn change_texture_filter_observer(
     trigger: On<ChangeTextureFilterRequested>,
-    mut texture_store: ResMut<TextureStore>,
+    mut asset_cmds: MessageWriter<RenderAssetCmd>,
     mut map_data: ResMut<MapData>,
 ) {
     let key = &trigger.event().key;
     let filter_str = &trigger.event().filter;
-    let filter = TextureFilter::from_opt_str_or_warn(Some(filter_str.as_str()), key);
-    if !texture_store.set_filter(key.as_str(), filter) {
+    let Some(entry) = find_texture_mut(&mut map_data, key) else {
         warn!(
-            "change_texture_filter_observer: key '{}' not found in TextureStore",
+            "change_texture_filter_observer: key '{}' not found in MapData",
             key
         );
         return;
-    }
-    if let Some(entry) = map_data.textures.iter_mut().find(|e| e.key == *key) {
-        entry.filter = Some(filter_str.clone());
-    }
+    };
+    entry.filter = Some(filter_str.clone());
+    let filter = TextureFilter::from_opt_str_or_warn(Some(filter_str.as_str()), key);
+    asset_cmds.write(RenderAssetCmd::SetTextureFilter {
+        key: key.clone(),
+        filter,
+    });
     info!(
         "change_texture_filter_observer: set filter of '{}' to '{}'",
         key, filter_str
@@ -648,38 +680,27 @@ pub struct RemoveAnimationRequested {
 
 pub fn add_font_observer(
     trigger: On<AddFontRequested>,
-    mut raylib: RaylibAccess,
-    mut font_store: NonSendMut<FontStore>,
+    mut asset_cmds: MessageWriter<RenderAssetCmd>,
     mut map_data: ResMut<MapData>,
 ) {
     let key = &trigger.event().key;
     let path = &trigger.event().path;
     let font_size = trigger.event().font_size;
-    if font_store.meta.contains_key(key.as_str()) {
+    if find_font(&map_data, key).is_some() {
         return;
     }
-    let (rl, th) = (&mut *raylib.rl, &*raylib.th);
-    let font = match load_font_with_mipmaps(rl, th, path, font_size as i32) {
-        Ok(f) => f,
-        Err(e) => {
-            warn!("add_font_observer: failed to load '{}': {}", path, e);
-            return;
-        }
-    };
-    info!("add_font_observer: added '{}' from '{}'", key, path);
-    font_store.add_with_meta(key, font, path.clone(), font_size);
-    if !map_data.fonts.iter().any(|e| e.key == *key) {
-        map_data.fonts.push(FontEntry {
-            key: key.clone(),
-            path: path.clone(),
-            font_size,
-        });
-    }
+    queue_font_load(&mut asset_cmds, key, path.clone(), font_size, true);
+    map_data.fonts.push(FontEntry {
+        key: key.clone(),
+        path: path.clone(),
+        font_size,
+    });
+    info!("add_font_observer: queued '{}' from '{}'", key, path);
 }
 
 pub fn rename_font_key_observer(
     trigger: On<RenameFontKeyRequested>,
-    mut font_store: NonSendMut<FontStore>,
+    mut asset_cmds: MessageWriter<RenderAssetCmd>,
     mut map_data: ResMut<MapData>,
 ) {
     let old_key = &trigger.event().old_key;
@@ -687,27 +708,35 @@ pub fn rename_font_key_observer(
     if old_key == new_key {
         return;
     }
-    if font_store.meta.contains_key(new_key.as_str()) {
+    if find_font(&map_data, new_key).is_some() {
         warn!(
             "rename_font_key_observer: key '{}' already exists, skipping",
             new_key
         );
         return;
     }
-    font_store.rename(old_key.as_str(), new_key.clone());
-    if let Some(entry) = map_data.fonts.iter_mut().find(|e| e.key == *old_key) {
-        entry.key = new_key.clone();
-    }
+    let Some(entry) = find_font_mut(&mut map_data, old_key) else {
+        warn!(
+            "rename_font_key_observer: key '{}' not found in MapData",
+            old_key
+        );
+        return;
+    };
+    entry.key = new_key.clone();
+    asset_cmds.write(RenderAssetCmd::RenameFont {
+        old_key: old_key.clone(),
+        new_key: new_key.clone(),
+    });
     info!("rename_font_key_observer: '{}' -> '{}'", old_key, new_key);
 }
 
 pub fn remove_font_observer(
     trigger: On<RemoveFontRequested>,
-    mut font_store: NonSendMut<FontStore>,
+    mut asset_cmds: MessageWriter<RenderAssetCmd>,
     mut map_data: ResMut<MapData>,
 ) {
     let key = &trigger.event().key;
-    font_store.remove(key.as_str());
+    asset_cmds.write(RenderAssetCmd::RemoveFont { key: key.clone() });
     map_data.fonts.retain(|e| e.key != *key);
     info!("remove_font_observer: removed '{}'", key);
 }
@@ -821,4 +850,58 @@ pub fn remove_animation_observer(
     anim_store.animations.remove(key.as_str());
     map_data.animations.retain(|e| e.key != *key);
     info!("remove_animation_observer: removed '{}'", key);
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use aberredengine::bevy_ecs::message::Messages;
+    use aberredengine::bevy_ecs::world::World;
+
+    /// Regression test for the fix to a bug where `load_map_observer` installed the
+    /// fully-populated new `MapData` (via `reset_editor_map`) before triggering
+    /// `AddTextureRequested`/`AddFontRequested`, so `add_texture_observer`/
+    /// `add_font_observer`'s `MapData`-based dedup guard always short-circuited and
+    /// `RenderAssetCmd::Texture`/`Font` was never queued for a loaded map's assets.
+    /// `load_map_observer` now queues loads directly via `queue_texture_load`/
+    /// `queue_font_load`, bypassing that dedup path entirely.
+    #[test]
+    fn load_map_queues_texture_render_asset_cmd() {
+        let mut map = MapData::default();
+        map.textures.push(TextureEntry {
+            key: "iso".to_string(),
+            path: "assets/textures/aberred_engine_isometric_alpha.png".to_string(),
+            filter: None,
+        });
+        let tmp_path = std::env::temp_dir().join("map_ops_fix1_regression_test.map");
+        save_map(tmp_path.to_str().unwrap(), &map).expect("save_map failed");
+
+        let mut world = World::new();
+        world.insert_resource(Messages::<RenderAssetCmd>::default());
+        world.insert_resource(MapData::default());
+        world.insert_resource(WorldSignals::default());
+        world.insert_resource(AppState::default());
+        world.insert_resource(AnimationStore::default());
+        world.insert_resource(GameConfig::default());
+
+        world.add_observer(load_map_observer);
+        world.trigger(LoadMapRequested {
+            path: tmp_path.to_str().unwrap().to_string(),
+        });
+        world.flush();
+
+        let messages = world.resource::<Messages<RenderAssetCmd>>();
+        let found = messages.iter_current_update_messages().any(|cmd| {
+            matches!(cmd, RenderAssetCmd::Texture { id, .. } if id == "iso")
+        });
+
+        std::fs::remove_file(&tmp_path).ok();
+
+        assert!(
+            found,
+            "expected RenderAssetCmd::Texture(\"iso\") to be queued after loading a map \
+             with a texture entry — got: {:?}",
+            messages.iter_current_update_messages().collect::<Vec<_>>()
+        );
+    }
 }

@@ -6,14 +6,16 @@ use crate::signals as sig;
 use crate::systems::entity_selector::{MultiEntitySelectionMutex, SelectorSource};
 use aberredengine::imgui;
 use aberredengine::resources::appstate::AppState;
-use aberredengine::resources::worldsignals::WorldSignals;
+use aberredengine::resources::signal_intents::SignalIntents;
+use aberredengine::resources::worldsignals::SignalSnapshot;
 
 pub(super) fn draw_multi_entity_selector(
     ui: &imgui::Ui,
-    signals: &mut WorldSignals,
+    signals: &SignalSnapshot,
+    intents: &mut SignalIntents,
     app_state: &AppState,
 ) -> (bool, bool) {
-    if !signals.has_flag(sig::UI_MULTI_ENTITY_SELECTOR_OPEN) {
+    if !signals.flags.contains(sig::UI_MULTI_ENTITY_SELECTOR_OPEN) {
         return (false, false);
     }
 
@@ -85,7 +87,7 @@ pub(super) fn draw_multi_entity_selector(
         });
 
     if !window_open {
-        signals.take_flag(sig::UI_MULTI_ENTITY_SELECTOR_OPEN);
+        intents.clear_flag(sig::UI_MULTI_ENTITY_SELECTOR_OPEN);
     }
     (open_move_popup, open_z_popup)
 }

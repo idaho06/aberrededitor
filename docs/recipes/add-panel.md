@@ -1,7 +1,9 @@
 # Recipe: Add a new editor panel
 
 How to add a new ImGui window panel to the editor. This recipe covers the simplest case: a panel
-that reads from `AppState` and writes back via `WorldSignals`.
+that reads from a `SignalSnapshot`/`AppState` and writes back via `SignalIntents` (the GUI
+callback runs on the render thread and never touches live `WorldSignals` directly — see
+`docs/architecture.md` and `docs/patterns.md` §1).
 
 ## 1. Add a signal constant for the open/close flag
 
@@ -32,10 +34,16 @@ Create `src/scenes/editor/my_panel.rs`:
 use crate::signals as sig;
 use aberredengine::imgui;
 use aberredengine::resources::appstate::AppState;
-use aberredengine::resources::worldsignals::WorldSignals;
+use aberredengine::resources::signal_intents::SignalIntents;
+use aberredengine::resources::worldsignals::SignalSnapshot;
 
-pub fn draw_my_panel(ui: &imgui::Ui, signals: &mut WorldSignals, app_state: &AppState) {
-    if !signals.has_flag(sig::UI_MY_PANEL_OPEN) {
+pub fn draw_my_panel(
+    ui: &imgui::Ui,
+    signals: &SignalSnapshot,
+    intents: &mut SignalIntents,
+    app_state: &AppState,
+) {
+    if !signals.flags.contains(sig::UI_MY_PANEL_OPEN) {
         return;
     }
 
@@ -45,16 +53,16 @@ pub fn draw_my_panel(ui: &imgui::Ui, signals: &mut WorldSignals, app_state: &App
         .opened(&mut window_open)
         .build(|| {
             // Draw panel contents here.
-            // Read from app_state caches; write to signals.
+            // Read from app_state caches / signals; write to intents.
 
             if ui.button("Do Thing") {
-                signals.set_flag(sig::ACTION_MY_PANEL_DO_THING);
+                intents.set_flag(sig::ACTION_MY_PANEL_DO_THING);
             }
         });
 
     // Close the panel if the user clicked X on the window title bar.
     if !window_open {
-        signals.clear_flag(sig::UI_MY_PANEL_OPEN);
+        intents.clear_flag(sig::UI_MY_PANEL_OPEN);
     }
 }
 ```
@@ -78,9 +86,16 @@ In `src/scenes/editor/update.rs`, import and call your panel:
 ```rust
 use super::my_panel::draw_my_panel;
 
-pub fn editor_gui(ui: &imgui::Ui, signals: &mut WorldSignals, textures: &TextureStore, fonts: &FontStore, app_state: &AppState) {
+pub fn editor_gui(
+    ui: &imgui::Ui,
+    signals: &SignalSnapshot,
+    intents: &mut SignalIntents,
+    textures: &TextureStore,
+    fonts: &FontStore,
+    app_state: &AppState,
+) {
     // ... existing panel calls ...
-    draw_my_panel(ui, signals, app_state);
+    draw_my_panel(ui, signals, intents, app_state);
     // ...
 }
 ```
@@ -92,7 +107,7 @@ appropriate:
 
 ```rust
 if ui.menu_item("My Panel") {
-    signals.set_flag(sig::UI_MY_PANEL_OPEN);
+    intents.set_flag(sig::UI_MY_PANEL_OPEN);
 }
 ```
 
@@ -125,7 +140,7 @@ use crate::signals as sig;
 
 // inside draw_my_panel:
 if ui.small_button("Preview##my_texture") {
-    open_texture_viewer(signals, sig::TEXTURE_VIEWER_SOURCE_TEXTURE, &tex_key);
+    open_texture_viewer(intents, sig::TEXTURE_VIEWER_SOURCE_TEXTURE, &tex_key);
 }
 ```
 
@@ -138,8 +153,8 @@ If the panel needs to show data from ECS (entity lists, resource contents, etc.)
 queried in the GUI callback, use the AppState mutex cache pattern from `docs/patterns.md`.
 
 Short version:
-1. Define `MyPanelCache` and `type MyPanelCacheMutex = Mutex<MyPanelCache>;`
-2. Insert it in `load_assets()`: `app_state.insert(MyPanelCacheMutex::new(...))`
+1. Define `MyPanelCache` and `type MyPanelCacheMutex = std::sync::Arc<std::sync::Mutex<MyPanelCache>>;`
+2. Insert it in `load_assets()`: `app_state.insert(MyPanelCacheMutex::new(std::sync::Mutex::new(...)))`
 3. Write a sync system that populates it
 4. Register the system in `main.rs`
 5. In `draw_my_panel`, read via `app_state.get::<MyPanelCacheMutex>().unwrap().lock().unwrap()`

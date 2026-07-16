@@ -3,7 +3,7 @@ use crate::editor_types::ComponentSnapshot;
 use crate::systems::entity_edit::{RemoveSpriteRequested, UpdateSpriteRequested};
 use aberredengine::bevy_ecs::prelude::Entity;
 use aberredengine::imgui;
-use aberredengine::resources::texturestore::TextureStore;
+use aberredengine::resources::render::texturestore::TextureStore;
 use aberredengine::systems::GameCtx;
 use log::warn;
 

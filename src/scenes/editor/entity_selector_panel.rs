@@ -6,14 +6,16 @@ use crate::signals as sig;
 use crate::systems::entity_selector::{RenderableSelectorMutex, SelectorSource};
 use aberredengine::imgui;
 use aberredengine::resources::appstate::AppState;
-use aberredengine::resources::worldsignals::WorldSignals;
+use aberredengine::resources::signal_intents::SignalIntents;
+use aberredengine::resources::worldsignals::SignalSnapshot;
 
 pub(super) fn draw_entity_selector(
     ui: &imgui::Ui,
-    signals: &mut WorldSignals,
+    signals: &SignalSnapshot,
+    intents: &mut SignalIntents,
     app_state: &AppState,
 ) {
-    if !signals.has_flag(sig::UI_ENTITY_SELECTOR_OPEN) {
+    if !signals.flags.contains(sig::UI_ENTITY_SELECTOR_OPEN) {
         return;
     }
 
@@ -91,7 +93,7 @@ pub(super) fn draw_entity_selector(
                     }
                 }
                 ui.separator();
-                if let Some(label) = signals.get_string(sig::ES_SELECTED_LABEL).cloned() {
+                if let Some(label) = signals.strings.get(sig::ES_SELECTED_LABEL).cloned() {
                     ui.text(format!("Selected: {}", label));
                 } else {
                     ui.text_disabled("No entity selected.");
@@ -100,9 +102,9 @@ pub(super) fn draw_entity_selector(
         });
 
     if let Some(row) = row_to_select {
-        signals.set_integer(sig::ES_SELECTED_ROW, row);
+        intents.set_integer(sig::ES_SELECTED_ROW, row);
     }
     if !window_open {
-        signals.take_flag(sig::UI_ENTITY_SELECTOR_OPEN);
+        intents.clear_flag(sig::UI_ENTITY_SELECTOR_OPEN);
     }
 }

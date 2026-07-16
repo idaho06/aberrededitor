@@ -11,14 +11,16 @@ use crate::systems::template_selector::TemplateSelectorMutex;
 use aberredengine::bevy_ecs::prelude::Entity;
 use aberredengine::imgui;
 use aberredengine::resources::appstate::AppState;
-use aberredengine::resources::worldsignals::WorldSignals;
+use aberredengine::resources::signal_intents::SignalIntents;
+use aberredengine::resources::worldsignals::SignalSnapshot;
 
 pub(super) fn draw_template_browser(
     ui: &imgui::Ui,
-    signals: &mut WorldSignals,
+    signals: &SignalSnapshot,
+    intents: &mut SignalIntents,
     app_state: &AppState,
 ) {
-    if !signals.has_flag(sig::UI_TEMPLATE_BROWSER_OPEN) {
+    if !signals.flags.contains(sig::UI_TEMPLATE_BROWSER_OPEN) {
         return;
     }
 
@@ -56,9 +58,9 @@ pub(super) fn draw_template_browser(
         });
 
     if let Some(entity) = entity_to_select {
-        signals.set_entity(sig::TEMPLATE_SELECT_ENTITY, entity);
+        intents.set_entity(sig::TEMPLATE_SELECT_ENTITY, entity);
     }
     if !window_open {
-        signals.take_flag(sig::UI_TEMPLATE_BROWSER_OPEN);
+        intents.clear_flag(sig::UI_TEMPLATE_BROWSER_OPEN);
     }
 }

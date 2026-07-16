@@ -24,7 +24,7 @@ pub struct TemplateSelectorCache {
     pub labels: Vec<String>,
 }
 
-pub type TemplateSelectorMutex = std::sync::Mutex<TemplateSelectorCache>;
+pub type TemplateSelectorMutex = std::sync::Arc<std::sync::Mutex<TemplateSelectorCache>>;
 
 // ---------------------------------------------------------------------------
 // Per-frame system

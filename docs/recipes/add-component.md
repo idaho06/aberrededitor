@@ -59,9 +59,14 @@ my_component: my_comp.map(|c| MyComponentSnapshot {
 }),
 ```
 
+Keep the query tuple and the snapshot-population block in lockstep. This observer is the only
+place the GUI read model is assembled.
+
 ## 5. Create src/scenes/editor/components/my_component.rs
 
-This is the main new file — it co-locates pending state, UI, and commit logic:
+This is the main new file — it co-locates pending state, UI, and commit logic. Most editable
+components follow a single `draw_section()` + `commit()` pattern here; `transform` is the main
+exception because it groups several smaller draw helpers under one pending struct.
 
 ```rust
 use crate::editor_types::ComponentSnapshot;
@@ -124,6 +129,9 @@ pub(crate) fn commit(
     }
 }
 ```
+
+Use the shared widget helpers from `src/scenes/editor/widgets.rs` where possible so new
+component sections behave consistently with the existing editor.
 
 ## 6. Add Update and Remove events in entity_edit/mod.rs
 
@@ -206,34 +214,46 @@ The `any_commit()` method calls `is_dirty()` on each sub-struct — add:
 || self.my_component.is_dirty()
 ```
 
+Do not add custom reset logic in your panel. The editor clears the aggregate centrally through
+`clear_entity_editor_pending()` after commit and on selection change.
+
 ## 11. Wire into the components/ registry
 
 In `src/scenes/editor/components/mod.rs`:
+
 ```rust
 pub(super) mod my_component;
 ```
 
 In `src/scenes/editor/entity_editor_panel.rs` (inside the scroll area):
+
 ```rust
 components::my_component::draw_section(ui, &snap, &mut p.my_component);
 ```
 
 In `src/scenes/editor/commit.rs` (in `consume_entity_editor_commits`):
+
 ```rust
 components::my_component::commit(ctx, entity, &snapshot, &p.my_component);
 ```
+
+That central dispatcher is the only path from GUI pending state into ECS mutation events. Keep
+the actual writes inside the component-local `commit()` helper or the downstream observers.
 
 ## 12. Add map serialization
 
 In `src/systems/map_ops.rs`:
 
 **save_map_observer:** Extract the component from the entity and write it to `EntityDef`:
+
 ```rust
 my_component: my_comp.map(|c| MyComponentEntry { value: c.value, label: c.label.clone() }),
 ```
+
 `MyComponentEntry` must be defined in the engine's `MapData`/`EntityDef` types.
 
 **load_map_observer:** After spawning the entity, insert the component if the def has it:
+
 ```rust
 if let Some(ref my_entry) = entity_def.my_component {
     entity_commands.insert(MyComponent { value: my_entry.value, label: my_entry.label.clone() });
@@ -259,4 +279,5 @@ The pending state is similarly just `Option<String>`, and the inspector widget i
 - Run the editor, select an entity, click "Add Component" → "MyComponent" appears in the list
 - After adding, the inspector shows the MyComponent section
 - Edit a value → component updates in ECS
+- Select a different entity before committing → pending values are cleared instead of leaking
 - Save and reload the map → component persists

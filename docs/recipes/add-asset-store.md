@@ -4,7 +4,15 @@ How to add an asset store to the editor — a named collection of assets (textur
 animations) that the user can create/edit/delete and that persists in the map file.
 
 Use the animation store (`AnimationStore` + animation panel) as the reference implementation.
-The steps below mirror that pattern.
+The steps below mirror that pattern — for a **logic-owned** store like `AnimationStore` (plain
+data, not a GPU handle), CRUD observers mutate it directly via `ResMut<MyStore>`, no
+`RenderAssetCmd` involved. If your store instead wraps a GPU resource (a texture, a font), it must
+live render-side and go through the `RenderAssetCmd` pipeline instead — see `docs/gotchas.md` §3
+and `src/systems/map_ops.rs`'s texture/font observers for that pattern.
+
+One practical difference follows from that ownership split: render-owned stores are available
+directly to the GUI callback as `&TextureStore` / `&FontStore`, while logic-owned stores need an
+`AppState` mirror if an ImGui panel must inspect them.
 
 ## 1. Define the store type
 
@@ -21,7 +29,7 @@ In a new file `src/systems/my_store_sync.rs`:
 use aberredengine::resources::appstate::AppState;
 use aberredengine::bevy_ecs::change_detection::DetectChanges;
 use aberredengine::bevy_ecs::prelude::{Res, ResMut};
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex};
 
 #[derive(Default, Clone)]
 pub struct MyStoreEntry {
@@ -35,7 +43,7 @@ pub struct MyStoreCache {
     pub entries: Vec<MyStoreEntry>,
 }
 
-pub type MyStoreMutex = Mutex<MyStoreCache>;
+pub type MyStoreMutex = Arc<Mutex<MyStoreCache>>;
 
 pub fn my_store_sync_system(store: Res<MyStore>, app_state: ResMut<AppState>) {
     if !store.is_changed() {
@@ -62,7 +70,7 @@ In `src/systems/load_assets.rs`:
 use crate::systems::my_store_sync::MyStoreMutex;
 
 // Inside load_assets():
-app_state.insert(MyStoreMutex::new(MyStoreCache::default()));
+app_state.insert(MyStoreMutex::new(Mutex::new(MyStoreCache::default())));
 ```
 
 ## 4. Register the sync system
@@ -147,10 +155,10 @@ pub const ACTION_MY_STORE_UPDATE: &str = "gui:action:my_store:update";
 Create `src/scenes/editor/my_store_panel.rs`. Model it closely on `animation_panel.rs` or
 `texture_panel.rs` — the pattern is the same:
 
-- Check `signals.has_flag(sig::UI_MY_STORE_OPEN)` at the top; return early if false
+- Check `signals.flags.contains(sig::UI_MY_STORE_OPEN)` at the top; return early if false
 - Show a list of entries from `app_state.get::<MyStoreMutex>()`
-- "Add" button → set `ACTION_MY_STORE_ADD` flag
-- Edit fields → set `ACTION_MY_STORE_UPDATE` flag
+- "Add" button → `intents.set_flag(sig::ACTION_MY_STORE_ADD)`
+- Edit fields → `intents.set_flag(sig::ACTION_MY_STORE_UPDATE)`
 - "Rename" / "Remove" buttons → return booleans to open modals (same as texture_panel pattern)
 - Modal popups in a separate `draw_my_store_modals` function
 

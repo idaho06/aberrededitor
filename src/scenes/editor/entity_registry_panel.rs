@@ -5,10 +5,15 @@
 //! `ENTITY_REGISTRY_SELECTED_KEY`; `editor_update` triggers `SelectRegisteredEntityRequested`.
 use crate::signals as sig;
 use aberredengine::imgui;
-use aberredengine::resources::worldsignals::WorldSignals;
+use aberredengine::resources::signal_intents::SignalIntents;
+use aberredengine::resources::worldsignals::SignalSnapshot;
 
-pub(super) fn draw_entity_registry(ui: &imgui::Ui, signals: &mut WorldSignals) {
-    if !signals.has_flag(sig::UI_ENTITY_REGISTRY_OPEN) {
+pub(super) fn draw_entity_registry(
+    ui: &imgui::Ui,
+    signals: &SignalSnapshot,
+    intents: &mut SignalIntents,
+) {
+    if !signals.flags.contains(sig::UI_ENTITY_REGISTRY_OPEN) {
         return;
     }
 
@@ -43,9 +48,9 @@ pub(super) fn draw_entity_registry(ui: &imgui::Ui, signals: &mut WorldSignals) {
         });
 
     if let Some(key) = selected_key {
-        signals.set_string(sig::ENTITY_REGISTRY_SELECTED_KEY, &key);
+        intents.set_string(sig::ENTITY_REGISTRY_SELECTED_KEY, &key);
     }
     if !window_open {
-        signals.take_flag(sig::UI_ENTITY_REGISTRY_OPEN);
+        intents.clear_flag(sig::UI_ENTITY_REGISTRY_OPEN);
     }
 }

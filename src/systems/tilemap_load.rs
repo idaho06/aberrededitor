@@ -1,11 +1,12 @@
 //! Tilemap loading: spawns a `TileMap` entity from a folder path and tags children.
 //!
-//! `tilemap_load_observer` handles `LoadTilemapRequested`. It must run in an ECS observer
-//! (not the GUI callback) because it needs `RaylibAccess` to load the tilemap texture.
+//! `tilemap_load_observer` handles `LoadTilemapRequested`: it records the tilemap in
+//! `MapData` and spawns the `TileMap` component; the engine's own `tilemap_spawn_system`
+//! queues the atlas texture load via `RenderAssetCmd::TilemapTexture`.
 //!
 //! `tag_plain_map_entities` and `on_tilemap_added` are per-frame systems that run after
-//! the tilemap is spawned to insert `MapEntity`, `SerializedLuaSetup`, and `TextureStore`
-//! entries on the newly created entities.
+//! the tilemap is spawned to insert `MapEntity` and `SerializedLuaSetup` on the newly
+//! created entities.
 //!
 //! `PendingLuaSetupLoadState` tracks which entities still need their `SerializedLuaSetup`
 //! component populated from the map file's `lua_setup` fields.
@@ -22,15 +23,14 @@ use aberredengine::components::tilemap::TileMap;
 use aberredengine::engine_app::EngineBuilder;
 use aberredengine::resources::appstate::AppState;
 use aberredengine::resources::mapdata::{EntityDef, MapData};
-use aberredengine::resources::texturestore::TextureStore;
 use log::{info, warn};
 use std::collections::{HashMap, VecDeque};
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex};
 
 use crate::components::map_entity::MapEntity;
 
 use crate::systems::map_ops::GROUP_TILEMAP_ROOTS;
-use crate::systems::utils::{tilemap_stem, tilemap_tex_path, to_relative};
+use crate::systems::utils::{tilemap_stem, to_relative};
 
 #[derive(Default)]
 pub struct PendingLuaSetupLoadState {
@@ -74,7 +74,7 @@ impl PendingLuaSetupLoadState {
     }
 }
 
-pub type PendingLuaSetupLoadMutex = Mutex<PendingLuaSetupLoadState>;
+pub type PendingLuaSetupLoadMutex = Arc<Mutex<PendingLuaSetupLoadState>>;
 
 #[derive(Event)]
 pub struct LoadTilemapRequested {
@@ -154,18 +154,18 @@ pub fn tag_plain_map_entities(
 }
 
 /// Runs on `Added<TileMap>` — covers both the UI-trigger path and the engine's
-/// load-from-file spawn path. `TextureStore.paths` is an editor concern; the
-/// engine's tilemap_spawn_system does not populate it.
+/// load-from-file spawn path. `TextureStore.paths` for the tilemap atlas is populated
+/// render-side by the engine's own `tilemap_spawn_system` (it queues
+/// `RenderAssetCmd::TilemapTexture`); this system only tags entities and restores the
+/// serialized Lua setup callback.
 pub fn on_tilemap_added(
     query: Query<(Entity, &TileMap), Added<TileMap>>,
     mut commands: Commands,
-    mut texture_store: ResMut<TextureStore>,
     app_state: Res<AppState>,
 ) {
     let pending = app_state.get::<PendingLuaSetupLoadMutex>();
     for (entity, tilemap) in query.iter() {
         let rel_path = to_relative(&tilemap.path);
-        let stem = tilemap_stem(&rel_path);
         let mut entity_commands = commands.entity(entity);
         entity_commands.insert(MapEntity);
         if let Some(mutex) = pending
@@ -176,8 +176,5 @@ pub fn on_tilemap_added(
         {
             entity_commands.insert(SerializedLuaSetup::new(callback));
         }
-        texture_store
-            .paths
-            .insert(stem.to_owned(), tilemap_tex_path(&rel_path, stem));
     }
 }

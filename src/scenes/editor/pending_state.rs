@@ -10,7 +10,7 @@ use super::components::{
     tint::PendingTint,
     transform::PendingTransform,
 };
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex};
 
 /// Thin aggregate of per-component pending sub-structs plus entity-level action flags.
 ///
@@ -66,4 +66,4 @@ impl PendingEditState {
 }
 
 /// Convenience alias used by callers that store this in AppState.
-pub(crate) type PendingMutex = Mutex<PendingEditState>;
+pub(crate) type PendingMutex = Arc<Mutex<PendingEditState>>;

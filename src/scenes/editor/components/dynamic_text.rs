@@ -3,7 +3,7 @@ use crate::editor_types::ComponentSnapshot;
 use crate::systems::entity_edit::{RemoveDynamicTextRequested, UpdateDynamicTextRequested};
 use aberredengine::bevy_ecs::prelude::Entity;
 use aberredengine::imgui;
-use aberredengine::resources::fontstore::FontStore;
+use aberredengine::resources::render::fontstore::FontStore;
 use aberredengine::systems::GameCtx;
 use log::warn;
 

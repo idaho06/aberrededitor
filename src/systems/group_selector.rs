@@ -37,7 +37,7 @@ impl Default for GroupListCache {
 }
 
 /// `AppState` key for the group list cache. Read by `draw_groups_window`.
-pub type GroupListMutex = std::sync::Mutex<GroupListCache>;
+pub type GroupListMutex = std::sync::Arc<std::sync::Mutex<GroupListCache>>;
 
 #[allow(clippy::type_complexity)]
 pub fn update_group_cache(

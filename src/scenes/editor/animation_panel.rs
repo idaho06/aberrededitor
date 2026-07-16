@@ -12,8 +12,9 @@ use std::sync::Arc;
 use aberredengine::imgui;
 use aberredengine::resources::animationstore::AnimationResource;
 use aberredengine::resources::appstate::AppState;
-use aberredengine::resources::texturestore::TextureStore;
-use aberredengine::resources::worldsignals::WorldSignals;
+use aberredengine::resources::render::texturestore::TextureStore;
+use aberredengine::resources::signal_intents::SignalIntents;
+use aberredengine::resources::worldsignals::SignalSnapshot;
 
 use crate::scenes::editor::texture_viewer_panel::open_texture_viewer;
 use crate::scenes::editor::widgets::{draw_float_input, draw_int_input};
@@ -22,11 +23,12 @@ use crate::systems::animation_store_sync::AnimationStoreMutex;
 
 pub(super) fn draw_animation_store(
     ui: &imgui::Ui,
-    signals: &mut WorldSignals,
+    signals: &SignalSnapshot,
+    intents: &mut SignalIntents,
     textures: &TextureStore,
     app_state: &AppState,
 ) -> (bool, bool) {
-    if !signals.has_flag(sig::UI_ANIMATION_STORE_OPEN) {
+    if !signals.flags.contains(sig::UI_ANIMATION_STORE_OPEN) {
         return (false, false);
     }
 
@@ -71,7 +73,7 @@ pub(super) fn draw_animation_store(
                         imgui::Image::new(tex_id, [64.0, 64.0]).build(ui);
                         if ui.is_item_clicked() {
                             open_texture_viewer(
-                                signals,
+                                intents,
                                 sig::TEXTURE_VIEWER_SOURCE_ANIMATION,
                                 resource.tex_key.as_ref(),
                             );
@@ -93,13 +95,13 @@ pub(super) fn draw_animation_store(
                         ui.text(key.as_str());
                         ui.same_line();
                         if ui.small_button("Rename##anim_rename") {
-                            signals.set_string(sig::ANIM_RENAME_SRC, key.as_str());
-                            signals.set_string(sig::ANIM_RENAME_BUF, key.as_str());
+                            intents.set_string(sig::ANIM_RENAME_SRC, key.as_str());
+                            intents.set_string(sig::ANIM_RENAME_BUF, key.as_str());
                             open_rename_popup = true;
                         }
                         ui.same_line();
                         if ui.small_button("Remove##anim_remove") {
-                            signals.set_string(sig::ANIM_REMOVE_KEY, key.as_str());
+                            intents.set_string(sig::ANIM_REMOVE_KEY, key.as_str());
                             open_remove_popup = true;
                         }
 
@@ -182,8 +184,8 @@ pub(super) fn draw_animation_store(
                     // Commit any field change: write back to cache and set action flag.
                     if let Some(updated) = changed_resource {
                         mutex.lock().unwrap().insert(key.clone(), updated);
-                        signals.set_string(sig::ANIM_UPDATE_KEY, key.as_str());
-                        signals.set_flag(sig::ACTION_ANIM_UPDATE);
+                        intents.set_string(sig::ANIM_UPDATE_KEY, key.as_str());
+                        intents.set_flag(sig::ACTION_ANIM_UPDATE);
                     }
 
                     ui.separator();
@@ -195,54 +197,61 @@ pub(super) fn draw_animation_store(
             ui.text("Add animation");
             ui.same_line();
             let mut add_key = signals
-                .get_string(sig::ANIM_ADD_KEY_BUF)
+                .strings
+                .get(sig::ANIM_ADD_KEY_BUF)
                 .cloned()
                 .unwrap_or_default();
             ui.set_next_item_width(ui.content_region_avail()[0] - 50.0);
             if ui.input_text("##anim_add_key", &mut add_key).build() {
-                signals.set_string(sig::ANIM_ADD_KEY_BUF, add_key.as_str());
+                intents.set_string(sig::ANIM_ADD_KEY_BUF, add_key.as_str());
             }
             ui.same_line();
             if ui.button("Add##anim_add") && !add_key.is_empty() {
-                signals.set_flag(sig::ACTION_ANIM_ADD);
+                intents.set_flag(sig::ACTION_ANIM_ADD);
             }
         });
 
     if !window_open {
-        signals.take_flag(sig::UI_ANIMATION_STORE_OPEN);
+        intents.clear_flag(sig::UI_ANIMATION_STORE_OPEN);
     }
 
     (open_rename_popup, open_remove_popup)
 }
 
-pub(super) fn draw_animation_modals(ui: &imgui::Ui, signals: &mut WorldSignals) {
+pub(super) fn draw_animation_modals(
+    ui: &imgui::Ui,
+    signals: &SignalSnapshot,
+    intents: &mut SignalIntents,
+) {
     ui.modal_popup_config("Rename Key##animation_store")
         .always_auto_resize(true)
         .resizable(false)
         .movable(false)
         .build(|| {
             let src = signals
-                .get_string(sig::ANIM_RENAME_SRC)
+                .strings
+                .get(sig::ANIM_RENAME_SRC)
                 .cloned()
                 .unwrap_or_default();
             ui.text(format!("Old key: {src}"));
             ui.spacing();
 
             let mut buf = signals
-                .get_string(sig::ANIM_RENAME_BUF)
+                .strings
+                .get(sig::ANIM_RENAME_BUF)
                 .cloned()
                 .unwrap_or_default();
             if ui
                 .input_text("New key##anim_rename_input", &mut buf)
                 .build()
             {
-                signals.set_string(sig::ANIM_RENAME_BUF, buf.as_str());
+                intents.set_string(sig::ANIM_RENAME_BUF, buf.as_str());
             }
 
             ui.spacing();
             ui.separator();
             if ui.button("OK##anim_rename_ok") {
-                signals.set_flag(sig::ACTION_ANIM_RENAME);
+                intents.set_flag(sig::ACTION_ANIM_RENAME);
                 ui.close_current_popup();
             }
             ui.same_line();
@@ -257,14 +266,15 @@ pub(super) fn draw_animation_modals(ui: &imgui::Ui, signals: &mut WorldSignals) 
         .movable(false)
         .build(|| {
             let key = signals
-                .get_string(sig::ANIM_REMOVE_KEY)
+                .strings
+                .get(sig::ANIM_REMOVE_KEY)
                 .cloned()
                 .unwrap_or_default();
             ui.text(format!("Remove \"{key}\"?"));
             ui.spacing();
             ui.separator();
             if ui.button("Yes##anim_remove_yes") {
-                signals.set_flag(sig::ACTION_ANIM_REMOVE);
+                intents.set_flag(sig::ACTION_ANIM_REMOVE);
                 ui.close_current_popup();
             }
             ui.same_line();
