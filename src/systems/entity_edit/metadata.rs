@@ -30,12 +30,7 @@ component_edit_observer!(
     }
 );
 
-component_remove_observer!(
-    remove_group_observer,
-    RemoveGroupRequested,
-    Group,
-    "Group"
-);
+component_remove_observer!(remove_group_observer, RemoveGroupRequested, Group, "Group");
 
 component_remove_observer!(remove_ttl_observer, RemoveTtlRequested, Ttl, "Ttl");
 component_remove_observer!(remove_timer_observer, RemoveTimerRequested, Timer, "Timer");

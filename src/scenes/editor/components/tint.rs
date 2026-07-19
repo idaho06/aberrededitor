@@ -37,12 +37,7 @@ pub(crate) fn draw_section(ui: &imgui::Ui, snap: &ComponentSnapshot, p: &mut Pen
     }
 }
 
-pub(crate) fn commit(
-    ctx: &mut GameCtx,
-    entity: Entity,
-    snap: &ComponentSnapshot,
-    p: &PendingTint,
-) {
+pub(crate) fn commit(ctx: &mut GameCtx, entity: Entity, snap: &ComponentSnapshot, p: &PendingTint) {
     if p.remove {
         ctx.commands.trigger(RemoveTintRequested { entity });
     } else if p.commit {

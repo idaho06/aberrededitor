@@ -69,8 +69,7 @@ pub(crate) fn draw_section(
         p.width = Some(v);
         p.commit = true;
     }
-    if let Some(v) =
-        draw_float_input(ui, "height##sprite", p.height.unwrap_or(sprite.height), 1.0)
+    if let Some(v) = draw_float_input(ui, "height##sprite", p.height.unwrap_or(sprite.height), 1.0)
     {
         p.height = Some(v);
         p.commit = true;

@@ -19,11 +19,7 @@ impl PendingLuaSetup {
     }
 }
 
-pub(crate) fn draw_section(
-    ui: &imgui::Ui,
-    snap: &ComponentSnapshot,
-    p: &mut PendingLuaSetup,
-) {
+pub(crate) fn draw_section(ui: &imgui::Ui, snap: &ComponentSnapshot, p: &mut PendingLuaSetup) {
     let Some(ref callback) = snap.lua_setup else {
         return;
     };

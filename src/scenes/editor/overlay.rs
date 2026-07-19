@@ -376,7 +376,11 @@ pub(super) fn draw_selection_drag_overlay(
 /// Logic-thread variant, reading camera state from a live `WorldSignals`. Used by
 /// `drag_rect_to_world_aabb` (`editor_update`'s tool handlers), which has no
 /// `SignalSnapshot` available.
-pub(super) fn render_to_world_live(signals: &WorldSignals, render_x: f32, render_y: f32) -> [f32; 2] {
+pub(super) fn render_to_world_live(
+    signals: &WorldSignals,
+    render_x: f32,
+    render_y: f32,
+) -> [f32; 2] {
     let offset_x = signals.get_scalar(sig::CAM_OFFSET_X).unwrap_or(0.0);
     let offset_y = signals.get_scalar(sig::CAM_OFFSET_Y).unwrap_or(0.0);
     let zoom = signals.get_scalar(sig::CAM_ZOOM).unwrap_or(1.0);
@@ -399,8 +403,16 @@ pub(super) fn render_to_world_live(signals: &WorldSignals, render_x: f32, render
 
 fn render_to_screen(signals: &SignalSnapshot, render_x: f32, render_y: f32) -> [f32; 2] {
     let lb_scale = signals.scalars.get(sig::WIN_SCALE).copied().unwrap_or(1.0);
-    let lb_x = signals.scalars.get(sig::WIN_OFFSET_X).copied().unwrap_or(0.0);
-    let lb_y = signals.scalars.get(sig::WIN_OFFSET_Y).copied().unwrap_or(0.0);
+    let lb_x = signals
+        .scalars
+        .get(sig::WIN_OFFSET_X)
+        .copied()
+        .unwrap_or(0.0);
+    let lb_y = signals
+        .scalars
+        .get(sig::WIN_OFFSET_Y)
+        .copied()
+        .unwrap_or(0.0);
     [render_x * lb_scale + lb_x, render_y * lb_scale + lb_y]
 }
 

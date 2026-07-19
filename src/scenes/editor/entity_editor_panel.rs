@@ -192,12 +192,7 @@ pub(super) fn draw_entity_editor(
                     components::collider::draw_section(ui, &snap, &mut p.collider);
                     components::transform::draw_rotation(ui, &snap, &mut p.transform);
                     components::transform::draw_scale(ui, &snap, &mut p.transform);
-                    components::animation::draw_section(
-                        ui,
-                        &snap,
-                        &mut p.animation,
-                        anim_store,
-                    );
+                    components::animation::draw_section(ui, &snap, &mut p.animation, anim_store);
                     components::readonly::draw_section(ui, &snap, &mut p.readonly_removals);
 
                     if let Some(ref path) = snap.tilemap_path {

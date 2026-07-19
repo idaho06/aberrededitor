@@ -8,9 +8,9 @@
 //! the inspector always shows the post-mutation state.
 use crate::components::serialized_lua_setup::SerializedLuaSetup;
 use crate::editor_types::{
-    AnimationSnapshot, ColliderSnapshot, ComponentSnapshot, DynamicTextSnapshot,
-    EmitterShapeKind, ParticleEmitterSnapshot, PhaseSnapshot, SpriteSnapshot, TimerSnapshot,
-    TintSnapshot, TtlKind, TtlSnapshot,
+    AnimationSnapshot, ColliderSnapshot, ComponentSnapshot, DynamicTextSnapshot, EmitterShapeKind,
+    ParticleEmitterSnapshot, PhaseSnapshot, SpriteSnapshot, TimerSnapshot, TintSnapshot, TtlKind,
+    TtlSnapshot,
 };
 use crate::signals as sig;
 use aberredengine::bevy_ecs;
@@ -87,7 +87,18 @@ pub fn entity_inspect_observer(
     let entity = trigger.event().entity;
     let Ok((
         (pos, z, sprite, collider, group, rot, scale, animation),
-        (ttl, timer, phase, persistent, tilemap, child_of, tint, lua_setup, dynamic_text, particle_emitter),
+        (
+            ttl,
+            timer,
+            phase,
+            persistent,
+            tilemap,
+            child_of,
+            tint,
+            lua_setup,
+            dynamic_text,
+            particle_emitter,
+        ),
     )) = query.get(entity)
     else {
         return;

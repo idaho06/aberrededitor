@@ -1,15 +1,10 @@
-use crate::editor_types::ComponentKind;
 use super::components::{
-    animation::PendingAnimation,
-    collider::PendingCollider,
-    dynamic_text::PendingDynamicText,
-    lua_setup::PendingLuaSetup,
-    particle_emitter::PendingParticleEmitter,
-    readonly::PendingReadonlyRemovals,
-    sprite::PendingSprite,
-    tint::PendingTint,
+    animation::PendingAnimation, collider::PendingCollider, dynamic_text::PendingDynamicText,
+    lua_setup::PendingLuaSetup, particle_emitter::PendingParticleEmitter,
+    readonly::PendingReadonlyRemovals, sprite::PendingSprite, tint::PendingTint,
     transform::PendingTransform,
 };
+use crate::editor_types::ComponentKind;
 use std::sync::{Arc, Mutex};
 
 /// Thin aggregate of per-component pending sub-structs plus entity-level action flags.

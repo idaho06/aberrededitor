@@ -24,11 +24,7 @@ impl PendingCollider {
     }
 }
 
-pub(crate) fn draw_section(
-    ui: &imgui::Ui,
-    snap: &ComponentSnapshot,
-    p: &mut PendingCollider,
-) {
+pub(crate) fn draw_section(ui: &imgui::Ui, snap: &ComponentSnapshot, p: &mut PendingCollider) {
     let Some(ref collider) = snap.box_collider else {
         return;
     };

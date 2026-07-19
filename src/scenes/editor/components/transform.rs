@@ -2,9 +2,8 @@ use super::super::widgets::{draw_drag_float_input, draw_float_input, draw_text_b
 use crate::editor_types::ComponentSnapshot;
 use crate::systems::entity_edit::{
     RemoveGroupRequested, RemoveMapPositionRequested, RemoveRotationRequested,
-    RemoveScaleRequested, RemoveZIndexRequested, UpdateGroupRequested,
-    UpdateMapPositionRequested, UpdateRotationRequested, UpdateScaleRequested,
-    UpdateZIndexRequested,
+    RemoveScaleRequested, RemoveZIndexRequested, UpdateGroupRequested, UpdateMapPositionRequested,
+    UpdateRotationRequested, UpdateScaleRequested, UpdateZIndexRequested,
 };
 use aberredengine::bevy_ecs::prelude::Entity;
 use aberredengine::imgui;

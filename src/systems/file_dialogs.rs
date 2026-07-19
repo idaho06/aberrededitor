@@ -136,10 +136,7 @@ pub fn clear_async_dialog(app_state: &AppState) {
 ///
 /// Successful completions are converted to relative paths here, then forwarded as the same
 /// events the editor used before the async migration.
-pub fn poll_async_dialogs(
-    mut commands: Commands,
-    app_state: Res<AppState>,
-) {
+pub fn poll_async_dialogs(mut commands: Commands, app_state: Res<AppState>) {
     let Some(result) = drain_completed(&app_state) else {
         return;
     };

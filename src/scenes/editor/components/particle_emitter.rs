@@ -92,15 +92,21 @@ pub(crate) fn draw_section(
     }
 
     // Offset
-    if let Some(v) =
-        draw_float_input(ui, "Off X##pe_off_x", p.offset_x.unwrap_or(pe.offset[0]), 1.0)
-    {
+    if let Some(v) = draw_float_input(
+        ui,
+        "Off X##pe_off_x",
+        p.offset_x.unwrap_or(pe.offset[0]),
+        1.0,
+    ) {
         p.offset_x = Some(v);
         p.commit = true;
     }
-    if let Some(v) =
-        draw_float_input(ui, "Off Y##pe_off_y", p.offset_y.unwrap_or(pe.offset[1]), 1.0)
-    {
+    if let Some(v) = draw_float_input(
+        ui,
+        "Off Y##pe_off_y",
+        p.offset_y.unwrap_or(pe.offset[1]),
+        1.0,
+    ) {
         p.offset_y = Some(v);
         p.commit = true;
     }
@@ -134,8 +140,7 @@ pub(crate) fn draw_section(
         p.commit = true;
     }
     ui.same_line();
-    if !is_max
-        && let Some(v) = draw_int_input(ui, "Count##pe_remaining", current_remaining as i32)
+    if !is_max && let Some(v) = draw_int_input(ui, "Count##pe_remaining", current_remaining as i32)
     {
         p.emissions_remaining = Some(v.max(0) as u32);
         p.commit = true;
@@ -277,10 +282,7 @@ pub(crate) fn draw_section(
             ui.text_disabled("Enter a registered entity key.");
         } else if !known_entity_keys.iter().any(|known| known == display_key) {
             unresolved_keys.push(display_key.to_owned());
-            ui.text_colored(
-                WARNING_TEXT_COLOR,
-                format!("Unresolved key: {display_key}"),
-            );
+            ui.text_colored(WARNING_TEXT_COLOR, format!("Unresolved key: {display_key}"));
         }
     }
     if let Some(idx) = remove_idx {
@@ -337,9 +339,7 @@ pub(crate) fn commit(
                 particles_per_emission: p
                     .particles_per_emission
                     .unwrap_or(pe.particles_per_emission),
-                emissions_per_second: p
-                    .emissions_per_second
-                    .unwrap_or(pe.emissions_per_second),
+                emissions_per_second: p.emissions_per_second.unwrap_or(pe.emissions_per_second),
                 emissions_remaining: p.emissions_remaining.unwrap_or(pe.emissions_remaining),
                 arc_min_deg: p.arc_min.unwrap_or(pe.arc_min_deg),
                 arc_max_deg: p.arc_max.unwrap_or(pe.arc_max_deg),

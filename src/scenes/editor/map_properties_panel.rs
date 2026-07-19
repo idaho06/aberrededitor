@@ -122,10 +122,9 @@ pub fn draw_map_properties_panel(
 
             ui.text("Background");
             ui.same_line();
-            let snapshot_f32 = s.background_color.map_or(
-                [0.0_f32, 0.0, 0.0],
-                |[r, g, b]| [r as f32 / 255.0, g as f32 / 255.0, b as f32 / 255.0],
-            );
+            let snapshot_f32 = s.background_color.map_or([0.0_f32, 0.0, 0.0], |[r, g, b]| {
+                [r as f32 / 255.0, g as f32 / 255.0, b as f32 / 255.0]
+            });
             let mut color_f32 = s.pending_bg_color.unwrap_or(snapshot_f32);
             if ui.color_edit3("##bg_color", &mut color_f32) {
                 s.pending_bg_color = Some(color_f32);

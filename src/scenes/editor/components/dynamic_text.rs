@@ -61,9 +61,12 @@ pub(crate) fn draw_section(
         }
     }
 
-    if let Some(v) =
-        draw_float_input(ui, "font_size##dt", p.font_size.unwrap_or(dt.font_size), 1.0)
-    {
+    if let Some(v) = draw_float_input(
+        ui,
+        "font_size##dt",
+        p.font_size.unwrap_or(dt.font_size),
+        1.0,
+    ) {
         p.font_size = Some(v);
         p.commit = true;
     }

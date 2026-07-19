@@ -83,12 +83,7 @@ component_edit_observer!(
     }
 );
 
-component_remove_observer!(
-    remove_tint_observer,
-    RemoveTintRequested,
-    Tint,
-    "Tint"
-);
+component_remove_observer!(remove_tint_observer, RemoveTintRequested, Tint, "Tint");
 
 component_edit_observer!(
     update_dynamic_text_observer,

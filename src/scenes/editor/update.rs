@@ -35,8 +35,8 @@ use super::template_browser_panel::draw_template_browser;
 use super::texture_panel::{draw_texture_editor, draw_texture_modals};
 use super::texture_viewer_panel::draw_texture_viewer;
 use super::{
-    SelectionDragRect, EditorTool, current_tool, enter_placement_mode,
-    exit_placement_mode, finish_selection_drag, start_selection_drag, update_selection_drag,
+    EditorTool, SelectionDragRect, current_tool, enter_placement_mode, exit_placement_mode,
+    finish_selection_drag, start_selection_drag, update_selection_drag,
 };
 use crate::signals as sig;
 use crate::systems::animation_store_sync::AnimationStoreMutex;
@@ -52,17 +52,17 @@ use crate::systems::entity_selector::{
 };
 use crate::systems::file_dialogs::{AsyncFileDialogRequest, request_async_dialog};
 use crate::systems::map_ops::{
-    AddAnimationRequested, ChangeTextureFilterRequested, NewMapRequested,
-    PreviewMapDataRequested, RemoveAnimationRequested, RemoveTextureRequested,
-    RenameAnimationKeyRequested, RenameTextureKeyRequested, SaveMapRequested,
-    UpdateAnimationResourceRequested, UpdateMapMetadataRequested,
+    AddAnimationRequested, ChangeTextureFilterRequested, NewMapRequested, PreviewMapDataRequested,
+    RemoveAnimationRequested, RemoveTextureRequested, RenameAnimationKeyRequested,
+    RenameTextureKeyRequested, SaveMapRequested, UpdateAnimationResourceRequested,
+    UpdateMapMetadataRequested,
 };
 use crate::systems::render_prefs::TogglePixelSnapCameraRequested;
 use aberredengine::events::switchdebug::SwitchDebugEvent;
 use aberredengine::imgui;
 use aberredengine::resources::appstate::AppState;
-use aberredengine::resources::render::fontstore::FontStore;
 use aberredengine::resources::input::InputState;
+use aberredengine::resources::render::fontstore::FontStore;
 use aberredengine::resources::render::texturestore::TextureStore;
 use aberredengine::resources::signal_intents::SignalIntents;
 use aberredengine::resources::worldsignals::{SignalSnapshot, WorldSignals};
@@ -74,7 +74,10 @@ pub fn editor_update(ctx: &mut GameCtx, _dt: f32, input: &InputState) {
     // Cancel any active placement mode on Escape (suppressed when ImGui owns the keyboard).
     if input.action_back.just_pressed
         && !ctx.world_signals.has_flag(sig::IMGUI_WANTS_KEYBOARD)
-        && matches!(current_tool(&ctx.app_state), EditorTool::AddEntity | EditorTool::AddCollider)
+        && matches!(
+            current_tool(&ctx.app_state),
+            EditorTool::AddEntity | EditorTool::AddCollider
+        )
     {
         exit_placement_mode(&ctx.app_state);
     }
@@ -320,11 +323,18 @@ fn dispatch_collider_creation(ctx: &mut GameCtx, drag_rect: SelectionDragRect) {
     if width < 1.0 || height < 1.0 {
         return;
     }
-    ctx.commands
-        .trigger(CreateColliderEntityRequested { x: min_x, y: min_y, width, height });
+    ctx.commands.trigger(CreateColliderEntityRequested {
+        x: min_x,
+        y: min_y,
+        width,
+        height,
+    });
 }
 
-fn drag_rect_to_world_aabb(signals: &WorldSignals, drag_rect: SelectionDragRect) -> (f32, f32, f32, f32) {
+fn drag_rect_to_world_aabb(
+    signals: &WorldSignals,
+    drag_rect: SelectionDragRect,
+) -> (f32, f32, f32, f32) {
     let ([min_render_x, min_render_y], [max_render_x, max_render_y]) = drag_rect.normalized();
     let corners = [
         render_to_world_live(signals, min_render_x, min_render_y),
@@ -364,17 +374,37 @@ fn handle_file_actions(ctx: &mut GameCtx) {
         request_async_dialog(&ctx.app_state, AsyncFileDialogRequest::LoadTilemapFolder);
     }
 
-    if ctx.world_signals.take_flag(sig::ACTION_MAP_PROPERTIES_APPLY)
+    if ctx
+        .world_signals
+        .take_flag(sig::ACTION_MAP_PROPERTIES_APPLY)
         && let Some(mutex) = ctx.app_state.get::<MapPropertiesMutex>()
         && let Ok(state) = mutex.lock()
     {
         let name = state.pending_name.as_ref().unwrap_or(&state.name).clone();
-        let description = state.pending_description.as_ref().unwrap_or(&state.description).clone();
-        let author = state.pending_author.as_ref().unwrap_or(&state.author).clone();
-        let version = state.pending_version.as_ref().unwrap_or(&state.version).clone();
+        let description = state
+            .pending_description
+            .as_ref()
+            .unwrap_or(&state.description)
+            .clone();
+        let author = state
+            .pending_author
+            .as_ref()
+            .unwrap_or(&state.author)
+            .clone();
+        let version = state
+            .pending_version
+            .as_ref()
+            .unwrap_or(&state.version)
+            .clone();
         let background_color = state
             .pending_bg_color
-            .map(|[r, g, b]| [(r * 255.0).round() as u8, (g * 255.0).round() as u8, (b * 255.0).round() as u8])
+            .map(|[r, g, b]| {
+                [
+                    (r * 255.0).round() as u8,
+                    (g * 255.0).round() as u8,
+                    (b * 255.0).round() as u8,
+                ]
+            })
             .or(state.background_color);
         ctx.commands.trigger(UpdateMapMetadataRequested {
             name,
@@ -431,7 +461,10 @@ fn handle_texture_actions(ctx: &mut GameCtx) {
         }
     }
 
-    if ctx.world_signals.take_flag(sig::ACTION_TEXTURE_CHANGE_FILTER) {
+    if ctx
+        .world_signals
+        .take_flag(sig::ACTION_TEXTURE_CHANGE_FILTER)
+    {
         let key = ctx
             .world_signals
             .get_string(sig::TEX_FILTER_CHANGE_KEY)

@@ -93,11 +93,8 @@ pub(super) fn draw_texture_editor(
                                 .position(|f| *f == current_filter)
                                 .unwrap_or(0);
                             ui.set_next_item_width(-1.0);
-                            if ui.combo_simple_string(
-                                "##filter",
-                                &mut filter_idx,
-                                &filter_options,
-                            ) {
+                            if ui.combo_simple_string("##filter", &mut filter_idx, &filter_options)
+                            {
                                 intents.set_string(sig::TEX_FILTER_CHANGE_KEY, key.as_str());
                                 intents.set_string(
                                     sig::TEX_FILTER_CHANGE_VALUE,

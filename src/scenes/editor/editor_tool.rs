@@ -94,7 +94,9 @@ pub fn finish_selection_drag(app_state: &AppState, point: [f32; 2]) -> Option<Se
 
 pub fn reset_tool(app_state: &AppState) {
     *lock_mode_state(app_state) = EditorToolState::default();
-    unsafe { SetMouseCursor(MouseCursor::MOUSE_CURSOR_DEFAULT as i32); }
+    unsafe {
+        SetMouseCursor(MouseCursor::MOUSE_CURSOR_DEFAULT as i32);
+    }
 }
 
 /// Enter a placement mode (AddEntity / AddCollider): sets the mode and switches the cursor to a crosshair.
@@ -104,11 +106,15 @@ pub fn enter_placement_mode(app_state: &AppState, mode: EditorTool) {
         "enter_placement_mode called with non-placement tool {mode:?}"
     );
     set_tool(app_state, mode);
-    unsafe { SetMouseCursor(MouseCursor::MOUSE_CURSOR_CROSSHAIR as i32); }
+    unsafe {
+        SetMouseCursor(MouseCursor::MOUSE_CURSOR_CROSSHAIR as i32);
+    }
 }
 
 /// Exit any placement mode: resets to Click and restores the default cursor.
 pub fn exit_placement_mode(app_state: &AppState) {
     set_tool(app_state, EditorTool::Click);
-    unsafe { SetMouseCursor(MouseCursor::MOUSE_CURSOR_DEFAULT as i32); }
+    unsafe {
+        SetMouseCursor(MouseCursor::MOUSE_CURSOR_DEFAULT as i32);
+    }
 }

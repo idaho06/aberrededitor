@@ -38,12 +38,12 @@ use aberredengine::components::tilemap::TileMap;
 use aberredengine::components::tint::Tint;
 use aberredengine::components::zindex::ZIndex;
 use aberredengine::engine_app::EngineBuilder;
-use aberredengine::protocol::render_assets::RenderAssetCmd;
 use aberredengine::events::spawnmap::SpawnMapRequested;
+use aberredengine::protocol::render_assets::RenderAssetCmd;
 use aberredengine::raylib::prelude::{Color, Vector2};
 use aberredengine::resources::animationstore::{AnimationResource, AnimationStore};
-use aberredengine::resources::gameconfig::{GameConfig, GameConfigDefaults};
 use aberredengine::resources::appstate::AppState;
+use aberredengine::resources::gameconfig::{GameConfig, GameConfigDefaults};
 use aberredengine::resources::mapdata::{
     AnimationEntry, DynamicTextEntry, EntityDef, FontEntry, MapData, ParticleEmitterEntry,
     ParticleEmitterShapeEntry, ParticleEmitterTtlEntry, TextureEntry, load_map, save_map,
@@ -84,7 +84,6 @@ fn queue_clear_assets(asset_cmds: &mut MessageWriter<RenderAssetCmd>, old_map_da
         });
     }
 }
-
 
 /// Queues `RenderAssetCmd::Texture` for `key`/`path`/`filter_str`. Shared by
 /// `add_texture_observer` (which also dedup-checks and records the entry in `MapData`)
@@ -237,7 +236,13 @@ pub fn load_map_observer(
         );
     }
     for font in &map.fonts {
-        queue_font_load(&mut asset_cmds, &font.key, font.path.clone(), font.font_size, false);
+        queue_font_load(
+            &mut asset_cmds,
+            &font.key,
+            font.path.clone(),
+            font.font_size,
+            false,
+        );
     }
     reset_editor_map(
         &mut commands,
@@ -328,7 +333,12 @@ fn sync_map_entities(
             text: d.initial_text.to_string(),
             font_key: d.font.to_string(),
             font_size: d.font_size,
-            color: [d.initial_color.r, d.initial_color.g, d.initial_color.b, d.initial_color.a],
+            color: [
+                d.initial_color.r,
+                d.initial_color.g,
+                d.initial_color.b,
+                d.initial_color.a,
+            ],
         });
 
         if let Some(tilemap) = tilemap {
@@ -540,7 +550,12 @@ pub fn add_texture_observer(
         return;
     }
     let rel_path = to_relative(path);
-    queue_texture_load(&mut asset_cmds, key, rel_path.clone(), filter_str.as_deref());
+    queue_texture_load(
+        &mut asset_cmds,
+        key,
+        rel_path.clone(),
+        filter_str.as_deref(),
+    );
     map_data.textures.push(TextureEntry {
         key: key.clone(),
         path: rel_path,
@@ -891,9 +906,9 @@ mod tests {
         world.flush();
 
         let messages = world.resource::<Messages<RenderAssetCmd>>();
-        let found = messages.iter_current_update_messages().any(|cmd| {
-            matches!(cmd, RenderAssetCmd::Texture { id, .. } if id == "iso")
-        });
+        let found = messages
+            .iter_current_update_messages()
+            .any(|cmd| matches!(cmd, RenderAssetCmd::Texture { id, .. } if id == "iso"));
 
         std::fs::remove_file(&tmp_path).ok();
 

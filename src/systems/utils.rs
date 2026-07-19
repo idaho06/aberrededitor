@@ -14,7 +14,9 @@ use aberredengine::components::boxcollider::BoxCollider;
 use aberredengine::components::group::Group;
 use aberredengine::components::persistent::Persistent;
 use aberredengine::components::sprite::Sprite;
-use aberredengine::resources::mapdata::{BoxColliderEntry, FontEntry, MapData, SpriteEntry, TextureEntry};
+use aberredengine::resources::mapdata::{
+    BoxColliderEntry, FontEntry, MapData, SpriteEntry, TextureEntry,
+};
 
 /// Build a display label for an entity: `Entity #<id> [group] [Persistent]`.
 pub fn entity_label(
@@ -66,7 +68,11 @@ pub fn collider_to_entry(collider: &BoxCollider) -> BoxColliderEntry {
 /// otherwise `Some([x, y])`. Safe for exact zero comparisons — these values are
 /// default-initialized or stored without intermediate arithmetic.
 fn nonzero_vec2(x: f32, y: f32) -> Option<[f32; 2]> {
-    if x == 0.0 && y == 0.0 { None } else { Some([x, y]) }
+    if x == 0.0 && y == 0.0 {
+        None
+    } else {
+        Some([x, y])
+    }
 }
 
 /// Returns the relative path to a tilemap's texture PNG: `<dir>/<stem>.png`.

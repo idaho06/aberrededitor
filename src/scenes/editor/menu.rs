@@ -200,7 +200,11 @@ pub(super) fn draw_menu_bar(
     actions
 }
 
-pub(super) fn draw_quit_modal(ui: &imgui::Ui, _signals: &SignalSnapshot, intents: &mut SignalIntents) {
+pub(super) fn draw_quit_modal(
+    ui: &imgui::Ui,
+    _signals: &SignalSnapshot,
+    intents: &mut SignalIntents,
+) {
     ui.modal_popup_config("Quit##editor")
         .always_auto_resize(true)
         .resizable(false)
