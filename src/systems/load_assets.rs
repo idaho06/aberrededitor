@@ -18,7 +18,7 @@ use crate::systems::render_prefs::RenderPrefsMutex;
 use crate::systems::template_selector::TemplateSelectorMutex;
 use crate::systems::tilemap_load::PendingLuaSetupLoadMutex;
 use aberredengine::bevy_ecs::prelude::{Commands, MessageWriter, ResMut};
-use aberredengine::events::render_assets::RenderAssetCmd;
+use aberredengine::protocol::render_assets::RenderAssetCmd;
 use aberredengine::raylib::prelude::Color;
 use aberredengine::resources::appstate::AppState;
 use aberredengine::resources::gameconfig::GameConfig;

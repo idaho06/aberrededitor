@@ -114,7 +114,7 @@ those resources live on the render thread and taking them (`Res<TextureStore>`,
 `NonSendMut<FontStore>`, `RaylibAccess`, …) from a logic-side system panics at schedule-init, not at
 compile time (`cargo check` cannot catch this class of bug — always check with a real run after
 touching asset-loading code). Instead, logic code queues a `RenderAssetCmd`
-(`aberredengine::events::render_assets::RenderAssetCmd`) via `MessageWriter<RenderAssetCmd>`:
+(`aberredengine::protocol::render_assets::RenderAssetCmd`) via `MessageWriter<RenderAssetCmd>`:
 `Texture`, `Font`, `Shader`, `TilemapTexture`, `TextureFromMemory`, `ShaderFromMemory`,
 `RemoveTexture`, `RemoveFont`. The render thread loads the asset asynchronously and replies via a
 `LogicMsg` (`TextureLoaded`/`FontLoaded`/`TextureRemoved`/`FontRemoved`), which the engine mirrors

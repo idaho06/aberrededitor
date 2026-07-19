@@ -4,7 +4,7 @@ use crate::systems::map_ops::GROUP_TILES;
 use crate::systems::utils::{find_texture, sprite_to_entry, tilemap_stem, tilemap_tex_path};
 use aberredengine::bevy_ecs::hierarchy::{ChildOf, Children};
 use aberredengine::bevy_ecs::prelude::{Commands, MessageWriter, On, Query, ResMut};
-use aberredengine::events::render_assets::RenderAssetCmd;
+use aberredengine::protocol::render_assets::RenderAssetCmd;
 use aberredengine::components::globaltransform2d::GlobalTransform2D;
 use aberredengine::components::group::Group;
 use aberredengine::components::mapposition::MapPosition;

@@ -38,7 +38,7 @@ use aberredengine::components::tilemap::TileMap;
 use aberredengine::components::tint::Tint;
 use aberredengine::components::zindex::ZIndex;
 use aberredengine::engine_app::EngineBuilder;
-use aberredengine::events::render_assets::RenderAssetCmd;
+use aberredengine::protocol::render_assets::RenderAssetCmd;
 use aberredengine::events::spawnmap::SpawnMapRequested;
 use aberredengine::raylib::prelude::{Color, Vector2};
 use aberredengine::resources::animationstore::{AnimationResource, AnimationStore};
