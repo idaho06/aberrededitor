@@ -39,8 +39,8 @@ use aberredengine::components::tint::Tint;
 use aberredengine::components::zindex::ZIndex;
 use aberredengine::engine_app::EngineBuilder;
 use aberredengine::events::spawnmap::SpawnMapRequested;
+use aberredengine::math::{Color, Vec2};
 use aberredengine::protocol::render_assets::RenderAssetCmd;
-use aberredengine::raylib::prelude::{Color, Vector2};
 use aberredengine::resources::animationstore::{AnimationResource, AnimationStore};
 use aberredengine::resources::appstate::AppState;
 use aberredengine::resources::gameconfig::{GameConfig, GameConfigDefaults};
@@ -809,7 +809,7 @@ pub fn add_animation_observer(
     }
     let resource = AnimationResource {
         tex_key: Arc::from(""),
-        position: Vector2 { x: 0.0, y: 0.0 },
+        position: Vec2 { x: 0.0, y: 0.0 },
         horizontal_displacement: 16.0,
         vertical_displacement: 0.0,
         frame_count: 1,

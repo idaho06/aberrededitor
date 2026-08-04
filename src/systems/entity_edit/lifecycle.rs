@@ -21,7 +21,7 @@ use aberredengine::components::sprite::Sprite;
 use aberredengine::components::tint::Tint;
 use aberredengine::components::ttl::Ttl;
 use aberredengine::components::zindex::ZIndex;
-use aberredengine::raylib::prelude::{Color, Vector2};
+use aberredengine::math::{Color, Vec2};
 use aberredengine::resources::appstate::AppState;
 use aberredengine::resources::mapdata::MapData;
 use aberredengine::resources::worldsignals::WorldSignals;
@@ -154,8 +154,8 @@ pub fn add_component_observer(
                 tex_key,
                 width: 32.0,
                 height: 32.0,
-                offset: Vector2::zero(),
-                origin: Vector2::zero(),
+                offset: Vec2::ZERO,
+                origin: Vec2::ZERO,
                 flip_h: false,
                 flip_v: false,
             });

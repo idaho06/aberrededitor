@@ -13,8 +13,8 @@ use aberredengine::components::signals::Signals;
 use aberredengine::components::sprite::Sprite;
 use aberredengine::components::tween::{Easing, Tween};
 use aberredengine::components::zindex::ZIndex;
-use aberredengine::raylib::camera::Camera2D;
-use aberredengine::resources::camera2d::Camera2DRes;
+use aberredengine::math::Vec2;
+use aberredengine::resources::camera2d::{Camera2D, Camera2DRes};
 use aberredengine::resources::input::InputState;
 use aberredengine::resources::uniformvalue::UniformValue;
 use aberredengine::systems::GameCtx;
@@ -87,12 +87,11 @@ pub fn intro_enter(ctx: &mut GameCtx) {
         ZIndex(0.0),
     ));
     ctx.commands.insert_resource(Camera2DRes(Camera2D {
-        offset: (
+        offset: Vec2::new(
             ctx.config.render_width as f32 / 2.0,
             ctx.config.render_height as f32 / 2.0,
-        )
-            .into(),
-        target: (0.0, 0.0).into(),
+        ),
+        target: Vec2::new(0.0, 0.0),
         rotation: 0.0,
         zoom: 1.0,
     }));

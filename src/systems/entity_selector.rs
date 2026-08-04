@@ -30,7 +30,7 @@ use aberredengine::components::scale::Scale;
 use aberredengine::components::sprite::Sprite;
 use aberredengine::components::zindex::ZIndex;
 use aberredengine::engine_app::EngineBuilder;
-use aberredengine::raylib::prelude::Vector2;
+use aberredengine::math::Vec2;
 use aberredengine::resources::appstate::AppState;
 use aberredengine::resources::worldsignals::WorldSignals;
 use aberredengine::systems::render::geometry::{compute_sprite_geometry, resolve_world_transform};
@@ -209,7 +209,7 @@ pub fn entity_pick_observer(
 ) {
     let click_x = trigger.event().x;
     let click_y = trigger.event().y;
-    let click = Vector2 {
+    let click = Vec2 {
         x: click_x,
         y: click_y,
     };
@@ -672,7 +672,7 @@ fn compute_corners(
 /// Returns `true` if `click` falls inside the sprite's visible bounds, accounting
 /// for scale and rotation (same transform math as the renderer).
 fn point_in_sprite(
-    click: Vector2,
+    click: Vec2,
     pos: &MapPosition,
     sprite: &Sprite,
     scale: Option<&Scale>,
@@ -704,7 +704,7 @@ fn point_in_sprite(
     }
 }
 
-fn point_in_dynamic_text(click: Vector2, pos: &MapPosition, dynamic_text: &DynamicText) -> bool {
+fn point_in_dynamic_text(click: Vec2, pos: &MapPosition, dynamic_text: &DynamicText) -> bool {
     let size = dynamic_text.size();
     click.x >= pos.pos.x
         && click.x <= pos.pos.x + size.x

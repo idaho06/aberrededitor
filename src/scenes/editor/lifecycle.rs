@@ -11,11 +11,10 @@ use crate::systems::file_dialogs::clear_async_dialog;
 use aberredengine::components::cameratarget::CameraTarget;
 use aberredengine::components::mapposition::MapPosition;
 use aberredengine::events::input::InputAction;
-use aberredengine::raylib::camera::Camera2D;
-use aberredengine::raylib::ffi::{KeyboardKey, MouseButton};
-use aberredengine::resources::camera2d::Camera2DRes;
+use aberredengine::math::Vec2;
+use aberredengine::resources::camera2d::{Camera2D, Camera2DRes};
 use aberredengine::resources::camerafollowconfig::FollowMode;
-use aberredengine::resources::input_bindings::InputBinding;
+use aberredengine::resources::input_bindings::{InputBinding, Key, MouseButton};
 use aberredengine::systems::GameCtx;
 use log::info;
 
@@ -26,8 +25,8 @@ pub fn editor_enter(ctx: &mut GameCtx) {
     let rh = ctx.config.render_height as f32;
 
     ctx.commands.insert_resource(Camera2DRes(Camera2D {
-        offset: (rw / 2.0, rh / 2.0).into(),
-        target: (0.0, 0.0).into(),
+        offset: Vec2::new(rw / 2.0, rh / 2.0),
+        target: Vec2::new(0.0, 0.0),
         rotation: 0.0,
         zoom: 1.0,
     }));
@@ -56,7 +55,7 @@ pub fn editor_exit(ctx: &mut GameCtx) {
     // Restore default Action1 bindings (Space + MouseLeft)
     ctx.input_bindings.rebind(
         InputAction::Action1,
-        InputBinding::Keyboard(KeyboardKey::KEY_SPACE),
+        InputBinding::Keyboard(Key::KEY_SPACE),
     );
     ctx.input_bindings.add_binding(
         InputAction::Action1,

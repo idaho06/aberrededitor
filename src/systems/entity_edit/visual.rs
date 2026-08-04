@@ -10,7 +10,7 @@ use aberredengine::components::boxcollider::BoxCollider;
 use aberredengine::components::dynamictext::DynamicText;
 use aberredengine::components::sprite::Sprite;
 use aberredengine::components::tint::Tint;
-use aberredengine::raylib::prelude::{Color, Vector2};
+use aberredengine::math::{Color, Vec2};
 use log::debug;
 use std::sync::Arc;
 
@@ -23,8 +23,8 @@ component_edit_observer!(
         sprite.tex_key = Arc::from(event.tex_key.as_str());
         sprite.width = event.width;
         sprite.height = event.height;
-        sprite.offset = Vector2::new(event.offset[0], event.offset[1]);
-        sprite.origin = Vector2::new(event.origin[0], event.origin[1]);
+        sprite.offset = Vec2::new(event.offset[0], event.offset[1]);
+        sprite.origin = Vec2::new(event.origin[0], event.origin[1]);
         sprite.flip_h = event.flip_h;
         sprite.flip_v = event.flip_v;
         debug!(
@@ -48,9 +48,9 @@ component_edit_observer!(
     BoxCollider,
     "BoxCollider",
     |collider, event, entity| {
-        collider.size = Vector2::new(event.size[0], event.size[1]);
-        collider.offset = Vector2::new(event.offset[0], event.offset[1]);
-        collider.origin = Vector2::new(event.origin[0], event.origin[1]);
+        collider.size = Vec2::new(event.size[0], event.size[1]);
+        collider.offset = Vec2::new(event.offset[0], event.offset[1]);
+        collider.origin = Vec2::new(event.origin[0], event.origin[1]);
         debug!(
             "update_box_collider_observer: updated entity {} collider",
             entity.to_bits()

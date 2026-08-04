@@ -11,7 +11,7 @@ use aberredengine::components::persistent::Persistent;
 use aberredengine::components::phase::Phase;
 use aberredengine::components::timer::Timer;
 use aberredengine::components::ttl::Ttl;
-use aberredengine::raylib::prelude::Vector2;
+use aberredengine::math::Vec2;
 use aberredengine::resources::worldsignals::WorldSignals;
 use log::{debug, warn};
 
@@ -104,7 +104,7 @@ pub fn update_particle_emitter_observer(
     commands.entity(entity).insert(ParticleEmitter {
         templates,
         shape,
-        offset: Vector2 {
+        offset: Vec2 {
             x: ev.offset[0],
             y: ev.offset[1],
         },

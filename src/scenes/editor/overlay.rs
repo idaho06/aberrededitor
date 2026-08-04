@@ -10,8 +10,9 @@ use crate::signals as sig;
 use crate::systems::entity_selector::MultiEntitySelectionMutex;
 use crate::systems::render_prefs::RenderPrefsMutex;
 use aberredengine::imgui;
-use aberredengine::raylib::prelude::{Camera2D, Color, Vector2};
+use aberredengine::math::{Color, Vec2};
 use aberredengine::resources::appstate::AppState;
+use aberredengine::resources::camera2d::Camera2D;
 use aberredengine::resources::screensize::ScreenSize;
 use aberredengine::resources::signal_intents::SignalIntents;
 use aberredengine::resources::worldsignals::{SignalSnapshot, WorldSignals};
@@ -184,8 +185,8 @@ fn world_bounds_from_camera(camera: &Camera2D, screen: &ScreenSize) -> (f32, f32
 
 fn draw_axis_lines(d: &mut dyn WorldDraw, (min_x, max_x, min_y, max_y): (f32, f32, f32, f32)) {
     let color = ORIGIN_AXIS_COLOR;
-    d.draw_line_v(Vector2::new(min_x, 0.0), Vector2::new(max_x, 0.0), color);
-    d.draw_line_v(Vector2::new(0.0, min_y), Vector2::new(0.0, max_y), color);
+    d.draw_line_v(Vec2::new(min_x, 0.0), Vec2::new(max_x, 0.0), color);
+    d.draw_line_v(Vec2::new(0.0, min_y), Vec2::new(0.0, max_y), color);
 }
 
 fn draw_grid_lines(
@@ -210,8 +211,8 @@ fn draw_grid_lines(
     let mut x = start_x;
     while x <= max_x + grid.width * 0.5 {
         d.draw_line_dashed(
-            Vector2::new(x, min_y),
-            Vector2::new(x, max_y),
+            Vec2::new(x, min_y),
+            Vec2::new(x, max_y),
             GRID_DASH_SIZE,
             GRID_DASH_GAP,
             color,
@@ -222,8 +223,8 @@ fn draw_grid_lines(
     let mut y = start_y;
     while y <= max_y + grid.height * 0.5 {
         d.draw_line_dashed(
-            Vector2::new(min_x, y),
-            Vector2::new(max_x, y),
+            Vec2::new(min_x, y),
+            Vec2::new(max_x, y),
             GRID_DASH_SIZE,
             GRID_DASH_GAP,
             color,
@@ -336,8 +337,8 @@ fn draw_quad_outline(d: &mut dyn WorldDraw, points: [[f32; 2]; 4]) {
         let a = points[i];
         let b = points[(i + 1) % 4];
         d.draw_line_ex(
-            Vector2::new(a[0], a[1]),
-            Vector2::new(b[0], b[1]),
+            Vec2::new(a[0], a[1]),
+            Vec2::new(b[0], b[1]),
             SELECTION_OUTLINE_THICKNESS,
             SELECTION_OUTLINE_COLOR,
         );

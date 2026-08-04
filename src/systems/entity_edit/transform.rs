@@ -10,7 +10,7 @@ use aberredengine::components::mapposition::MapPosition;
 use aberredengine::components::rotation::Rotation;
 use aberredengine::components::scale::Scale;
 use aberredengine::components::zindex::ZIndex;
-use aberredengine::raylib::prelude::Vector2;
+use aberredengine::math::Vec2;
 use aberredengine::resources::appstate::AppState;
 use log::debug;
 
@@ -20,7 +20,7 @@ component_edit_observer!(
     MapPosition,
     "MapPosition",
     |map_position, event, entity| {
-        map_position.pos = Vector2::new(event.x, event.y);
+        map_position.pos = Vec2::new(event.x, event.y);
         debug!(
             "update_map_position_observer: updated entity {} -> ({:.3}, {:.3})",
             entity.to_bits(),
@@ -66,7 +66,7 @@ component_edit_observer!(
     Scale,
     "Scale",
     |scale, event, entity| {
-        scale.scale = Vector2::new(event.x, event.y);
+        scale.scale = Vec2::new(event.x, event.y);
         debug!(
             "update_scale_observer: updated entity {} -> ({:.3}, {:.3})",
             entity.to_bits(),
