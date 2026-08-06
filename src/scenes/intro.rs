@@ -7,17 +7,17 @@
 //! This scene demonstrates the canonical scene lifecycle pattern: enter spawns entities and
 //! sets up shaders; update drives the phase machine; exit cleans up shaders and despawns assets.
 use aberredengine::bevy_ecs::prelude::Entity;
-use aberredengine::components::mapposition::MapPosition;
-use aberredengine::components::phase::{Phase, PhaseCallbackFns};
-use aberredengine::components::signals::Signals;
-use aberredengine::components::sprite::Sprite;
-use aberredengine::components::tween::{Easing, Tween};
-use aberredengine::components::zindex::ZIndex;
-use aberredengine::math::Vec2;
-use aberredengine::resources::camera2d::{Camera2D, Camera2DRes};
-use aberredengine::resources::input::InputState;
-use aberredengine::resources::uniformvalue::UniformValue;
-use aberredengine::systems::GameCtx;
+use aberredengine::core::components::mapposition::MapPosition;
+use aberredengine::core::components::phase::{Phase, PhaseCallbackFns};
+use aberredengine::core::components::signals::Signals;
+use aberredengine::core::components::sprite::Sprite;
+use aberredengine::core::components::tween::{Easing, Tween};
+use aberredengine::core::components::zindex::ZIndex;
+use aberredengine::core::math::Vec2;
+use aberredengine::core::resources::camera2d::{Camera2D, Camera2DRes};
+use aberredengine::core::resources::input::InputState;
+use aberredengine::core::resources::uniformvalue::UniformValue;
+use aberredengine::core::systems::GameCtx;
 use log::info;
 use rustc_hash::FxHashMap;
 

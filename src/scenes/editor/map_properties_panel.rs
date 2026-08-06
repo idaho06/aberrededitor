@@ -1,10 +1,10 @@
 use super::widgets;
 use crate::signals as sig;
 use aberredengine::imgui;
-use aberredengine::resources::appstate::AppState;
-use aberredengine::resources::mapdata::MapData;
-use aberredengine::resources::signal_intents::SignalIntents;
-use aberredengine::resources::worldsignals::SignalSnapshot;
+use aberredengine::core::resources::appstate::AppState;
+use aberredengine::core::resources::mapdata::MapData;
+use aberredengine::core::resources::signal_intents::SignalIntents;
+use aberredengine::core::resources::worldsignals::SignalSnapshot;
 use std::sync::{Arc, Mutex};
 
 #[derive(Default)]

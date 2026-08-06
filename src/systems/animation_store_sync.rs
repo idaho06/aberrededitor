@@ -6,8 +6,8 @@
 //! then reads via `app_state.get::<AnimationStoreMutex>()`.
 use aberredengine::bevy_ecs::change_detection::DetectChanges;
 use aberredengine::bevy_ecs::prelude::{Res, ResMut};
-use aberredengine::resources::animationstore::{AnimationResource, AnimationStore};
-use aberredengine::resources::appstate::AppState;
+use aberredengine::core::resources::animationstore::{AnimationResource, AnimationStore};
+use aberredengine::core::resources::appstate::AppState;
 use rustc_hash::FxHashMap;
 
 /// `AppState` key for the animation store mirror. Keyed by animation name, value is the full

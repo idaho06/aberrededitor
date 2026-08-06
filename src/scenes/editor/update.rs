@@ -58,15 +58,15 @@ use crate::systems::map_ops::{
     UpdateMapMetadataRequested,
 };
 use crate::systems::render_prefs::TogglePixelSnapCameraRequested;
-use aberredengine::events::switchdebug::SwitchDebugEvent;
+use aberredengine::core::events::switchdebug::SwitchDebugEvent;
+use aberredengine::core::resources::appstate::AppState;
+use aberredengine::core::resources::input::InputState;
+use aberredengine::core::resources::signal_intents::SignalIntents;
+use aberredengine::core::resources::worldsignals::{SignalSnapshot, WorldSignals};
+use aberredengine::core::systems::GameCtx;
 use aberredengine::imgui;
-use aberredengine::resources::appstate::AppState;
-use aberredengine::resources::input::InputState;
-use aberredengine::resources::render::fontstore::FontStore;
-use aberredengine::resources::render::texturestore::TextureStore;
-use aberredengine::resources::signal_intents::SignalIntents;
-use aberredengine::resources::worldsignals::{SignalSnapshot, WorldSignals};
-use aberredengine::systems::GameCtx;
+use aberredengine::render::resources::fontstore::FontStore;
+use aberredengine::render::resources::texturestore::TextureStore;
 
 pub fn editor_update(ctx: &mut GameCtx, _dt: f32, input: &InputState) {
     let wants_mouse = ctx.world_signals.has_flag(sig::IMGUI_WANTS_MOUSE);

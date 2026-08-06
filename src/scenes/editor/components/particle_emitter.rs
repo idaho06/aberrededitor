@@ -3,9 +3,9 @@ use crate::editor_types::{ComponentSnapshot, EmitterShapeKind, TtlKind};
 use crate::signals as sig;
 use crate::systems::entity_edit::{RemoveParticleEmitterRequested, UpdateParticleEmitterRequested};
 use aberredengine::bevy_ecs::prelude::Entity;
+use aberredengine::core::resources::worldsignals::SignalSnapshot;
+use aberredengine::core::systems::GameCtx;
 use aberredengine::imgui;
-use aberredengine::resources::worldsignals::SignalSnapshot;
-use aberredengine::systems::GameCtx;
 use log::warn;
 
 const WARNING_TEXT_COLOR: [f32; 4] = [1.0, 0.45, 0.3, 1.0];

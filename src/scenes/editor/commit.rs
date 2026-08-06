@@ -16,9 +16,9 @@ use crate::systems::entity_edit::{
 };
 use crate::systems::entity_inspector::InspectEntityRequested;
 use aberredengine::bevy_ecs::prelude::Entity;
-use aberredengine::resources::appstate::AppState;
-use aberredengine::resources::worldsignals::WorldSignals;
-use aberredengine::systems::GameCtx;
+use aberredengine::core::resources::appstate::AppState;
+use aberredengine::core::resources::worldsignals::WorldSignals;
+use aberredengine::core::systems::GameCtx;
 
 pub(super) fn consume_entity_editor_commits(ctx: &mut GameCtx) {
     // Clone pending state out of the mutex before any mutable borrow of ctx.

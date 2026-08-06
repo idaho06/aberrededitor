@@ -5,12 +5,12 @@ use super::{
     UpdateTintRequested,
 };
 use crate::components::serialized_lua_setup::SerializedLuaSetup;
-use aberredengine::components::animation::Animation;
-use aberredengine::components::boxcollider::BoxCollider;
-use aberredengine::components::dynamictext::DynamicText;
-use aberredengine::components::sprite::Sprite;
-use aberredengine::components::tint::Tint;
-use aberredengine::math::{Color, Vec2};
+use aberredengine::core::components::animation::Animation;
+use aberredengine::core::components::boxcollider::BoxCollider;
+use aberredengine::core::components::dynamictext::DynamicText;
+use aberredengine::core::components::sprite::Sprite;
+use aberredengine::core::components::tint::Tint;
+use aberredengine::core::math::{Color, Vec2};
 use log::debug;
 use std::sync::Arc;
 

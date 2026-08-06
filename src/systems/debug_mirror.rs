@@ -2,9 +2,9 @@
 use crate::signals as sig;
 use aberredengine::bevy_ecs::observer::On;
 use aberredengine::bevy_ecs::prelude::*;
-use aberredengine::events::switchdebug::SwitchDebugEvent;
-use aberredengine::resources::debugmode::DebugMode;
-use aberredengine::resources::worldsignals::WorldSignals;
+use aberredengine::core::events::switchdebug::SwitchDebugEvent;
+use aberredengine::core::resources::debugmode::DebugMode;
+use aberredengine::core::resources::worldsignals::WorldSignals;
 
 /// Mirrors the debug-mode toggle into `WorldSignals` so the GUI can show a
 /// checked state on the "Toggle Debug Mode" menu item.

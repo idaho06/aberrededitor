@@ -23,7 +23,7 @@ pub mod visual;
 
 use super::entity_inspector::InspectEntityRequested;
 use aberredengine::bevy_ecs::prelude::{Commands, Entity};
-use aberredengine::resources::worldsignals::WorldSignals;
+use aberredengine::core::resources::worldsignals::WorldSignals;
 use log::{debug, warn};
 
 // ── Events ──────────────────────────────────────────────────────────────────

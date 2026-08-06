@@ -8,11 +8,11 @@
 //! **Segfault caution:** passes `&ffi::Texture2D` (the full struct pointer) to ImGui — never the
 //! raw `.id` field. See `docs/architecture.md` for the full explanation.
 use crate::signals as sig;
+use aberredengine::core::resources::signal_intents::SignalIntents;
+use aberredengine::core::resources::worldsignals::SignalSnapshot;
 use aberredengine::imgui;
-use aberredengine::resources::render::fontstore::FontStore;
-use aberredengine::resources::render::texturestore::TextureStore;
-use aberredengine::resources::signal_intents::SignalIntents;
-use aberredengine::resources::worldsignals::SignalSnapshot;
+use aberredengine::render::resources::fontstore::FontStore;
+use aberredengine::render::resources::texturestore::TextureStore;
 
 const CHECKER_TILE_SIZE: f32 = 16.0;
 const CHECKER_LIGHT: [f32; 4] = [0.40, 0.40, 0.40, 1.0];

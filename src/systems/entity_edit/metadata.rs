@@ -5,14 +5,14 @@ use super::{
 };
 use crate::editor_types::{EmitterShapeKind, TtlKind};
 use aberredengine::bevy_ecs::prelude::{Commands, On, Query, Res};
-use aberredengine::components::group::Group;
-use aberredengine::components::particleemitter::{EmitterShape, ParticleEmitter, TtlSpec};
-use aberredengine::components::persistent::Persistent;
-use aberredengine::components::phase::Phase;
-use aberredengine::components::timer::Timer;
-use aberredengine::components::ttl::Ttl;
-use aberredengine::math::Vec2;
-use aberredengine::resources::worldsignals::WorldSignals;
+use aberredengine::core::components::group::Group;
+use aberredengine::core::components::particleemitter::{EmitterShape, ParticleEmitter, TtlSpec};
+use aberredengine::core::components::persistent::Persistent;
+use aberredengine::core::components::phase::Phase;
+use aberredengine::core::components::timer::Timer;
+use aberredengine::core::components::ttl::Ttl;
+use aberredengine::core::math::Vec2;
+use aberredengine::core::resources::worldsignals::WorldSignals;
 use log::{debug, warn};
 
 component_edit_observer!(

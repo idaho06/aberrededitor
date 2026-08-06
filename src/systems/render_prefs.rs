@@ -6,7 +6,7 @@
 use aberredengine::bevy_ecs;
 use aberredengine::bevy_ecs::prelude::{Event, On, ResMut};
 use aberredengine::engine_app::EngineBuilder;
-use aberredengine::resources::gameconfig::GameConfig;
+use aberredengine::core::resources::gameconfig::GameConfig;
 
 /// Toggle `GameConfig.pixel_snap_camera`.
 #[derive(Event)]

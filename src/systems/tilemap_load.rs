@@ -16,13 +16,13 @@ use aberredengine::bevy_ecs::hierarchy::ChildOf;
 use aberredengine::bevy_ecs::prelude::{
     Added, Commands, Entity, Event, On, Query, Res, ResMut, Without,
 };
-use aberredengine::components::cameratarget::CameraTarget;
-use aberredengine::components::group::Group;
-use aberredengine::components::mapposition::MapPosition;
-use aberredengine::components::tilemap::TileMap;
+use aberredengine::core::components::cameratarget::CameraTarget;
+use aberredengine::core::components::group::Group;
+use aberredengine::core::components::mapposition::MapPosition;
+use aberredengine::core::components::tilemap::TileMap;
 use aberredengine::engine_app::EngineBuilder;
-use aberredengine::resources::appstate::AppState;
-use aberredengine::resources::mapdata::{EntityDef, MapData};
+use aberredengine::core::resources::appstate::AppState;
+use aberredengine::core::resources::mapdata::{EntityDef, MapData};
 use log::{info, warn};
 use std::collections::{HashMap, VecDeque};
 use std::sync::{Arc, Mutex};

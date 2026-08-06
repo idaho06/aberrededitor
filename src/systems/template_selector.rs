@@ -5,12 +5,12 @@
 //! for these entities every frame when the template browser window is open.
 use super::utils::entity_label;
 use aberredengine::bevy_ecs::prelude::{Entity, Or, Query, Res, ResMut, Without};
-use aberredengine::components::group::Group;
-use aberredengine::components::mapposition::MapPosition;
-use aberredengine::components::persistent::Persistent;
-use aberredengine::components::zindex::ZIndex;
-use aberredengine::resources::appstate::AppState;
-use aberredengine::resources::worldsignals::WorldSignals;
+use aberredengine::core::components::group::Group;
+use aberredengine::core::components::mapposition::MapPosition;
+use aberredengine::core::components::persistent::Persistent;
+use aberredengine::core::components::zindex::ZIndex;
+use aberredengine::core::resources::appstate::AppState;
+use aberredengine::core::resources::worldsignals::WorldSignals;
 
 use crate::signals as sig;
 

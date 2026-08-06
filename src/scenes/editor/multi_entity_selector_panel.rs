@@ -5,9 +5,9 @@
 use crate::signals as sig;
 use crate::systems::entity_selector::{MultiEntitySelectionMutex, SelectorSource};
 use aberredengine::imgui;
-use aberredengine::resources::appstate::AppState;
-use aberredengine::resources::signal_intents::SignalIntents;
-use aberredengine::resources::worldsignals::SignalSnapshot;
+use aberredengine::core::resources::appstate::AppState;
+use aberredengine::core::resources::signal_intents::SignalIntents;
+use aberredengine::core::resources::worldsignals::SignalSnapshot;
 
 pub(super) fn draw_multi_entity_selector(
     ui: &imgui::Ui,

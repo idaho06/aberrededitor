@@ -2,9 +2,9 @@ use super::super::widgets::{draw_float_input, draw_text_buffer_input};
 use crate::editor_types::ComponentSnapshot;
 use crate::systems::entity_edit::{RemoveDynamicTextRequested, UpdateDynamicTextRequested};
 use aberredengine::bevy_ecs::prelude::Entity;
+use aberredengine::core::systems::GameCtx;
 use aberredengine::imgui;
-use aberredengine::resources::render::fontstore::FontStore;
-use aberredengine::systems::GameCtx;
+use aberredengine::render::resources::fontstore::FontStore;
 use log::warn;
 
 #[derive(Default, Clone)]

@@ -6,12 +6,12 @@ use super::{
 };
 use crate::systems::entity_selector::MultiEntitySelectionMutex;
 use aberredengine::bevy_ecs::prelude::{Commands, On, Query, Res};
-use aberredengine::components::mapposition::MapPosition;
-use aberredengine::components::rotation::Rotation;
-use aberredengine::components::scale::Scale;
-use aberredengine::components::zindex::ZIndex;
-use aberredengine::math::Vec2;
-use aberredengine::resources::appstate::AppState;
+use aberredengine::core::components::mapposition::MapPosition;
+use aberredengine::core::components::rotation::Rotation;
+use aberredengine::core::components::scale::Scale;
+use aberredengine::core::components::zindex::ZIndex;
+use aberredengine::core::math::Vec2;
+use aberredengine::core::resources::appstate::AppState;
 use log::debug;
 
 component_edit_observer!(

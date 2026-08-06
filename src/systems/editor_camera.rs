@@ -7,11 +7,11 @@
 //! Reset zoom on `ACTION_VIEW_RESET_ZOOM` signal.
 use crate::signals as sig;
 use aberredengine::bevy_ecs::prelude::{Query, Res, ResMut};
-use aberredengine::components::cameratarget::CameraTarget;
-use aberredengine::components::mapposition::MapPosition;
-use aberredengine::resources::input::InputState;
-use aberredengine::resources::worldsignals::WorldSignals;
-use aberredengine::resources::worldtime::WorldTime;
+use aberredengine::core::components::cameratarget::CameraTarget;
+use aberredengine::core::components::mapposition::MapPosition;
+use aberredengine::core::resources::input::InputState;
+use aberredengine::core::resources::worldsignals::WorldSignals;
+use aberredengine::core::resources::worldtime::WorldTime;
 
 pub fn editor_camera_system(
     mut world_signals: ResMut<WorldSignals>,

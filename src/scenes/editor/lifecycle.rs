@@ -8,14 +8,14 @@ use super::{exit_placement_mode, reset_tool, state::clear_entity_editor_pending}
 use crate::signals as sig;
 use crate::systems::entity_selector::clear_selector_state;
 use crate::systems::file_dialogs::clear_async_dialog;
-use aberredengine::components::cameratarget::CameraTarget;
-use aberredengine::components::mapposition::MapPosition;
-use aberredengine::events::input::InputAction;
-use aberredengine::math::Vec2;
-use aberredengine::resources::camera2d::{Camera2D, Camera2DRes};
-use aberredengine::resources::camerafollowconfig::FollowMode;
-use aberredengine::resources::input_bindings::{InputBinding, Key, MouseButton};
-use aberredengine::systems::GameCtx;
+use aberredengine::core::components::cameratarget::CameraTarget;
+use aberredengine::core::components::mapposition::MapPosition;
+use aberredengine::core::events::input::InputAction;
+use aberredengine::core::math::Vec2;
+use aberredengine::core::resources::camera2d::{Camera2D, Camera2DRes};
+use aberredengine::core::resources::camerafollowconfig::FollowMode;
+use aberredengine::core::resources::input_bindings::{InputBinding, Key, MouseButton};
+use aberredengine::core::systems::GameCtx;
 use log::info;
 
 pub fn editor_enter(ctx: &mut GameCtx) {

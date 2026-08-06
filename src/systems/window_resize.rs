@@ -13,9 +13,9 @@
 //! inserts `Camera2DRes`/`WindowSize` in sync with `GameConfig`'s initial render size at
 //! startup, so there is no separate "initial size" case to handle here).
 use aberredengine::bevy_ecs::prelude::*;
-use aberredengine::events::window::WindowResizedEvent;
-use aberredengine::resources::camera2d::Camera2DRes;
-use aberredengine::resources::gameconfig::GameConfig;
+use aberredengine::core::events::window::WindowResizedEvent;
+use aberredengine::core::resources::camera2d::Camera2DRes;
+use aberredengine::core::resources::gameconfig::GameConfig;
 use log::debug;
 
 pub fn on_window_resized(

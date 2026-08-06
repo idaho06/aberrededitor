@@ -10,11 +10,11 @@
 //!   texture/font keys exist (the render-side `TextureStore`/`FontStore` aren't queryable from
 //!   logic code); use these instead of re-deriving `.iter().find(...)` at each call site.
 use aberredengine::bevy_ecs::prelude::Entity;
-use aberredengine::components::boxcollider::BoxCollider;
-use aberredengine::components::group::Group;
-use aberredengine::components::persistent::Persistent;
-use aberredengine::components::sprite::Sprite;
-use aberredengine::resources::mapdata::{
+use aberredengine::core::components::boxcollider::BoxCollider;
+use aberredengine::core::components::group::Group;
+use aberredengine::core::components::persistent::Persistent;
+use aberredengine::core::components::sprite::Sprite;
+use aberredengine::core::resources::mapdata::{
     BoxColliderEntry, FontEntry, MapData, SpriteEntry, TextureEntry,
 };
 

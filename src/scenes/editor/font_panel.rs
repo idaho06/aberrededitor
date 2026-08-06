@@ -8,10 +8,10 @@
 //! Reads `FontStore` directly (passed as `&FontStore` in `GuiCallback`).
 use super::texture_viewer_panel::open_texture_viewer;
 use crate::signals as sig;
+use aberredengine::core::resources::signal_intents::SignalIntents;
+use aberredengine::core::resources::worldsignals::SignalSnapshot;
 use aberredengine::imgui;
-use aberredengine::resources::render::fontstore::FontStore;
-use aberredengine::resources::signal_intents::SignalIntents;
-use aberredengine::resources::worldsignals::SignalSnapshot;
+use aberredengine::render::resources::fontstore::FontStore;
 
 pub(super) fn draw_font_editor(
     ui: &imgui::Ui,

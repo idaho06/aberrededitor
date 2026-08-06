@@ -9,12 +9,12 @@
 //! `editor_update` to consume.
 use std::sync::Arc;
 
+use aberredengine::core::resources::animationstore::AnimationResource;
+use aberredengine::core::resources::appstate::AppState;
+use aberredengine::core::resources::signal_intents::SignalIntents;
+use aberredengine::core::resources::worldsignals::SignalSnapshot;
 use aberredengine::imgui;
-use aberredengine::resources::animationstore::AnimationResource;
-use aberredengine::resources::appstate::AppState;
-use aberredengine::resources::render::texturestore::TextureStore;
-use aberredengine::resources::signal_intents::SignalIntents;
-use aberredengine::resources::worldsignals::SignalSnapshot;
+use aberredengine::render::resources::texturestore::TextureStore;
 
 use crate::scenes::editor::texture_viewer_panel::open_texture_viewer;
 use crate::scenes::editor::widgets::{draw_float_input, draw_int_input};

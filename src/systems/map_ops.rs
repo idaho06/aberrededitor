@@ -24,32 +24,32 @@ use aberredengine::bevy_ecs::prelude::{
     Commands, Entity, Event, MessageWriter, On, Query, Res, ResMut, With,
 };
 use aberredengine::bevy_ecs::query::Without;
-use aberredengine::components::animation::Animation;
-use aberredengine::components::boxcollider::BoxCollider;
-use aberredengine::components::dynamictext::DynamicText;
-use aberredengine::components::emittedparticle::EmittedParticle;
-use aberredengine::components::group::Group;
-use aberredengine::components::mapposition::MapPosition;
-use aberredengine::components::particleemitter::{EmitterShape, ParticleEmitter, TtlSpec};
-use aberredengine::components::rotation::Rotation;
-use aberredengine::components::scale::Scale;
-use aberredengine::components::sprite::Sprite;
-use aberredengine::components::tilemap::TileMap;
-use aberredengine::components::tint::Tint;
-use aberredengine::components::zindex::ZIndex;
+use aberredengine::core::components::animation::Animation;
+use aberredengine::core::components::boxcollider::BoxCollider;
+use aberredengine::core::components::dynamictext::DynamicText;
+use aberredengine::core::components::emittedparticle::EmittedParticle;
+use aberredengine::core::components::group::Group;
+use aberredengine::core::components::mapposition::MapPosition;
+use aberredengine::core::components::particleemitter::{EmitterShape, ParticleEmitter, TtlSpec};
+use aberredengine::core::components::rotation::Rotation;
+use aberredengine::core::components::scale::Scale;
+use aberredengine::core::components::sprite::Sprite;
+use aberredengine::core::components::tilemap::TileMap;
+use aberredengine::core::components::tint::Tint;
+use aberredengine::core::components::zindex::ZIndex;
 use aberredengine::engine_app::EngineBuilder;
-use aberredengine::events::spawnmap::SpawnMapRequested;
-use aberredengine::math::{Color, Vec2};
-use aberredengine::protocol::render_assets::RenderAssetCmd;
-use aberredengine::resources::animationstore::{AnimationResource, AnimationStore};
-use aberredengine::resources::appstate::AppState;
-use aberredengine::resources::gameconfig::{GameConfig, GameConfigDefaults};
-use aberredengine::resources::mapdata::{
+use aberredengine::core::events::spawnmap::SpawnMapRequested;
+use aberredengine::core::math::{Color, Vec2};
+use aberredengine::core::protocol::render_assets::RenderAssetCmd;
+use aberredengine::core::resources::animationstore::{AnimationResource, AnimationStore};
+use aberredengine::core::resources::appstate::AppState;
+use aberredengine::core::resources::gameconfig::{GameConfig, GameConfigDefaults};
+use aberredengine::core::resources::mapdata::{
     AnimationEntry, DynamicTextEntry, EntityDef, FontEntry, MapData, ParticleEmitterEntry,
     ParticleEmitterShapeEntry, ParticleEmitterTtlEntry, TextureEntry, load_map, save_map,
 };
-use aberredengine::resources::texturefilter::TextureFilter;
-use aberredengine::resources::worldsignals::WorldSignals;
+use aberredengine::core::resources::texturefilter::TextureFilter;
+use aberredengine::core::resources::worldsignals::WorldSignals;
 use log::{info, warn};
 use std::sync::Arc;
 

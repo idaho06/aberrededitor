@@ -10,12 +10,12 @@ use crate::signals as sig;
 use crate::systems::render_prefs::RenderPrefsMutex;
 use aberredengine::bevy_ecs::change_detection::DetectChanges;
 use aberredengine::bevy_ecs::prelude::{Res, ResMut};
-use aberredengine::resources::appstate::AppState;
-use aberredengine::resources::camera2d::Camera2DRes;
-use aberredengine::resources::gameconfig::GameConfig;
-use aberredengine::resources::screensize::ScreenSize;
-use aberredengine::resources::windowsize::WindowSize;
-use aberredengine::resources::worldsignals::WorldSignals;
+use aberredengine::core::resources::appstate::AppState;
+use aberredengine::core::resources::camera2d::Camera2DRes;
+use aberredengine::core::resources::gameconfig::GameConfig;
+use aberredengine::core::resources::screensize::ScreenSize;
+use aberredengine::core::resources::windowsize::WindowSize;
+use aberredengine::core::resources::worldsignals::WorldSignals;
 
 /// Per-frame system that writes the active camera, render target, and letterbox parameters to
 /// `WorldSignals` so editor systems and GUI overlays can convert coordinates without needing

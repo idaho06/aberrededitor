@@ -11,12 +11,12 @@ use super::widgets::draw_text_buffer_input;
 use crate::editor_types::{ComponentKind, ComponentSnapshot};
 use crate::signals as sig;
 use crate::systems::animation_store_sync::AnimationStoreMutex;
+use aberredengine::core::resources::appstate::AppState;
+use aberredengine::core::resources::signal_intents::SignalIntents;
+use aberredengine::core::resources::worldsignals::SignalSnapshot;
 use aberredengine::imgui;
-use aberredengine::resources::appstate::AppState;
-use aberredengine::resources::render::fontstore::FontStore;
-use aberredengine::resources::render::texturestore::TextureStore;
-use aberredengine::resources::signal_intents::SignalIntents;
-use aberredengine::resources::worldsignals::SignalSnapshot;
+use aberredengine::render::resources::fontstore::FontStore;
+use aberredengine::render::resources::texturestore::TextureStore;
 
 pub(super) fn draw_entity_editor(
     ui: &imgui::Ui,

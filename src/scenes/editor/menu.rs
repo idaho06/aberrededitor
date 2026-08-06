@@ -12,9 +12,9 @@ use super::update::toggle_flag;
 use super::{EditorTool, current_tool, set_tool};
 use crate::signals as sig;
 use aberredengine::imgui;
-use aberredengine::resources::appstate::AppState;
-use aberredengine::resources::signal_intents::SignalIntents;
-use aberredengine::resources::worldsignals::SignalSnapshot;
+use aberredengine::core::resources::appstate::AppState;
+use aberredengine::core::resources::signal_intents::SignalIntents;
+use aberredengine::core::resources::worldsignals::SignalSnapshot;
 
 pub(super) struct MenuActions {
     pub open_about: bool,
