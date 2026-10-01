@@ -58,6 +58,7 @@ use crate::systems::map_ops::{
     UpdateMapMetadataRequested,
 };
 use crate::systems::render_prefs::TogglePixelSnapCameraRequested;
+use aberredengine::core::events::input::InputAction;
 use aberredengine::core::events::switchdebug::SwitchDebugEvent;
 use aberredengine::core::resources::appstate::AppState;
 use aberredengine::core::resources::input::InputState;
@@ -72,7 +73,7 @@ pub fn editor_update(ctx: &mut GameCtx, _dt: f32, input: &InputState) {
     let wants_mouse = ctx.world_signals.has_flag(sig::IMGUI_WANTS_MOUSE);
 
     // Cancel any active placement mode on Escape (suppressed when ImGui owns the keyboard).
-    if input.action_back.just_pressed
+    if input.action(InputAction::Back).just_pressed
         && !ctx.world_signals.has_flag(sig::IMGUI_WANTS_KEYBOARD)
         && matches!(
             current_tool(&ctx.app_state),
@@ -87,7 +88,7 @@ pub fn editor_update(ctx: &mut GameCtx, _dt: f32, input: &InputState) {
             // Entity picking — left mouse click (Action1 rebound to mouse-only in editor_enter).
             // Suppressed when ImGui captured the mouse last frame to prevent clicks on UI widgets
             // from triggering world picks.
-            if input.action_1.just_pressed && !wants_mouse {
+            if input.action(InputAction::Action1).just_pressed && !wants_mouse {
                 ctx.commands.trigger(PickEntitiesAtPointRequested {
                     x: input.mouse_world_x,
                     y: input.mouse_world_y,
@@ -270,13 +271,14 @@ fn handle_drag(
     on_finish: impl FnOnce(&mut GameCtx, SelectionDragRect),
 ) {
     let current_point = [input.mouse_x, input.mouse_y];
-    if input.action_1.just_pressed && !wants_mouse {
+    let action_1 = input.action(InputAction::Action1);
+    if action_1.just_pressed && !wants_mouse {
         start_selection_drag(&ctx.app_state, current_point);
     }
-    if input.action_1.active {
+    if action_1.active {
         update_selection_drag(&ctx.app_state, current_point);
     }
-    if input.action_1.just_released
+    if action_1.just_released
         && let Some(drag_rect) = finish_selection_drag(&ctx.app_state, current_point)
     {
         on_finish(ctx, drag_rect);
@@ -298,7 +300,7 @@ fn dispatch_rectangle_pick(ctx: &mut GameCtx, drag_rect: SelectionDragRect) {
 }
 
 fn handle_add_entity_click(ctx: &mut GameCtx, input: &InputState, wants_mouse: bool) {
-    if input.action_1.just_pressed && !wants_mouse {
+    if input.action(InputAction::Action1).just_pressed && !wants_mouse {
         ctx.commands.trigger(CreateBlankEntityRequested {
             x: input.mouse_world_x,
             y: input.mouse_world_y,
@@ -311,7 +313,7 @@ fn handle_add_collider_drag(ctx: &mut GameCtx, input: &InputState, wants_mouse: 
     handle_drag(ctx, input, wants_mouse, |ctx, drag_rect| {
         dispatch_collider_creation(ctx, drag_rect);
     });
-    if input.action_1.just_released {
+    if input.action(InputAction::Action1).just_released {
         exit_placement_mode(&ctx.app_state);
     }
 }

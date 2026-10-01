@@ -9,6 +9,7 @@ use crate::signals as sig;
 use aberredengine::bevy_ecs::prelude::{Query, Res, ResMut};
 use aberredengine::core::components::cameratarget::CameraTarget;
 use aberredengine::core::components::mapposition::MapPosition;
+use aberredengine::core::events::input::InputAction;
 use aberredengine::core::resources::input::InputState;
 use aberredengine::core::resources::worldsignals::WorldSignals;
 use aberredengine::core::resources::worldtime::WorldTime;
@@ -36,16 +37,24 @@ pub fn editor_camera_system(
 
     let mut dx = 0.0_f32;
     let mut dy = 0.0_f32;
-    if input.maindirection_left.active || input.secondarydirection_left.active {
+    if input.action(InputAction::MainDirectionLeft).active
+        || input.action(InputAction::SecondaryDirectionLeft).active
+    {
         dx -= 1.0;
     }
-    if input.maindirection_right.active || input.secondarydirection_right.active {
+    if input.action(InputAction::MainDirectionRight).active
+        || input.action(InputAction::SecondaryDirectionRight).active
+    {
         dx += 1.0;
     }
-    if input.maindirection_up.active || input.secondarydirection_up.active {
+    if input.action(InputAction::MainDirectionUp).active
+        || input.action(InputAction::SecondaryDirectionUp).active
+    {
         dy -= 1.0;
     }
-    if input.maindirection_down.active || input.secondarydirection_down.active {
+    if input.action(InputAction::MainDirectionDown).active
+        || input.action(InputAction::SecondaryDirectionDown).active
+    {
         dy += 1.0;
     }
     if dx != 0.0 || dy != 0.0 {

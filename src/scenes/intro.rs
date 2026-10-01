@@ -13,6 +13,7 @@ use aberredengine::core::components::signals::Signals;
 use aberredengine::core::components::sprite::Sprite;
 use aberredengine::core::components::tween::{Easing, Tween};
 use aberredengine::core::components::zindex::ZIndex;
+use aberredengine::core::events::input::InputAction;
 use aberredengine::core::math::Vec2;
 use aberredengine::core::resources::camera2d::{Camera2D, Camera2DRes};
 use aberredengine::core::resources::input::InputState;
@@ -172,10 +173,14 @@ pub fn shader_control_fadeout(
 
 pub fn intro_update(ctx: &mut GameCtx, _dt: f32, input: &InputState) {
     // if the user presses any action button, switch to the editor scene
-    if input.action_1.active
-        || input.action_2.active
-        || input.action_3.active
-        || input.action_back.active
+    if [
+        InputAction::Action1,
+        InputAction::Action2,
+        InputAction::Action3,
+        InputAction::Back,
+    ]
+    .into_iter()
+    .any(|action| input.action(action).active)
     {
         info!("intro_update: action button pressed, switching to editor scene");
         ctx.world_signals.set_string("scene", "editor");
