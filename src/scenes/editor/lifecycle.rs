@@ -53,10 +53,8 @@ pub fn editor_exit(ctx: &mut GameCtx) {
     info!("editor_exit: leaving editor scene");
 
     // Restore default Action1 bindings (Space + MouseLeft)
-    ctx.input_bindings.rebind(
-        InputAction::Action1,
-        InputBinding::Keyboard(Key::KEY_SPACE),
-    );
+    ctx.input_bindings
+        .rebind(InputAction::Action1, InputBinding::Keyboard(Key::KEY_SPACE));
     ctx.input_bindings.add_binding(
         InputAction::Action1,
         InputBinding::MouseButton(MouseButton::MOUSE_BUTTON_LEFT),

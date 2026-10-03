@@ -2,8 +2,8 @@ use super::super::widgets::draw_text_buffer_input;
 use crate::editor_types::ComponentSnapshot;
 use crate::systems::entity_edit::{RemoveLuaSetupRequested, UpdateLuaSetupRequested};
 use aberredengine::bevy_ecs::prelude::Entity;
-use aberredengine::imgui;
 use aberredengine::core::systems::GameCtx;
+use aberredengine::imgui;
 use log::warn;
 
 #[derive(Default, Clone)]

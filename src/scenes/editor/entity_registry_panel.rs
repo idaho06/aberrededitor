@@ -4,9 +4,9 @@
 //! `is_user_entity_key` to exclude internal editor keys). Clicking a key sets
 //! `ENTITY_REGISTRY_SELECTED_KEY`; `editor_update` triggers `SelectRegisteredEntityRequested`.
 use crate::signals as sig;
-use aberredengine::imgui;
 use aberredengine::core::resources::signal_intents::SignalIntents;
 use aberredengine::core::resources::worldsignals::SignalSnapshot;
+use aberredengine::imgui;
 
 pub(super) fn draw_entity_registry(
     ui: &imgui::Ui,

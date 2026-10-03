@@ -5,8 +5,8 @@
 //! "Render Preferences" modal can display it without direct `GameConfig` access.
 use aberredengine::bevy_ecs;
 use aberredengine::bevy_ecs::prelude::{Event, On, ResMut};
-use aberredengine::engine_app::EngineBuilder;
 use aberredengine::core::resources::gameconfig::GameConfig;
+use aberredengine::engine_app::EngineBuilder;
 
 /// Toggle `GameConfig.pixel_snap_camera`.
 #[derive(Event)]

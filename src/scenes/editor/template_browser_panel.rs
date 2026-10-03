@@ -9,10 +9,10 @@
 use crate::signals as sig;
 use crate::systems::template_selector::TemplateSelectorMutex;
 use aberredengine::bevy_ecs::prelude::Entity;
-use aberredengine::imgui;
 use aberredengine::core::resources::appstate::AppState;
 use aberredengine::core::resources::signal_intents::SignalIntents;
 use aberredengine::core::resources::worldsignals::SignalSnapshot;
+use aberredengine::imgui;
 
 pub(super) fn draw_template_browser(
     ui: &imgui::Ui,

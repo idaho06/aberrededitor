@@ -37,7 +37,6 @@ use aberredengine::core::components::sprite::Sprite;
 use aberredengine::core::components::tilemap::TileMap;
 use aberredengine::core::components::tint::Tint;
 use aberredengine::core::components::zindex::ZIndex;
-use aberredengine::engine_app::EngineBuilder;
 use aberredengine::core::events::spawnmap::SpawnMapRequested;
 use aberredengine::core::math::{Color, Vec2};
 use aberredengine::core::protocol::render_assets::RenderAssetCmd;
@@ -50,6 +49,7 @@ use aberredengine::core::resources::mapdata::{
 };
 use aberredengine::core::resources::texturefilter::TextureFilter;
 use aberredengine::core::resources::worldsignals::WorldSignals;
+use aberredengine::engine_app::EngineBuilder;
 use log::{info, warn};
 use std::sync::Arc;
 
