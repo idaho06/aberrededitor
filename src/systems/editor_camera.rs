@@ -21,7 +21,7 @@ pub fn editor_camera_system(
     world_time: Res<WorldTime>,
     input: Res<InputState>,
 ) {
-    let Some(entity) = world_signals.get_entity(sig::EDITOR_CAMERA).copied() else {
+    let Some(entity) = world_signals.get_entity(sig::EDITOR_CAMERA) else {
         return;
     };
 

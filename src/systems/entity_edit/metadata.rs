@@ -55,7 +55,7 @@ pub fn update_particle_emitter_observer(
         .template_keys
         .iter()
         .filter_map(|k| {
-            let e = world_signals.get_entity(k).copied();
+            let e = world_signals.get_entity(k);
             if e.is_none() {
                 warn!(
                     "update_particle_emitter_observer: template key '{}' not found; skipping",

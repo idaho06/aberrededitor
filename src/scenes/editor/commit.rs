@@ -110,7 +110,7 @@ fn selected_entity_and_snapshot(
     signals: &WorldSignals,
     app_state: &AppState,
 ) -> Option<(Entity, ComponentSnapshot)> {
-    let entity = signals.get_entity(sig::ES_SELECTED_ENTITY).copied()?;
+    let entity = signals.get_entity(sig::ES_SELECTED_ENTITY)?;
     let snapshot = app_state.get::<ComponentSnapshot>()?.clone();
     (snapshot.entity_bits == entity.to_bits()).then_some((entity, snapshot))
 }

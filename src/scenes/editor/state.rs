@@ -30,7 +30,7 @@ pub fn entity_editor_selection_change_system(
     signals: Res<WorldSignals>,
     app_state: Res<AppState>,
 ) {
-    let current = signals.get_entity(sig::ES_SELECTED_ENTITY).copied();
+    let current = signals.get_entity(sig::ES_SELECTED_ENTITY);
     if current != editor_state.last_selected {
         clear_entity_editor_pending(&app_state);
         editor_state.last_selected = current;
