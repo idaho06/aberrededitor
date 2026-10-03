@@ -6,7 +6,9 @@
 //! - Loading the intro logo texture.
 //! - Inserting all `Mutex<T>` caches into `AppState` so they are available before any system runs.
 //! - Inserting `MapData` and `EditorState` Bevy resources.
-//! - Advancing the game state to `Playing` to begin the scene loop.
+//!
+//! The engine leaves `Setup` for `Playing` on its own once this hook has run and every queued
+//! asset load has replied, so the intro scene starts with its shaders and logo loaded.
 use crate::scenes::editor::map_properties_panel::MapPropertiesMutex;
 use crate::scenes::editor::pending_state::PendingMutex;
 use crate::scenes::editor::{EditorState, EditorToolMutex, OverlaySettingsMutex};
@@ -22,7 +24,6 @@ use aberredengine::core::math::Color;
 use aberredengine::core::protocol::render_assets::RenderAssetCmd;
 use aberredengine::core::resources::appstate::AppState;
 use aberredengine::core::resources::gameconfig::GameConfig;
-use aberredengine::core::resources::gamestate::{GameStates, NextGameState};
 use aberredengine::core::resources::mapdata::MapData;
 use aberredengine::core::resources::texturefilter::TextureFilter;
 use log::info;
@@ -34,11 +35,9 @@ const TEXTURE_ISOMETRIC_DATA: &[u8] =
 
 /// Called as a Bevy ECS system during the engine setup stage.
 /// Queues shader/texture loads via `RenderAssetCmd` and initialises resource stores.
-/// The first scene does not start until `NextGameState` is set to `Playing`.
 pub fn load_assets(
     mut commands: Commands,
     mut config: ResMut<GameConfig>,
-    mut next_state: ResMut<NextGameState>,
     mut app_state: ResMut<AppState>,
     mut asset_cmds: MessageWriter<RenderAssetCmd>,
 ) {
@@ -78,6 +77,4 @@ pub fn load_assets(
     app_state.insert(RenderPrefsMutex::new(std::sync::Mutex::new(
         config.pixel_snap_camera,
     )));
-
-    next_state.set(GameStates::Playing);
 }
