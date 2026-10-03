@@ -11,7 +11,7 @@ use aberredengine::core::resources::signal_intents::SignalIntents;
 use aberredengine::core::resources::texturefilter::TextureFilter;
 use aberredengine::core::resources::worldsignals::SignalSnapshot;
 use aberredengine::imgui;
-use aberredengine::render::resources::texturestore::TextureStore;
+use aberredengine::render::TextureStore;
 
 pub(super) fn draw_texture_editor(
     ui: &imgui::Ui,

@@ -4,7 +4,7 @@ use crate::systems::entity_edit::{RemoveSpriteRequested, UpdateSpriteRequested};
 use aberredengine::bevy_ecs::prelude::Entity;
 use aberredengine::core::systems::GameCtx;
 use aberredengine::imgui;
-use aberredengine::render::resources::texturestore::TextureStore;
+use aberredengine::render::TextureStore;
 use log::warn;
 
 #[derive(Default, Clone)]

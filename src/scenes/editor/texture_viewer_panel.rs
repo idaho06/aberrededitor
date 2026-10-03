@@ -11,8 +11,8 @@ use crate::signals as sig;
 use aberredengine::core::resources::signal_intents::SignalIntents;
 use aberredengine::core::resources::worldsignals::SignalSnapshot;
 use aberredengine::imgui;
-use aberredengine::render::resources::fontstore::FontStore;
-use aberredengine::render::resources::texturestore::TextureStore;
+use aberredengine::render::FontStore;
+use aberredengine::render::TextureStore;
 
 const CHECKER_TILE_SIZE: f32 = 16.0;
 const CHECKER_LIGHT: [f32; 4] = [0.40, 0.40, 0.40, 1.0];

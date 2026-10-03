@@ -11,7 +11,7 @@ use crate::signals as sig;
 use aberredengine::core::resources::signal_intents::SignalIntents;
 use aberredengine::core::resources::worldsignals::SignalSnapshot;
 use aberredengine::imgui;
-use aberredengine::render::resources::fontstore::FontStore;
+use aberredengine::render::FontStore;
 
 pub(super) fn draw_font_editor(
     ui: &imgui::Ui,

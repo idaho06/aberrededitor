@@ -12,7 +12,7 @@ mod systems;
 use aberredengine::core::systems::scene_dispatch::WorldDrawCallback;
 use aberredengine::engine_app::EngineBuilder;
 use aberredengine::engine_app::SceneDescriptor;
-use aberredengine::render::resources::scene_table::GuiCallback;
+use aberredengine::render::GuiCallback;
 
 fn main() -> Result<(), aberredengine::EngineError> {
     env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info")).init();

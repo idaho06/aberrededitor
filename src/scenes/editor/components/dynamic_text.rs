@@ -4,7 +4,7 @@ use crate::systems::entity_edit::{RemoveDynamicTextRequested, UpdateDynamicTextR
 use aberredengine::bevy_ecs::prelude::Entity;
 use aberredengine::core::systems::GameCtx;
 use aberredengine::imgui;
-use aberredengine::render::resources::fontstore::FontStore;
+use aberredengine::render::FontStore;
 use log::warn;
 
 #[derive(Default, Clone)]

@@ -14,7 +14,7 @@ use aberredengine::core::resources::appstate::AppState;
 use aberredengine::core::resources::signal_intents::SignalIntents;
 use aberredengine::core::resources::worldsignals::SignalSnapshot;
 use aberredengine::imgui;
-use aberredengine::render::resources::texturestore::TextureStore;
+use aberredengine::render::TextureStore;
 
 use crate::scenes::editor::texture_viewer_panel::open_texture_viewer;
 use crate::scenes::editor::widgets::{draw_float_input, draw_int_input};

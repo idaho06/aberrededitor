@@ -66,8 +66,8 @@ use aberredengine::core::resources::signal_intents::SignalIntents;
 use aberredengine::core::resources::worldsignals::{SignalSnapshot, WorldSignals};
 use aberredengine::core::systems::GameCtx;
 use aberredengine::imgui;
-use aberredengine::render::resources::fontstore::FontStore;
-use aberredengine::render::resources::texturestore::TextureStore;
+use aberredengine::render::FontStore;
+use aberredengine::render::TextureStore;
 
 pub fn editor_update(ctx: &mut GameCtx, _dt: f32, input: &InputState) {
     let wants_mouse = ctx.world_signals.has_flag(sig::IMGUI_WANTS_MOUSE);

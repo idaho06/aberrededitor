@@ -15,8 +15,8 @@ use aberredengine::core::resources::appstate::AppState;
 use aberredengine::core::resources::signal_intents::SignalIntents;
 use aberredengine::core::resources::worldsignals::SignalSnapshot;
 use aberredengine::imgui;
-use aberredengine::render::resources::fontstore::FontStore;
-use aberredengine::render::resources::texturestore::TextureStore;
+use aberredengine::render::FontStore;
+use aberredengine::render::TextureStore;
 
 pub(super) fn draw_entity_editor(
     ui: &imgui::Ui,

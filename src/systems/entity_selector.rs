@@ -32,8 +32,10 @@ use aberredengine::core::components::zindex::ZIndex;
 use aberredengine::core::math::Vec2;
 use aberredengine::core::resources::appstate::AppState;
 use aberredengine::core::resources::worldsignals::WorldSignals;
+use aberredengine::core::systems::sprite_geometry::{
+    compute_sprite_geometry, resolve_world_transform,
+};
 use aberredengine::engine_app::EngineBuilder;
-use aberredengine::render::systems::geometry::{compute_sprite_geometry, resolve_world_transform};
 use log::{debug, warn};
 
 // ---------------------------------------------------------------------------
