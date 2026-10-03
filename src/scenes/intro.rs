@@ -74,28 +74,19 @@ pub fn intro_enter(ctx: &mut GameCtx) {
 
     // spawn an entity with a sprite component to display the intro image
     ctx.commands.spawn_empty().insert((
-        Sprite {
-            tex_key: "aberred_engine_isometric_alpha".into(),
-            width: 807.0,
-            height: 970.0,
-            origin: (403.0, 242.0).into(),
-            offset: (0.0, 0.0).into(),
-            flip_h: false,
-            flip_v: false,
-        },
+        Sprite::new("aberred_engine_isometric_alpha", 807.0, 970.0)
+            .with_origin(Vec2::new(403.0, 242.0)),
         start_position,
         Tween::new(start_position, end_position, 2.0).with_easing(Easing::CubicOut),
         ZIndex(0.0),
     ));
-    ctx.commands.insert_resource(Camera2DRes(Camera2D {
-        offset: Vec2::new(
+    ctx.commands.insert_resource(Camera2DRes(Camera2D::new(
+        Vec2::new(0.0, 0.0),
+        Vec2::new(
             ctx.config.render_width as f32 / 2.0,
             ctx.config.render_height as f32 / 2.0,
         ),
-        target: Vec2::new(0.0, 0.0),
-        rotation: 0.0,
-        zoom: 1.0,
-    }));
+    )));
     ctx.post_process
         .set_shader_chain(Some(vec!["glitch".to_string(), "fade".to_string()]));
     ctx.commands

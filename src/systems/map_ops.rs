@@ -38,7 +38,7 @@ use aberredengine::core::components::tilemap::TileMap;
 use aberredengine::core::components::tint::Tint;
 use aberredengine::core::components::zindex::ZIndex;
 use aberredengine::core::events::spawnmap::SpawnMapRequested;
-use aberredengine::core::math::{Color, Vec2};
+use aberredengine::core::math::Color;
 use aberredengine::core::protocol::render_assets::RenderAssetCmd;
 use aberredengine::core::resources::animationstore::{AnimationResource, AnimationStore};
 use aberredengine::core::resources::appstate::AppState;
@@ -51,7 +51,6 @@ use aberredengine::core::resources::texturefilter::TextureFilter;
 use aberredengine::core::resources::worldsignals::WorldSignals;
 use aberredengine::engine_app::EngineBuilder;
 use log::{info, warn};
-use std::sync::Arc;
 
 use crate::components::map_entity::MapEntity;
 use crate::systems::entity_selector::clear_selector_state;
@@ -807,15 +806,7 @@ pub fn add_animation_observer(
     if anim_store.animations.contains_key(key.as_str()) {
         return;
     }
-    let resource = AnimationResource {
-        tex_key: Arc::from(""),
-        position: Vec2 { x: 0.0, y: 0.0 },
-        horizontal_displacement: 16.0,
-        vertical_displacement: 0.0,
-        frame_count: 1,
-        fps: 12.0,
-        looped: true,
-    };
+    let resource = AnimationResource::new("", 16.0, 1, 12.0);
     map_data.animations.push(resource_to_entry(key, &resource));
     anim_store.insert(key.clone(), resource);
     info!("add_animation_observer: added '{}'", key);

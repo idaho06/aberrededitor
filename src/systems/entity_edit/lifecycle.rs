@@ -21,7 +21,7 @@ use aberredengine::core::components::sprite::Sprite;
 use aberredengine::core::components::tint::Tint;
 use aberredengine::core::components::ttl::Ttl;
 use aberredengine::core::components::zindex::ZIndex;
-use aberredengine::core::math::{Color, Vec2};
+use aberredengine::core::math::Color;
 use aberredengine::core::resources::appstate::AppState;
 use aberredengine::core::resources::mapdata::MapData;
 use aberredengine::core::resources::worldsignals::WorldSignals;
@@ -150,15 +150,7 @@ pub fn add_component_observer(
         }
         ComponentKind::Sprite => {
             let tex_key: Arc<str> = Arc::from(default_texture_key(&map_data).unwrap_or(""));
-            ec.insert(Sprite {
-                tex_key,
-                width: 32.0,
-                height: 32.0,
-                offset: Vec2::ZERO,
-                origin: Vec2::ZERO,
-                flip_h: false,
-                flip_v: false,
-            });
+            ec.insert(Sprite::new(tex_key, 32.0, 32.0));
         }
         ComponentKind::BoxCollider => {
             ec.insert(BoxCollider::new(32.0, 32.0));
