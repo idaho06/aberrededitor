@@ -14,9 +14,10 @@ references between each other.
 **Solution:** `WorldSignals` is the live, logic-side typed key-value store (a Bevy resource);
 observers and `editor_update()` read/write it via `ResMut<WorldSignals>` exactly as before. The GUI
 callback, on the render thread, never sees `WorldSignals` directly — it receives a one-tick-stale
-`&SignalSnapshot` (plain field access, no getters: `signals.flags.contains(k)`,
-`signals.scalars.get(k)`) and writes through `&mut SignalIntents` (`intents.set_flag(k)`,
-`intents.set_scalar(k, v)`, `intents.clear_flag(k)`), applied to `WorldSignals` at the start of the
+`&SignalSnapshot` (public fields such as `signals.flags.contains(k)`, or the same getters as
+`WorldSignals` through the engine's `SignalsRead` trait: `signals.has_flag(k)`,
+`signals.get_scalar(k)`) and writes through `&mut SignalIntents` (`intents.set_flag(k)`,
+`intents.set_scalar(k, v)`, `intents.remove_flag(k)`), applied to `WorldSignals` at the start of the
 next logic tick.
 
 **How to recognise it:** Logic-side: `ctx.world_signals.take_flag(...)`,
