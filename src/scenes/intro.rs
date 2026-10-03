@@ -81,7 +81,7 @@ pub fn intro_enter(ctx: &mut GameCtx) {
         ZIndex(0.0),
     ));
     ctx.commands.insert_resource(Camera2DRes(Camera2D::new(
-        Vec2::new(0.0, 0.0),
+        Vec2::ZERO,
         Vec2::new(
             ctx.config.render_width as f32 / 2.0,
             ctx.config.render_height as f32 / 2.0,

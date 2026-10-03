@@ -25,7 +25,7 @@ pub fn editor_enter(ctx: &mut GameCtx) {
     let rh = ctx.config.render_height as f32;
 
     ctx.commands.insert_resource(Camera2DRes(Camera2D::new(
-        Vec2::new(0.0, 0.0),
+        Vec2::ZERO,
         Vec2::new(rw / 2.0, rh / 2.0),
     )));
 
