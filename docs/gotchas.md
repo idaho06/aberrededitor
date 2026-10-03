@@ -145,7 +145,7 @@ Two callback styles exist and **must not be mixed**:
 | --- | --- | --- |
 | `on_setup`, `add_observer`, `add_system` | Bevy system — params **by value** | `fn f(ctx: GameCtx)` |
 | Scene `on_enter/update/exit` | Plain fn pointer — params **by ref** | `fn f(ctx: &mut GameCtx)` |
-| `gui_callback` | Fixed signature | `fn f(&Ui, &SignalSnapshot, &mut SignalIntents, &TextureStore, &FontStore, &AppState)` |
+| `gui_callback` / `world_draw_callback` | Fixed signature, one context struct | `fn f(ctx: &mut GuiCtx)` / `fn f(ctx: &mut WorldDrawCtx)` |
 
 Using a by-value system function where a by-ref scene callback is expected (or vice versa) is
 the most common compile error when adding new scenes or setup functions.

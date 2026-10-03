@@ -15,7 +15,7 @@ use aberredengine::core::resources::camera2d::Camera2D;
 use aberredengine::core::resources::screensize::ScreenSize;
 use aberredengine::core::resources::signal_intents::SignalIntents;
 use aberredengine::core::resources::worldsignals::{SignalSnapshot, WorldSignals};
-use aberredengine::core::systems::scene_dispatch::WorldDraw;
+use aberredengine::core::systems::scene_dispatch::{WorldDraw, WorldDrawCtx};
 use aberredengine::imgui;
 use log::trace;
 
@@ -132,13 +132,9 @@ pub(super) fn corners_aabb(corners: [[f32; 2]; 4]) -> (f32, f32, f32, f32) {
     )
 }
 
-pub(crate) fn draw_world_overlays(
-    d: &mut dyn WorldDraw,
-    camera: &Camera2D,
-    screen: &ScreenSize,
-    app_state: &AppState,
-    signals: &SignalSnapshot,
-) {
+pub(crate) fn draw_world_overlays(ctx: &mut WorldDrawCtx) {
+    let (camera, screen, app_state, signals) = (ctx.camera, ctx.screen, ctx.app_state, ctx.signals);
+    let d = &mut *ctx.draw;
     let state = lock_overlay_settings(app_state);
     let show_axis = state.show_origin_axis;
     let show_grid = state.show_grid;

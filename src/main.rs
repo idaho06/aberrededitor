@@ -9,10 +9,8 @@ mod scenes;
 mod signals;
 mod systems;
 
-use aberredengine::core::systems::scene_dispatch::WorldDrawCallback;
 use aberredengine::engine_app::EngineBuilder;
 use aberredengine::engine_app::SceneDescriptor;
-use aberredengine::render::GuiCallback;
 
 fn main() -> Result<(), aberredengine::EngineError> {
     env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info")).init();
@@ -55,8 +53,8 @@ fn main() -> Result<(), aberredengine::EngineError> {
                 on_enter: scenes::editor::editor_enter,
                 on_update: Some(scenes::editor::editor_update),
                 on_exit: Some(scenes::editor::editor_exit),
-                gui_callback: Some(scenes::editor::editor_gui as GuiCallback),
-                world_draw_callback: Some(scenes::editor::draw_world_overlays as WorldDrawCallback),
+                gui_callback: Some(scenes::editor::editor_gui),
+                world_draw_callback: Some(scenes::editor::draw_world_overlays),
             },
         )
         .initial_scene("intro")

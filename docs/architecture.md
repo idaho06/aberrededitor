@@ -286,15 +286,18 @@ user-placed entities and excludes internal editor entities (editor camera, selec
 
 ## GuiCallback constraints
 
-The `GuiCallback` signature is fixed by the engine (`fn(&Ui, &SignalSnapshot, &mut SignalIntents,
-&TextureStore, &FontStore, &AppState)`). One gotcha:
+The `GuiCallback` signature is fixed by the engine: `fn(&mut GuiCtx)`, where
+`aberredengine::render::GuiCtx` carries `ui`, `signals`, `intents`, `textures`, `fonts` and
+`app_state`. `editor_gui` unpacks those fields on its first lines and passes them on to the
+panels. `world_draw_callback` works the same way with `WorldDrawCtx` (`draw`, `camera`, `screen`,
+`app_state`, `signals`). One gotcha:
 
 **Texture pointer safety (segfault risk).** When rendering a `Texture2D` in ImGui, pass a pointer
 to the full `ffi::Texture2D` struct — not the raw `.id` field. The rlImGui C backend dereferences
 the pointer as a struct. Passing `.id as usize` dereferences address 1 or 2 and crashes
 immediately. See `texture_panel.rs` and `font_panel.rs` for the correct pattern. This still holds
 under the three-thread engine: `gui_callback` receives the real render-side `TextureStore`, so the
-pattern is unchanged — only the import path moved to `resources::render::texturestore`.
+pattern is unchanged — import it as `aberredengine::render::TextureStore`.
 
 ## Initialization sequence
 

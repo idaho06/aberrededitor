@@ -60,14 +60,12 @@ use crate::systems::map_ops::{
 use crate::systems::render_prefs::TogglePixelSnapCameraRequested;
 use aberredengine::core::events::input::InputAction;
 use aberredengine::core::events::switchdebug::SwitchDebugEvent;
-use aberredengine::core::resources::appstate::AppState;
 use aberredengine::core::resources::input::InputState;
 use aberredengine::core::resources::signal_intents::SignalIntents;
 use aberredengine::core::resources::worldsignals::{SignalSnapshot, WorldSignals};
 use aberredengine::core::systems::GameCtx;
 use aberredengine::imgui;
-use aberredengine::render::FontStore;
-use aberredengine::render::TextureStore;
+use aberredengine::render::GuiCtx;
 
 pub fn editor_update(ctx: &mut GameCtx, _dt: f32, input: &InputState) {
     let wants_mouse = ctx.world_signals.has_flag(sig::IMGUI_WANTS_MOUSE);
@@ -139,14 +137,10 @@ pub fn editor_update(ctx: &mut GameCtx, _dt: f32, input: &InputState) {
     handle_view_actions(ctx);
 }
 
-pub fn editor_gui(
-    ui: &imgui::Ui,
-    signals: &SignalSnapshot,
-    intents: &mut SignalIntents,
-    textures: &TextureStore,
-    fonts: &FontStore,
-    app_state: &AppState,
-) {
+pub fn editor_gui(ctx: &mut GuiCtx) {
+    let (ui, signals, textures, fonts, app_state) =
+        (ctx.ui, ctx.signals, ctx.textures, ctx.fonts, ctx.app_state);
+    let intents = &mut *ctx.intents;
     // Publish ImGui mouse-capture state so editor_update can suppress world picks next frame.
     if ui.io().want_capture_mouse {
         intents.set_flag(sig::IMGUI_WANTS_MOUSE);
