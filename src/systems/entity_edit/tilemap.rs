@@ -2,7 +2,7 @@ use super::{BakeTilemapRequested, RemoveTileMapRequested};
 use crate::components::map_entity::MapEntity;
 use crate::systems::entity_selector::clear_selector_state;
 use crate::systems::map_ops::GROUP_TILES;
-use crate::systems::utils::{find_texture, sprite_to_entry, tilemap_stem, tilemap_tex_path};
+use crate::systems::utils::{find_texture, sprite_to_entry, to_relative};
 use aberredengine::bevy_ecs::hierarchy::{ChildOf, Children};
 use aberredengine::bevy_ecs::prelude::{Commands, MessageWriter, On, Query, ResMut};
 use aberredengine::core::components::globaltransform2d::GlobalTransform2D;
@@ -17,7 +17,7 @@ use aberredengine::core::protocol::render_assets::RenderAssetCmd;
 use aberredengine::core::resources::appstate::AppState;
 use aberredengine::core::resources::mapdata::{EntityDef, MapData, TextureEntry};
 use aberredengine::core::resources::worldsignals::WorldSignals;
-use aberredengine::core::systems::tilemap::tilemap_texture_key;
+use aberredengine::core::systems::tilemap::{tilemap_png_path, tilemap_texture_key};
 use log::{debug, info, warn};
 
 pub fn remove_tilemap_observer(
@@ -32,19 +32,17 @@ pub fn remove_tilemap_observer(
     let entity = trigger.event().entity;
 
     if let Ok(tilemap) = tilemap_query.get(entity) {
-        let tilemap_path = crate::systems::utils::to_relative(&tilemap.path);
+        let tilemap_path = to_relative(&tilemap.path);
         let atlas_key = tilemap_texture_key(&tilemap.path);
         map_data
             .entities
             .retain(|e| e.tilemap_path.as_deref() != Some(tilemap_path.as_str()));
-        asset_cmds.write(RenderAssetCmd::RemoveTexture {
-            key: atlas_key.clone(),
-        });
         debug!(
             "remove_tilemap_observer: removed tilemap '{}' (entity {})",
             atlas_key,
             entity.to_bits()
         );
+        asset_cmds.write(RenderAssetCmd::RemoveTexture { key: atlas_key });
     }
 
     super::remove_entity_registrations(&mut world_signals, entity);
@@ -77,8 +75,7 @@ pub fn bake_tilemap_observer(
         warn!("bake_tilemap_observer: root entity has no TileMap");
         return;
     };
-    let tilemap_path = crate::systems::utils::to_relative(&tilemap.path);
-    let stem = tilemap_stem(&tilemap_path);
+    let tilemap_path = to_relative(&tilemap.path);
     // Baked tiles keep the engine's atlas key in their sprites, so the atlas is saved
     // under that key too.
     let atlas_key = tilemap_texture_key(&tilemap.path);
@@ -130,8 +127,8 @@ pub fn bake_tilemap_observer(
     // Register the tilemap's texture so it's saved with the map and reloaded next time.
     if find_texture(&map_data, &atlas_key).is_none() {
         map_data.textures.push(TextureEntry {
-            key: atlas_key,
-            path: tilemap_tex_path(&tilemap_path, stem),
+            key: atlas_key.clone(),
+            path: to_relative(&tilemap_png_path(&tilemap_path)),
             filter: None,
         });
     }
@@ -139,7 +136,7 @@ pub fn bake_tilemap_observer(
     super::remove_entity_registrations(&mut world_signals, root);
     commands.entity(root).despawn();
     clear_selector_state(&mut world_signals, &mut app_state);
-    info!("bake_tilemap_observer: baked tilemap '{}'", stem);
+    info!("bake_tilemap_observer: baked tilemap '{}'", atlas_key);
 }
 
 #[cfg(test)]
@@ -201,13 +198,11 @@ mod tests {
             .filter_map(|e| e.sprite.as_ref())
             .collect();
         assert_eq!(baked.len(), 1, "expected one baked tile");
-        for sprite in baked {
-            assert!(
-                find_texture(map_data, &sprite.texture_key).is_some(),
-                "baked tile uses texture '{}', but MapData registers only {:?}",
-                sprite.texture_key,
-                map_data.textures.iter().map(|t| &t.key).collect::<Vec<_>>()
-            );
-        }
+        assert!(
+            find_texture(map_data, &baked[0].texture_key).is_some(),
+            "baked tile uses texture '{}', but MapData registers only {:?}",
+            baked[0].texture_key,
+            map_data.textures.iter().map(|t| &t.key).collect::<Vec<_>>()
+        );
     }
 }

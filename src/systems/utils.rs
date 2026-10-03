@@ -3,7 +3,7 @@
 //! - [`entity_label`] — builds a display string for the entity selector.
 //! - [`display_group_name`] — returns `"(empty)"` for blank group names, otherwise the name.
 //! - [`sprite_to_entry`] — converts a `Sprite` component to a serialisable `SpriteEntry`.
-//! - [`tilemap_tex_path`] / [`tilemap_stem`] — derive texture paths from tilemap folder paths.
+//! - [`tilemap_stem`] — the last segment of a path (a tilemap folder's or a map file's name).
 //! - [`to_relative`] — converts an absolute path (e.g., from `rfd`) to a CWD-relative path.
 //! - [`find_texture`]/[`find_texture_mut`]/[`default_texture_key`] and their font equivalents —
 //!   `MapData.textures`/`.fonts` lookups. `MapData` is the logic-side source of truth for which
@@ -73,11 +73,6 @@ fn nonzero_vec2(x: f32, y: f32) -> Option<[f32; 2]> {
     } else {
         Some([x, y])
     }
-}
-
-/// Returns the relative path to a tilemap's texture PNG: `<dir>/<stem>.png`.
-pub fn tilemap_tex_path(dir: &str, stem: &str) -> String {
-    to_relative(&format!("{}/{}.png", dir, stem))
 }
 
 /// Returns the directory name (stem) of a tilemap path.
