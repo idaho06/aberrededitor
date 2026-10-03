@@ -59,6 +59,6 @@ pub(super) fn draw_groups_window(
         intents.set_string(sig::GROUPS_SELECTED_GROUP, &raw_name);
     }
     if !window_open {
-        intents.clear_flag(sig::UI_GROUPS_WINDOW_OPEN);
+        intents.remove_flag(sig::UI_GROUPS_WINDOW_OPEN);
     }
 }

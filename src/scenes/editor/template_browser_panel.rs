@@ -61,6 +61,6 @@ pub(super) fn draw_template_browser(
         intents.set_entity(sig::TEMPLATE_SELECT_ENTITY, entity);
     }
     if !window_open {
-        intents.clear_flag(sig::UI_TEMPLATE_BROWSER_OPEN);
+        intents.remove_flag(sig::UI_TEMPLATE_BROWSER_OPEN);
     }
 }

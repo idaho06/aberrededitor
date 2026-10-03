@@ -138,6 +138,6 @@ pub fn draw_map_properties_panel(
         });
 
     if !window_open {
-        intents.clear_flag(sig::UI_MAP_PROPERTIES_OPEN);
+        intents.remove_flag(sig::UI_MAP_PROPERTIES_OPEN);
     }
 }

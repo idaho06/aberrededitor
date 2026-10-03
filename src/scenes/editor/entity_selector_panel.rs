@@ -105,6 +105,6 @@ pub(super) fn draw_entity_selector(
         intents.set_integer(sig::ES_SELECTED_ROW, row);
     }
     if !window_open {
-        intents.clear_flag(sig::UI_ENTITY_SELECTOR_OPEN);
+        intents.remove_flag(sig::UI_ENTITY_SELECTOR_OPEN);
     }
 }

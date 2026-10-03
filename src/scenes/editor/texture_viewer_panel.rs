@@ -84,7 +84,7 @@ pub(super) fn draw_texture_viewer(
         });
 
     if !window_open {
-        intents.clear_flag(sig::UI_TEXTURE_VIEWER_OPEN);
+        intents.remove_flag(sig::UI_TEXTURE_VIEWER_OPEN);
     }
 }
 

@@ -222,7 +222,7 @@ pub(super) fn draw_entity_editor(
         });
 
     if !window_open {
-        intents.clear_flag(sig::UI_ENTITY_EDITOR_OPEN);
+        intents.remove_flag(sig::UI_ENTITY_EDITOR_OPEN);
     }
     open_delete_popup
 }

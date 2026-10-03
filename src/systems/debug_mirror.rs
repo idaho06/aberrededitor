@@ -18,7 +18,7 @@ pub fn debug_mode_mirror_observer(
     mut world_signals: ResMut<WorldSignals>,
 ) {
     if debug_mode.is_some() {
-        world_signals.clear_flag(sig::UI_DEBUG_ACTIVE);
+        world_signals.remove_flag(sig::UI_DEBUG_ACTIVE);
     } else {
         world_signals.set_flag(sig::UI_DEBUG_ACTIVE);
     }

@@ -212,7 +212,7 @@ pub(super) fn draw_animation_store(
         });
 
     if !window_open {
-        intents.clear_flag(sig::UI_ANIMATION_STORE_OPEN);
+        intents.remove_flag(sig::UI_ANIMATION_STORE_OPEN);
     }
 
     (open_rename_popup, open_remove_popup)

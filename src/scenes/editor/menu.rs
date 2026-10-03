@@ -148,7 +148,7 @@ pub(super) fn draw_menu_bar(
                 .build()
             {
                 if preview_open {
-                    intents.clear_flag(sig::UI_PREVIEW_MAPDATA_OPEN);
+                    intents.remove_flag(sig::UI_PREVIEW_MAPDATA_OPEN);
                 } else {
                     intents.set_flag(sig::ACTION_VIEW_PREVIEW_MAPDATA);
                 }

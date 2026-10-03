@@ -87,7 +87,7 @@ pub(super) fn draw_multi_entity_selector(
         });
 
     if !window_open {
-        intents.clear_flag(sig::UI_MULTI_ENTITY_SELECTOR_OPEN);
+        intents.remove_flag(sig::UI_MULTI_ENTITY_SELECTOR_OPEN);
     }
     (open_move_popup, open_z_popup)
 }

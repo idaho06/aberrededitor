@@ -821,8 +821,8 @@ fn apply_multi_selection_results(
     app_state: &mut AppState,
 ) {
     clear_active_selection(world_signals, app_state);
-    world_signals.clear_flag(sig::UI_ENTITY_SELECTOR_OPEN);
-    world_signals.clear_integer(sig::ES_SELECTED_ROW);
+    world_signals.remove_flag(sig::UI_ENTITY_SELECTOR_OPEN);
+    world_signals.remove_integer(sig::ES_SELECTED_ROW);
     let mutex = app_state
         .get::<MultiEntitySelectionMutex>()
         .expect("MultiEntitySelectionMutex not in AppState");
@@ -832,7 +832,7 @@ fn apply_multi_selection_results(
 }
 
 fn clear_multi_selection_state(world_signals: &mut WorldSignals, app_state: &mut AppState) {
-    world_signals.clear_flag(sig::UI_MULTI_ENTITY_SELECTOR_OPEN);
+    world_signals.remove_flag(sig::UI_MULTI_ENTITY_SELECTOR_OPEN);
     if let Some(mutex) = app_state.get::<MultiEntitySelectionMutex>() {
         *mutex.lock().unwrap() = MultiEntitySelectionCache::default();
     }
@@ -842,7 +842,7 @@ fn clear_active_selection(world_signals: &mut WorldSignals, app_state: &mut AppS
     clear_multi_selection_state(world_signals, app_state);
     world_signals.remove_entity(sig::ES_SELECTED_ENTITY);
     world_signals.remove_string(sig::ES_SELECTED_LABEL);
-    world_signals.clear_flag(sig::UI_ENTITY_EDITOR_OPEN);
+    world_signals.remove_flag(sig::UI_ENTITY_EDITOR_OPEN);
     app_state.remove::<SelectionCorners>();
     app_state.remove::<ComponentSnapshot>();
 }
@@ -883,7 +883,7 @@ pub fn clear_selector_state(world_signals: &mut WorldSignals, app_state: &mut Ap
     if let Some(m) = app_state.get::<GroupListMutex>() {
         *m.lock().unwrap() = GroupListCache::default();
     }
-    world_signals.clear_integer(sig::ES_SELECTED_ROW);
+    world_signals.remove_integer(sig::ES_SELECTED_ROW);
     world_signals.remove_string(sig::ENTITY_REGISTRY_SELECTED_KEY);
     world_signals.remove_string(sig::GROUPS_SELECTED_GROUP);
     clear_active_selection(world_signals, app_state);

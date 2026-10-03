@@ -118,7 +118,7 @@ pub(super) fn draw_font_editor(
         });
 
     if !window_open {
-        intents.clear_flag(sig::UI_FONT_STORE_OPEN);
+        intents.remove_flag(sig::UI_FONT_STORE_OPEN);
     }
 
     (open_rename_popup, open_remove_popup)

@@ -63,7 +63,7 @@ pub fn editor_exit(ctx: &mut GameCtx) {
     clear_selector_state(&mut ctx.world_signals, &mut ctx.app_state);
     clear_async_dialog(&ctx.app_state);
     clear_entity_editor_pending(&ctx.app_state);
-    ctx.world_signals.clear_flag(sig::IMGUI_WANTS_MOUSE);
-    ctx.world_signals.clear_flag(sig::IMGUI_WANTS_KEYBOARD);
+    ctx.world_signals.remove_flag(sig::IMGUI_WANTS_MOUSE);
+    ctx.world_signals.remove_flag(sig::IMGUI_WANTS_KEYBOARD);
     exit_placement_mode(&ctx.app_state);
 }

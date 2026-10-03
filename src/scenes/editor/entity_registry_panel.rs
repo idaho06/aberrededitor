@@ -51,6 +51,6 @@ pub(super) fn draw_entity_registry(
         intents.set_string(sig::ENTITY_REGISTRY_SELECTED_KEY, &key);
     }
     if !window_open {
-        intents.clear_flag(sig::UI_ENTITY_REGISTRY_OPEN);
+        intents.remove_flag(sig::UI_ENTITY_REGISTRY_OPEN);
     }
 }

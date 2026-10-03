@@ -100,7 +100,7 @@ pub fn editor_update(ctx: &mut GameCtx, _dt: f32, input: &InputState) {
         EditorTool::AddCollider => handle_add_collider_drag(ctx, input, wants_mouse),
     }
 
-    if let Some(row) = ctx.world_signals.clear_integer(sig::ES_SELECTED_ROW) {
+    if let Some(row) = ctx.world_signals.remove_integer(sig::ES_SELECTED_ROW) {
         ctx.commands.trigger(SelectEntityRequested {
             index: row as usize,
         });
@@ -151,12 +151,12 @@ pub fn editor_gui(
     if ui.io().want_capture_mouse {
         intents.set_flag(sig::IMGUI_WANTS_MOUSE);
     } else {
-        intents.clear_flag(sig::IMGUI_WANTS_MOUSE);
+        intents.remove_flag(sig::IMGUI_WANTS_MOUSE);
     }
     if ui.io().want_capture_keyboard {
         intents.set_flag(sig::IMGUI_WANTS_KEYBOARD);
     } else {
-        intents.clear_flag(sig::IMGUI_WANTS_KEYBOARD);
+        intents.remove_flag(sig::IMGUI_WANTS_KEYBOARD);
     }
 
     let menu_actions = draw_menu_bar(ui, signals, intents, app_state);
@@ -235,7 +235,7 @@ pub fn editor_gui(
 /// has no live `&mut WorldSignals` — only a read-only snapshot plus a write-queue.
 pub(super) fn toggle_flag(signals: &SignalSnapshot, intents: &mut SignalIntents, key: &str) {
     if signals.flags.contains(key) {
-        intents.clear_flag(key);
+        intents.remove_flag(key);
     } else {
         intents.set_flag(key);
     }
@@ -622,6 +622,6 @@ fn draw_map_preview(ui: &imgui::Ui, signals: &SignalSnapshot, intents: &mut Sign
         });
 
     if !window_open {
-        intents.clear_flag(sig::UI_PREVIEW_MAPDATA_OPEN);
+        intents.remove_flag(sig::UI_PREVIEW_MAPDATA_OPEN);
     }
 }
