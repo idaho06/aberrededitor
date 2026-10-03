@@ -97,7 +97,7 @@ fn queue_texture_load(
 ) {
     let filter = TextureFilter::from_opt_str_or_warn(filter_str, key);
     asset_cmds.write(RenderAssetCmd::Texture {
-        id: key.to_string(),
+        key: key.to_string(),
         path,
         filter,
     });
@@ -113,7 +113,7 @@ fn queue_font_load(
     skip_if_loaded: bool,
 ) {
     asset_cmds.write(RenderAssetCmd::Font {
-        id: key.to_string(),
+        key: key.to_string(),
         path,
         size: font_size as i32,
         skip_if_loaded,
@@ -908,7 +908,7 @@ mod tests {
         let messages = world.resource::<Messages<RenderAssetCmd>>();
         let found = messages
             .iter_current_update_messages()
-            .any(|cmd| matches!(cmd, RenderAssetCmd::Texture { id, .. } if id == "iso"));
+            .any(|cmd| matches!(cmd, RenderAssetCmd::Texture { key, .. } if key == "iso"));
 
         std::fs::remove_file(&tmp_path).ok();
 

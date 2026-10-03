@@ -46,17 +46,17 @@ pub fn load_assets(
     config.background_color = Color::BLACK;
 
     asset_cmds.write(RenderAssetCmd::ShaderFromMemory {
-        id: "glitch".to_string(),
+        key: "glitch".to_string(),
         vs_src: None,
         fs_src: Some(SHADER_GLITCH_SRC.to_string()),
     });
     asset_cmds.write(RenderAssetCmd::ShaderFromMemory {
-        id: "fade".to_string(),
+        key: "fade".to_string(),
         vs_src: None,
         fs_src: Some(SHADER_FADE_SRC.to_string()),
     });
     asset_cmds.write(RenderAssetCmd::TextureFromMemory {
-        id: "aberred_engine_isometric_alpha".to_string(),
+        key: "aberred_engine_isometric_alpha".to_string(),
         ext: ".png".to_string(),
         bytes: TEXTURE_ISOMETRIC_DATA.to_vec(),
         filter: TextureFilter::Nearest,
