@@ -2,8 +2,7 @@ use crate::editor_types::ComponentSnapshot;
 use crate::systems::entity_edit::{
     RemovePersistentRequested, RemovePhaseRequested, RemoveTimerRequested, RemoveTtlRequested,
 };
-use aberredengine::bevy_ecs::prelude::Entity;
-use aberredengine::core::systems::GameCtx;
+use aberredengine::bevy_ecs::prelude::{Commands, Entity};
 use aberredengine::imgui;
 
 #[derive(Default, Clone)]
@@ -84,17 +83,17 @@ pub(crate) fn draw_section(
     }
 }
 
-pub(crate) fn commit(ctx: &mut GameCtx, entity: Entity, p: &PendingReadonlyRemovals) {
+pub(crate) fn commit(commands: &mut Commands, entity: Entity, p: &PendingReadonlyRemovals) {
     if p.remove_ttl {
-        ctx.commands.trigger(RemoveTtlRequested { entity });
+        commands.trigger(RemoveTtlRequested { entity });
     }
     if p.remove_timer {
-        ctx.commands.trigger(RemoveTimerRequested { entity });
+        commands.trigger(RemoveTimerRequested { entity });
     }
     if p.remove_phase {
-        ctx.commands.trigger(RemovePhaseRequested { entity });
+        commands.trigger(RemovePhaseRequested { entity });
     }
     if p.remove_persistent {
-        ctx.commands.trigger(RemovePersistentRequested { entity });
+        commands.trigger(RemovePersistentRequested { entity });
     }
 }

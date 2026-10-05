@@ -2,9 +2,8 @@ use super::super::widgets::{draw_float_input, draw_int_input};
 use crate::editor_types::{ComponentSnapshot, EmitterShapeKind, TtlKind};
 use crate::signals as sig;
 use crate::systems::entity_edit::{RemoveParticleEmitterRequested, UpdateParticleEmitterRequested};
-use aberredengine::bevy_ecs::prelude::Entity;
+use aberredengine::bevy_ecs::prelude::{Commands, Entity};
 use aberredengine::core::resources::worldsignals::SignalSnapshot;
-use aberredengine::core::systems::GameCtx;
 use aberredengine::imgui;
 use log::warn;
 
@@ -312,17 +311,16 @@ pub(crate) fn draw_section(
 }
 
 pub(crate) fn commit(
-    ctx: &mut GameCtx,
+    commands: &mut Commands,
     entity: Entity,
     snap: &ComponentSnapshot,
     p: &PendingParticleEmitter,
 ) {
     if p.remove {
-        ctx.commands
-            .trigger(RemoveParticleEmitterRequested { entity });
+        commands.trigger(RemoveParticleEmitterRequested { entity });
     } else if p.commit {
         if let Some(ref pe) = snap.particle_emitter {
-            ctx.commands.trigger(UpdateParticleEmitterRequested {
+            commands.trigger(UpdateParticleEmitterRequested {
                 entity,
                 template_keys: p
                     .template_keys

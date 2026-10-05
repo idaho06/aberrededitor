@@ -1,8 +1,7 @@
 use super::super::widgets::draw_text_buffer_input;
 use crate::editor_types::ComponentSnapshot;
 use crate::systems::entity_edit::{RemoveLuaSetupRequested, UpdateLuaSetupRequested};
-use aberredengine::bevy_ecs::prelude::Entity;
-use aberredengine::core::systems::GameCtx;
+use aberredengine::bevy_ecs::prelude::{Commands, Entity};
 use aberredengine::imgui;
 use log::warn;
 
@@ -43,16 +42,16 @@ pub(crate) fn draw_section(ui: &imgui::Ui, snap: &ComponentSnapshot, p: &mut Pen
 }
 
 pub(crate) fn commit(
-    ctx: &mut GameCtx,
+    commands: &mut Commands,
     entity: Entity,
     snap: &ComponentSnapshot,
     p: &PendingLuaSetup,
 ) {
     if p.remove {
-        ctx.commands.trigger(RemoveLuaSetupRequested { entity });
+        commands.trigger(RemoveLuaSetupRequested { entity });
     } else if p.commit {
         if let Some(ref callback) = snap.lua_setup {
-            ctx.commands.trigger(UpdateLuaSetupRequested {
+            commands.trigger(UpdateLuaSetupRequested {
                 entity,
                 callback: p.callback.as_ref().unwrap_or(callback).clone(),
             });

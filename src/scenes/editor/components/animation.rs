@@ -1,8 +1,7 @@
 use crate::editor_types::ComponentSnapshot;
 use crate::systems::animation_store_sync::AnimationStoreMutex;
 use crate::systems::entity_edit::{RemoveAnimationRequested, UpdateAnimationRequested};
-use aberredengine::bevy_ecs::prelude::Entity;
-use aberredengine::core::systems::GameCtx;
+use aberredengine::bevy_ecs::prelude::{Commands, Entity};
 use aberredengine::imgui;
 use log::warn;
 
@@ -56,16 +55,16 @@ pub(crate) fn draw_section(
 }
 
 pub(crate) fn commit(
-    ctx: &mut GameCtx,
+    commands: &mut Commands,
     entity: Entity,
     snap: &ComponentSnapshot,
     p: &PendingAnimation,
 ) {
     if p.remove {
-        ctx.commands.trigger(RemoveAnimationRequested { entity });
+        commands.trigger(RemoveAnimationRequested { entity });
     } else if p.commit {
         if let Some(ref animation) = snap.animation {
-            ctx.commands.trigger(UpdateAnimationRequested {
+            commands.trigger(UpdateAnimationRequested {
                 entity,
                 animation_key: p
                     .anim_key

@@ -5,8 +5,7 @@ use crate::systems::entity_edit::{
     RemoveScaleRequested, RemoveZIndexRequested, UpdateGroupRequested, UpdateMapPositionRequested,
     UpdateRotationRequested, UpdateScaleRequested, UpdateZIndexRequested,
 };
-use aberredengine::bevy_ecs::prelude::Entity;
-use aberredengine::core::systems::GameCtx;
+use aberredengine::bevy_ecs::prelude::{Commands, Entity};
 use aberredengine::imgui;
 use log::warn;
 
@@ -154,16 +153,16 @@ pub(crate) fn draw_scale(ui: &imgui::Ui, snap: &ComponentSnapshot, p: &mut Pendi
 }
 
 pub(crate) fn commit(
-    ctx: &mut GameCtx,
+    commands: &mut Commands,
     entity: Entity,
     snap: &ComponentSnapshot,
     p: &PendingTransform,
 ) {
     if p.remove_map_position {
-        ctx.commands.trigger(RemoveMapPositionRequested { entity });
+        commands.trigger(RemoveMapPositionRequested { entity });
     } else if p.commit_position {
         if let Some([snap_x, snap_y]) = snap.map_position {
-            ctx.commands.trigger(UpdateMapPositionRequested {
+            commands.trigger(UpdateMapPositionRequested {
                 entity,
                 x: p.pos_x.unwrap_or(snap_x),
                 y: p.pos_y.unwrap_or(snap_y),
@@ -177,10 +176,10 @@ pub(crate) fn commit(
     }
 
     if p.remove_z {
-        ctx.commands.trigger(RemoveZIndexRequested { entity });
+        commands.trigger(RemoveZIndexRequested { entity });
     } else if p.commit_z {
         if let Some(z_index) = snap.z_index {
-            ctx.commands.trigger(UpdateZIndexRequested {
+            commands.trigger(UpdateZIndexRequested {
                 entity,
                 z_index: p.z_index.unwrap_or(z_index),
             });
@@ -193,10 +192,10 @@ pub(crate) fn commit(
     }
 
     if p.remove_group {
-        ctx.commands.trigger(RemoveGroupRequested { entity });
+        commands.trigger(RemoveGroupRequested { entity });
     } else if p.commit_group {
         if let Some(ref group) = snap.group {
-            ctx.commands.trigger(UpdateGroupRequested {
+            commands.trigger(UpdateGroupRequested {
                 entity,
                 group: p.group.as_ref().unwrap_or(group).clone(),
             });
@@ -209,10 +208,10 @@ pub(crate) fn commit(
     }
 
     if p.remove_rotation {
-        ctx.commands.trigger(RemoveRotationRequested { entity });
+        commands.trigger(RemoveRotationRequested { entity });
     } else if p.commit_rotation {
         if let Some(rotation_deg) = snap.rotation_deg {
-            ctx.commands.trigger(UpdateRotationRequested {
+            commands.trigger(UpdateRotationRequested {
                 entity,
                 rotation_deg: p.rotation_deg.unwrap_or(rotation_deg),
             });
@@ -225,10 +224,10 @@ pub(crate) fn commit(
     }
 
     if p.remove_scale {
-        ctx.commands.trigger(RemoveScaleRequested { entity });
+        commands.trigger(RemoveScaleRequested { entity });
     } else if p.commit_scale {
         if let Some([scale_x, scale_y]) = snap.scale {
-            ctx.commands.trigger(UpdateScaleRequested {
+            commands.trigger(UpdateScaleRequested {
                 entity,
                 x: p.scale_x.unwrap_or(scale_x),
                 y: p.scale_y.unwrap_or(scale_y),

@@ -1,7 +1,6 @@
 use crate::editor_types::ComponentSnapshot;
 use crate::systems::entity_edit::{RemoveTintRequested, UpdateTintRequested};
-use aberredengine::bevy_ecs::prelude::Entity;
-use aberredengine::core::systems::GameCtx;
+use aberredengine::bevy_ecs::prelude::{Commands, Entity};
 use aberredengine::imgui;
 use log::warn;
 
@@ -37,13 +36,18 @@ pub(crate) fn draw_section(ui: &imgui::Ui, snap: &ComponentSnapshot, p: &mut Pen
     }
 }
 
-pub(crate) fn commit(ctx: &mut GameCtx, entity: Entity, snap: &ComponentSnapshot, p: &PendingTint) {
+pub(crate) fn commit(
+    commands: &mut Commands,
+    entity: Entity,
+    snap: &ComponentSnapshot,
+    p: &PendingTint,
+) {
     if p.remove {
-        ctx.commands.trigger(RemoveTintRequested { entity });
+        commands.trigger(RemoveTintRequested { entity });
     } else if p.commit {
         if let Some(ref tint) = snap.tint {
             let [r, g, b, a] = p.color.unwrap_or(tint.color_normalized());
-            ctx.commands.trigger(UpdateTintRequested {
+            commands.trigger(UpdateTintRequested {
                 entity,
                 r: (r * 255.0).round() as u8,
                 g: (g * 255.0).round() as u8,

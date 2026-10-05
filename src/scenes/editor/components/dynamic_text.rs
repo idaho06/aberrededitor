@@ -1,8 +1,7 @@
 use super::super::widgets::{draw_float_input, draw_text_buffer_input};
 use crate::editor_types::ComponentSnapshot;
 use crate::systems::entity_edit::{RemoveDynamicTextRequested, UpdateDynamicTextRequested};
-use aberredengine::bevy_ecs::prelude::Entity;
-use aberredengine::core::systems::GameCtx;
+use aberredengine::bevy_ecs::prelude::{Commands, Entity};
 use aberredengine::imgui;
 use aberredengine::render::FontStore;
 use log::warn;
@@ -81,17 +80,17 @@ pub(crate) fn draw_section(
 }
 
 pub(crate) fn commit(
-    ctx: &mut GameCtx,
+    commands: &mut Commands,
     entity: Entity,
     snap: &ComponentSnapshot,
     p: &PendingDynamicText,
 ) {
     if p.remove {
-        ctx.commands.trigger(RemoveDynamicTextRequested { entity });
+        commands.trigger(RemoveDynamicTextRequested { entity });
     } else if p.commit {
         if let Some(ref dt) = snap.dynamic_text {
             let [r, g, b, a] = p.color.unwrap_or(dt.color_normalized());
-            ctx.commands.trigger(UpdateDynamicTextRequested {
+            commands.trigger(UpdateDynamicTextRequested {
                 entity,
                 text: p.text.as_ref().unwrap_or(&dt.text).clone(),
                 font_key: p.font_key.as_ref().unwrap_or(&dt.font_key).clone(),

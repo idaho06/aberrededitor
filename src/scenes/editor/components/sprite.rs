@@ -1,8 +1,7 @@
 use super::super::widgets::draw_float_input;
 use crate::editor_types::ComponentSnapshot;
 use crate::systems::entity_edit::{RemoveSpriteRequested, UpdateSpriteRequested};
-use aberredengine::bevy_ecs::prelude::Entity;
-use aberredengine::core::systems::GameCtx;
+use aberredengine::bevy_ecs::prelude::{Commands, Entity};
 use aberredengine::imgui;
 use aberredengine::render::TextureStore;
 use log::warn;
@@ -125,16 +124,16 @@ pub(crate) fn draw_section(
 }
 
 pub(crate) fn commit(
-    ctx: &mut GameCtx,
+    commands: &mut Commands,
     entity: Entity,
     snap: &ComponentSnapshot,
     p: &PendingSprite,
 ) {
     if p.remove {
-        ctx.commands.trigger(RemoveSpriteRequested { entity });
+        commands.trigger(RemoveSpriteRequested { entity });
     } else if p.commit {
         if let Some(ref sprite) = snap.sprite {
-            ctx.commands.trigger(UpdateSpriteRequested {
+            commands.trigger(UpdateSpriteRequested {
                 entity,
                 tex_key: p.tex_key.as_ref().unwrap_or(&sprite.tex_key).clone(),
                 width: p.width.unwrap_or(sprite.width),
