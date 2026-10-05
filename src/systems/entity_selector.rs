@@ -97,7 +97,7 @@ pub fn register(builder: EngineBuilder) -> EngineBuilder {
 // ---------------------------------------------------------------------------
 
 /// Describes how the current selector result set was produced.
-#[derive(Clone, Default)]
+#[derive(Clone, Debug, Default)]
 pub enum SelectorSource {
     #[default]
     None,
@@ -786,6 +786,11 @@ fn apply_single_selection_results(
     app_state: &mut AppState,
     commands: &mut Commands,
 ) {
+    debug!(
+        "apply_single_selection_results: {} hit(s) from {:?}",
+        hits.len(),
+        source
+    );
     clear_multi_selection_state(world_signals, app_state);
     let top_hit = {
         let mutex = app_state
@@ -820,6 +825,11 @@ fn apply_multi_selection_results(
     world_signals: &mut WorldSignals,
     app_state: &mut AppState,
 ) {
+    debug!(
+        "apply_multi_selection_results: {} hit(s) from {:?}",
+        hits.len(),
+        source
+    );
     clear_active_selection(world_signals, app_state);
     world_signals.remove_flag(sig::UI_ENTITY_SELECTOR_OPEN);
     world_signals.remove_integer(sig::ES_SELECTED_ROW);
@@ -855,6 +865,11 @@ pub(crate) fn apply_selection(
     app_state: &mut AppState,
     commands: &mut Commands,
 ) {
+    debug!(
+        "apply_selection: selected entity {} '{}'",
+        entity.to_bits(),
+        label
+    );
     clear_multi_selection_state(world_signals, app_state);
     world_signals.set_entity(sig::ES_SELECTED_ENTITY, entity);
     world_signals.set_string(sig::ES_SELECTED_LABEL, label);

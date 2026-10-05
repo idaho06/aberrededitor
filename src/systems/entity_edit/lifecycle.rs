@@ -119,6 +119,10 @@ pub fn remove_entity_observer(
     mut app_state: ResMut<AppState>,
 ) {
     let entity = trigger.event().entity;
+    debug!(
+        "remove_entity_observer: despawning entity {}",
+        entity.to_bits()
+    );
     super::remove_entity_registrations(&mut world_signals, entity);
     commands.entity(entity).despawn();
     clear_selector_state(&mut world_signals, &mut app_state);

@@ -823,6 +823,7 @@ pub fn update_animation_resource_observer(
     if let Some(entry) = map_data.animations.iter_mut().find(|e| e.key == *key) {
         *entry = resource_to_entry(key, res);
     }
+    info!("update_animation_resource_observer: updated '{}'", key);
 }
 
 pub fn rename_animation_key_observer(

@@ -34,6 +34,7 @@ use aberredengine::core::components::ttl::Ttl;
 use aberredengine::core::components::zindex::ZIndex;
 use aberredengine::core::resources::appstate::AppState;
 use aberredengine::core::resources::worldsignals::WorldSignals;
+use log::debug;
 
 // ---------------------------------------------------------------------------
 // Event
@@ -101,8 +102,17 @@ pub fn entity_inspect_observer(
         ),
     )) = query.get(entity)
     else {
+        debug!(
+            "entity_inspect_observer: entity {} not found; snapshot skipped",
+            entity.to_bits()
+        );
         return;
     };
+    debug!(
+        "entity_inspect_observer: snapshot of entity {} (phase: {})",
+        entity.to_bits(),
+        phase.map_or("none", |p| p.current.as_str())
+    );
 
     let world_signal_keys: Vec<String> = signals
         .entities

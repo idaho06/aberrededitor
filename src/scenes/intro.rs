@@ -97,6 +97,7 @@ pub fn intro_shader_system(
                 );
                 if fade > FADE_THRESHOLD {
                     // switch to editor scene after fadeout
+                    info!("intro_shader_system: fadeout complete, switching to editor scene");
                     world_signals.request_scene("editor");
                 }
             }

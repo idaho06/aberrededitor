@@ -7,6 +7,7 @@ use aberredengine::bevy_ecs;
 use aberredengine::bevy_ecs::prelude::{Event, On, ResMut};
 use aberredengine::core::resources::gameconfig::GameConfig;
 use aberredengine::engine_app::EngineBuilder;
+use log::debug;
 
 /// Toggle `GameConfig.pixel_snap_camera`.
 #[derive(Event)]
@@ -22,6 +23,10 @@ pub fn toggle_pixel_snap_camera_observer(
     mut config: ResMut<GameConfig>,
 ) {
     config.pixel_snap_camera = !config.pixel_snap_camera;
+    debug!(
+        "toggle_pixel_snap_camera_observer: pixel_snap_camera = {}",
+        config.pixel_snap_camera
+    );
 }
 
 pub fn register(builder: EngineBuilder) -> EngineBuilder {

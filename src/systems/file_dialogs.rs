@@ -109,6 +109,7 @@ pub fn request_async_dialog(app_state: &AppState, request: AsyncFileDialogReques
         return;
     }
 
+    debug!("request_async_dialog: opening {:?}", request);
     let task = build_dialog_task(request);
     let (sender, receiver) = crossbeam_channel::unbounded();
     std::thread::spawn(move || {
@@ -184,6 +185,10 @@ fn drain_completed(app_state: &AppState) -> Option<AsyncFileDialogResult> {
     match receiver.try_recv() {
         Ok(result) => {
             state.receiver = None;
+            match &result {
+                Some(result) => debug!("poll_async_dialogs: completed {:?}", result),
+                None => debug!("poll_async_dialogs: dialog cancelled"),
+            }
             result
         }
         Err(TryRecvError::Empty) => None,
