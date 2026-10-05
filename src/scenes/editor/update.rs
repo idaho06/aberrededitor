@@ -1,8 +1,8 @@
 //! Main editor scene update loop and ImGui GUI callback.
 //!
-//! Two public functions are registered in `main.rs` as the editor scene's callbacks:
+//! Two public functions are registered in `main.rs` for the editor scene:
 //!
-//! - `editor_update` — the `SceneUpdateFn`. Runs in ECS context each frame. Processes
+//! - `editor_update` — scene system (`add_scene_system`). Runs in ECS context each sim tick. Processes
 //!   `WorldSignals` flags from the previous GUI frame (mouse picks, menu actions, selector
 //!   selections, asset CRUD, and selection-mode-specific input handling before dispatching the
 //!   corresponding events via `commands.trigger`.

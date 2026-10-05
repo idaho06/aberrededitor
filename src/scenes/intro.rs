@@ -7,10 +7,10 @@
 //! This scene demonstrates the canonical scene lifecycle pattern: enter spawns entities and
 //! sets up shaders; `intro_shader_system` drives the phase machine; `intro_update` handles the
 //! skip input; exit cleans up shaders and despawns assets.
-use aberredengine::bevy_ecs::prelude::{Commands, On, Query, Res, ResMut};
+use aberredengine::bevy_ecs;
+use aberredengine::bevy_ecs::prelude::{Commands, Component, On, Query, Res, ResMut, With};
 use aberredengine::core::components::mapposition::MapPosition;
 use aberredengine::core::components::phase::Phase;
-use aberredengine::core::components::signals::Signals;
 use aberredengine::core::components::sprite::Sprite;
 use aberredengine::core::components::tween::{Easing, Tween};
 use aberredengine::core::components::zindex::ZIndex;
@@ -23,7 +23,6 @@ use aberredengine::core::resources::input::InputState;
 use aberredengine::core::resources::postprocessshader::PostProcessShader;
 use aberredengine::core::resources::uniformvalue::UniformValue;
 use aberredengine::core::resources::worldsignals::WorldSignals;
-use aberredengine::core::resources::worldtime::WorldTime;
 use log::info;
 
 use crate::systems::map_ops::RemoveTextureRequested;
@@ -33,12 +32,9 @@ const GLITCH_RATE: f32 = 0.1; // uglitch units per second during "medium" phase
 const FADE_RATE: f32 = 0.7; // fade alpha units per second during "fadeout" phase
 const FADE_THRESHOLD: f32 = 1.1; // alpha at which we switch to the editor
 
-fn shader_control_signals() -> Signals {
-    let mut signals = Signals::default();
-    signals.set_scalar("uglitch", 0.0);
-    signals.set_scalar("fade", 0.0);
-    signals
-}
+/// Marks the entity whose `Phase` drives the intro's post-process shader animation.
+#[derive(Component)]
+pub struct IntroShaderControl;
 
 pub fn intro_enter(
     _: On<SceneEntered>,
@@ -66,38 +62,30 @@ pub fn intro_enter(
         ),
     )));
     post_process.set_shader_chain(Some(vec!["glitch".to_string(), "fade".to_string()]));
-    commands.spawn((Phase::new("start"), shader_control_signals()));
+    commands.spawn((Phase::new("start"), IntroShaderControl));
 }
 
 /// Drives the `start` → `medium` → `fadeout` shader animation. The engine's phase system
-/// applies `phase.next` and advances `time_in_phase` (reset on each transition).
+/// applies `phase.next` and advances `time_in_phase` (reset on each transition) before this
+/// runs, so the glitch and fade amounts are derived from it.
 pub fn intro_shader_system(
-    mut query: Query<(&mut Phase, &mut Signals)>,
+    mut query: Query<&mut Phase, With<IntroShaderControl>>,
     mut post_process: ResMut<PostProcessShader>,
-    time: Res<WorldTime>,
     mut world_signals: ResMut<WorldSignals>,
 ) {
-    let dt = time.delta;
-    for (mut phase, mut signals) in &mut query {
+    for mut phase in &mut query {
+        let t = phase.time_in_phase;
         match phase.current.as_str() {
-            "start" => {
-                let uglitch = signals.get_scalar("uglitch").unwrap_or(0.0);
+            "start" | "medium" => {
+                let medium = phase.current == "medium";
+                let uglitch = if medium { t * GLITCH_RATE } else { 0.0 };
                 post_process.set_uniform("uGlitch", UniformValue::Float(uglitch));
-                if phase.time_in_phase > PHASE_DURATION {
-                    phase.next = Some("medium".into());
-                }
-            }
-            "medium" => {
-                let uglitch = signals.get_scalar("uglitch").unwrap_or(0.0) + dt * GLITCH_RATE;
-                signals.set_scalar("uglitch", uglitch);
-                post_process.set_uniform("uGlitch", UniformValue::Float(uglitch));
-                if phase.time_in_phase > PHASE_DURATION {
-                    phase.next = Some("fadeout".into());
+                if t > PHASE_DURATION {
+                    phase.next = Some(if medium { "fadeout" } else { "medium" }.into());
                 }
             }
             "fadeout" => {
-                let fade = signals.get_scalar("fade").unwrap_or(0.0) + dt * FADE_RATE;
-                signals.set_scalar("fade", fade);
+                let fade = t * FADE_RATE;
                 post_process.set_uniform(
                     "fadeColor",
                     UniformValue::Vec4 {

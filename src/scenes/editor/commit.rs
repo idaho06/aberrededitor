@@ -59,15 +59,16 @@ pub(super) fn consume_entity_editor_commits(ctx: &mut EditorCtx) {
         return;
     }
 
-    components::transform::commit(&mut ctx.commands, entity, &snapshot, &p.transform);
-    components::sprite::commit(&mut ctx.commands, entity, &snapshot, &p.sprite);
-    components::collider::commit(&mut ctx.commands, entity, &snapshot, &p.collider);
-    components::animation::commit(&mut ctx.commands, entity, &snapshot, &p.animation);
-    components::readonly::commit(&mut ctx.commands, entity, &p.readonly_removals);
-    components::tint::commit(&mut ctx.commands, entity, &snapshot, &p.tint);
-    components::lua_setup::commit(&mut ctx.commands, entity, &snapshot, &p.lua_setup);
-    components::dynamic_text::commit(&mut ctx.commands, entity, &snapshot, &p.dynamic_text);
-    components::particle_emitter::commit(&mut ctx.commands, entity, &snapshot, &p.particle_emitter);
+    let commands = &mut ctx.commands;
+    components::transform::commit(commands, entity, &snapshot, &p.transform);
+    components::sprite::commit(commands, entity, &snapshot, &p.sprite);
+    components::collider::commit(commands, entity, &snapshot, &p.collider);
+    components::animation::commit(commands, entity, &snapshot, &p.animation);
+    components::readonly::commit(commands, entity, &p.readonly_removals);
+    components::tint::commit(commands, entity, &snapshot, &p.tint);
+    components::lua_setup::commit(commands, entity, &snapshot, &p.lua_setup);
+    components::dynamic_text::commit(commands, entity, &snapshot, &p.dynamic_text);
+    components::particle_emitter::commit(commands, entity, &snapshot, &p.particle_emitter);
 
     if p.remove_tilemap {
         ctx.commands.trigger(RemoveTileMapRequested { entity });
