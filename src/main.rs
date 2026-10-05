@@ -40,6 +40,7 @@ fn main() -> Result<(), aberredengine::EngineError> {
         .add_scene("intro")
         .on_scene_enter("intro", scenes::intro::intro_enter)
         .add_scene_system("intro", scenes::intro::intro_update)
+        .add_scene_system("intro", scenes::intro::intro_shader_system)
         .on_scene_exit("intro", scenes::intro::intro_exit)
         .add_scene("editor")
         .on_scene_enter("editor", scenes::editor::editor_enter)

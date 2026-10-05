@@ -188,16 +188,11 @@ pub fn entity_inspect_observer(
             duration: t.duration,
             elapsed: t.elapsed,
         }),
-        phase: phase.map(|p| {
-            let mut phase_names: Vec<String> = p.phases.keys().cloned().collect();
-            phase_names.sort();
-            PhaseSnapshot {
-                current: p.current.clone(),
-                previous: p.previous.clone(),
-                next: p.next.clone(),
-                time_in_phase: p.time_in_phase,
-                phase_names,
-            }
+        phase: phase.map(|p| PhaseSnapshot {
+            current: p.current.clone(),
+            previous: p.previous.clone(),
+            next: p.next.clone(),
+            time_in_phase: p.time_in_phase,
         }),
         persistent: persistent.is_some(),
         tilemap_path: tilemap.map(|t| t.path.clone()),

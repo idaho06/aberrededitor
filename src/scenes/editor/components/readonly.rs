@@ -65,11 +65,6 @@ pub(crate) fn draw_section(
                 phase.next.as_deref().unwrap_or("(none)")
             ));
             ui.text_disabled(format!("  time_in_phase: {:.3}", phase.time_in_phase));
-            if phase.phase_names.is_empty() {
-                ui.text_disabled("  phase_names: (none)");
-            } else {
-                ui.text_disabled(format!("  phase_names: {}", phase.phase_names.join(", ")));
-            }
         });
     }
 

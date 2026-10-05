@@ -174,8 +174,6 @@ pub struct PhaseSnapshot {
     pub previous: Option<String>,
     pub next: Option<String>,
     pub time_in_phase: f32,
-    /// Sorted list of all defined phase names (for display in the inspector).
-    pub phase_names: Vec<String>,
 }
 
 /// Complete snapshot of an entity's components at a single point in time.

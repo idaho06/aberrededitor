@@ -5,10 +5,11 @@
 //! action button. The scene also transitions automatically when the `fadeout` phase completes.
 //!
 //! This scene demonstrates the canonical scene lifecycle pattern: enter spawns entities and
-//! sets up shaders; update drives the phase machine; exit cleans up shaders and despawns assets.
-use aberredengine::bevy_ecs::prelude::{Commands, Entity, On, Res, ResMut};
+//! sets up shaders; `intro_shader_system` drives the phase machine; `intro_update` handles the
+//! skip input; exit cleans up shaders and despawns assets.
+use aberredengine::bevy_ecs::prelude::{Commands, On, Query, Res, ResMut};
 use aberredengine::core::components::mapposition::MapPosition;
-use aberredengine::core::components::phase::{Phase, PhaseCallbackFns};
+use aberredengine::core::components::phase::Phase;
 use aberredengine::core::components::signals::Signals;
 use aberredengine::core::components::sprite::Sprite;
 use aberredengine::core::components::tween::{Easing, Tween};
@@ -22,9 +23,8 @@ use aberredengine::core::resources::input::InputState;
 use aberredengine::core::resources::postprocessshader::PostProcessShader;
 use aberredengine::core::resources::uniformvalue::UniformValue;
 use aberredengine::core::resources::worldsignals::WorldSignals;
-use aberredengine::core::systems::GameCtx;
+use aberredengine::core::resources::worldtime::WorldTime;
 use log::info;
-use rustc_hash::FxHashMap;
 
 use crate::systems::map_ops::RemoveTextureRequested;
 
@@ -33,40 +33,10 @@ const GLITCH_RATE: f32 = 0.1; // uglitch units per second during "medium" phase
 const FADE_RATE: f32 = 0.7; // fade alpha units per second during "fadeout" phase
 const FADE_THRESHOLD: f32 = 1.1; // alpha at which we switch to the editor
 
-fn shader_control_phases() -> FxHashMap<String, PhaseCallbackFns> {
-    let mut phases = FxHashMap::default();
-    phases.insert(
-        "start".into(),
-        PhaseCallbackFns {
-            on_enter: None,
-            on_update: Some(shader_control_start),
-            on_exit: None,
-        },
-    );
-    phases.insert(
-        "medium".into(),
-        PhaseCallbackFns {
-            on_enter: None,
-            on_update: Some(shader_control_medium),
-            on_exit: None,
-        },
-    );
-    phases.insert(
-        "fadeout".into(),
-        PhaseCallbackFns {
-            on_enter: None,
-            on_update: Some(shader_control_fadeout),
-            on_exit: None,
-        },
-    );
-    phases
-}
-
 fn shader_control_signals() -> Signals {
     let mut signals = Signals::default();
     signals.set_scalar("uglitch", 0.0);
     signals.set_scalar("fade", 0.0);
-    signals.set_scalar("phase_time", 0.0);
     signals
 }
 
@@ -79,7 +49,6 @@ pub fn intro_enter(
     info!("intro_enter: entering intro scene");
     let start_position = MapPosition::new(0.0, config.render_height as f32);
     let end_position = MapPosition::new(0.0, 0.0);
-    let phases = shader_control_phases();
 
     // spawn an entity with a sprite component to display the intro image
     commands.spawn_empty().insert((
@@ -97,76 +66,55 @@ pub fn intro_enter(
         ),
     )));
     post_process.set_shader_chain(Some(vec!["glitch".to_string(), "fade".to_string()]));
-    commands.spawn((Phase::new("start", phases), shader_control_signals()));
+    commands.spawn((Phase::new("start"), shader_control_signals()));
 }
 
-pub fn shader_control_start(
-    entity: Entity,
-    ctx: &mut GameCtx,
-    _input: &InputState,
-    dt: f32,
-) -> Option<String> {
-    let mut entity_signals = ctx.signals.get_mut(entity).ok()?;
-    let phase_time = entity_signals.get_scalar("phase_time").unwrap_or(0.0) + dt;
-    entity_signals.set_scalar("phase_time", phase_time);
-    let uglitch = entity_signals.get_scalar("uglitch").unwrap_or(0.0);
-    ctx.post_process
-        .set_uniform("uGlitch", UniformValue::Float(uglitch));
-    if phase_time > PHASE_DURATION {
-        entity_signals.set_scalar("phase_time", 0.0);
-        entity_signals.set_scalar("uglitch", uglitch);
-        return Some("medium".into());
+/// Drives the `start` → `medium` → `fadeout` shader animation. The engine's phase system
+/// applies `phase.next` and advances `time_in_phase` (reset on each transition).
+pub fn intro_shader_system(
+    mut query: Query<(&mut Phase, &mut Signals)>,
+    mut post_process: ResMut<PostProcessShader>,
+    time: Res<WorldTime>,
+    mut world_signals: ResMut<WorldSignals>,
+) {
+    let dt = time.delta;
+    for (mut phase, mut signals) in &mut query {
+        match phase.current.as_str() {
+            "start" => {
+                let uglitch = signals.get_scalar("uglitch").unwrap_or(0.0);
+                post_process.set_uniform("uGlitch", UniformValue::Float(uglitch));
+                if phase.time_in_phase > PHASE_DURATION {
+                    phase.next = Some("medium".into());
+                }
+            }
+            "medium" => {
+                let uglitch = signals.get_scalar("uglitch").unwrap_or(0.0) + dt * GLITCH_RATE;
+                signals.set_scalar("uglitch", uglitch);
+                post_process.set_uniform("uGlitch", UniformValue::Float(uglitch));
+                if phase.time_in_phase > PHASE_DURATION {
+                    phase.next = Some("fadeout".into());
+                }
+            }
+            "fadeout" => {
+                let fade = signals.get_scalar("fade").unwrap_or(0.0) + dt * FADE_RATE;
+                signals.set_scalar("fade", fade);
+                post_process.set_uniform(
+                    "fadeColor",
+                    UniformValue::Vec4 {
+                        x: 0.0,
+                        y: 0.0,
+                        z: 0.0,
+                        w: fade,
+                    },
+                );
+                if fade > FADE_THRESHOLD {
+                    // switch to editor scene after fadeout
+                    world_signals.request_scene("editor");
+                }
+            }
+            _ => {}
+        }
     }
-    None
-}
-
-pub fn shader_control_medium(
-    entity: Entity,
-    ctx: &mut GameCtx,
-    _input: &InputState,
-    dt: f32,
-) -> Option<String> {
-    let mut entity_signals = ctx.signals.get_mut(entity).ok()?;
-    let phase_time = entity_signals.get_scalar("phase_time").unwrap_or(0.0) + dt;
-    entity_signals.set_scalar("phase_time", phase_time);
-    let uglitch = entity_signals.get_scalar("uglitch").unwrap_or(0.0) + dt * GLITCH_RATE;
-    entity_signals.set_scalar("uglitch", uglitch);
-    ctx.post_process
-        .set_uniform("uGlitch", UniformValue::Float(uglitch));
-    if phase_time > PHASE_DURATION {
-        entity_signals.set_scalar("phase_time", 0.0);
-        entity_signals.set_scalar("uglitch", uglitch);
-        return Some("fadeout".into());
-    }
-    None
-}
-
-pub fn shader_control_fadeout(
-    entity: Entity,
-    ctx: &mut GameCtx,
-    _input: &InputState,
-    dt: f32,
-) -> Option<String> {
-    let mut entity_signals = ctx.signals.get_mut(entity).ok()?;
-    let phase_time = entity_signals.get_scalar("phase_time").unwrap_or(0.0) + dt;
-    entity_signals.set_scalar("phase_time", phase_time);
-    let fade = entity_signals.get_scalar("fade").unwrap_or(0.0) + dt * FADE_RATE;
-    entity_signals.set_scalar("fade", fade);
-    ctx.post_process.set_uniform(
-        "fadeColor",
-        UniformValue::Vec4 {
-            x: 0.0,
-            y: 0.0,
-            z: 0.0,
-            w: fade,
-        },
-    );
-    if fade > FADE_THRESHOLD {
-        // switch to editor scene after fadeout
-        ctx.world_signals.set_string("scene", "editor");
-        ctx.world_signals.set_flag("switch_scene");
-    }
-    None
 }
 
 pub fn intro_update(input: Res<InputState>, mut world_signals: ResMut<WorldSignals>) {
@@ -181,8 +129,7 @@ pub fn intro_update(input: Res<InputState>, mut world_signals: ResMut<WorldSigna
     .any(|action| input.action(action).active)
     {
         info!("intro_update: action button pressed, switching to editor scene");
-        world_signals.set_string("scene", "editor");
-        world_signals.set_flag("switch_scene");
+        world_signals.request_scene("editor");
     }
 }
 
