@@ -4,7 +4,8 @@
 //! - [`NewMapRequested`] / [`new_map_observer`] — clears all stores and despawns all `MapEntity` entities.
 //! - [`LoadMapRequested`] / [`load_map_observer`] — deserialises a `.map` JSON file and
 //!   spawns entities + populates stores. Uses [`aberredengine::events::spawnmap::SpawnMapRequested`]
-//!   for the actual entity instantiation.
+//!   for the actual entity instantiation and asset loads (the engine's `spawn_map` queues the
+//!   `RenderAssetCmd::Texture`/`Font` for every map asset).
 //! - [`SaveMapRequested`] / [`save_map_observer`] — serialises all `MapEntity` components to
 //!   JSON and writes the file.
 //!
@@ -50,7 +51,7 @@ use aberredengine::core::resources::mapdata::{
 use aberredengine::core::resources::texturefilter::TextureFilter;
 use aberredengine::core::resources::worldsignals::WorldSignals;
 use aberredengine::engine_app::EngineBuilder;
-use log::{info, warn};
+use log::{debug, info, warn};
 
 use crate::components::map_entity::MapEntity;
 use crate::systems::entity_selector::clear_selector_state;
@@ -84,10 +85,8 @@ fn queue_clear_assets(asset_cmds: &mut MessageWriter<RenderAssetCmd>, old_map_da
     }
 }
 
-/// Queues `RenderAssetCmd::Texture` for `key`/`path`/`filter_str`. Shared by
-/// `add_texture_observer` (which also dedup-checks and records the entry in `MapData`)
-/// and `load_map_observer` (which loads every entry from an already-installed `MapData`
-/// unconditionally, since dedup doesn't apply on a fresh load).
+/// Queues `RenderAssetCmd::Texture` for `key`/`path`/`filter_str`. Used by
+/// `add_texture_observer`, which also dedup-checks and records the entry in `MapData`.
 fn queue_texture_load(
     asset_cmds: &mut MessageWriter<RenderAssetCmd>,
     key: &str,
@@ -102,20 +101,19 @@ fn queue_texture_load(
     });
 }
 
-/// Queues `RenderAssetCmd::Font` for `key`/`path`/`font_size`. Shared by
-/// `add_font_observer` and `load_map_observer` — see `queue_texture_load`.
+/// Queues `RenderAssetCmd::Font` for `key`/`path`/`font_size`. Used by
+/// `add_font_observer` — see `queue_texture_load`.
 fn queue_font_load(
     asset_cmds: &mut MessageWriter<RenderAssetCmd>,
     key: &str,
     path: String,
     font_size: f32,
-    skip_if_loaded: bool,
 ) {
     asset_cmds.write(RenderAssetCmd::Font {
         key: key.to_string(),
         path,
         size: font_size as i32,
-        skip_if_loaded,
+        skip_if_loaded: true,
     });
 }
 
@@ -222,27 +220,9 @@ pub fn load_map_observer(
     };
     queue_clear_assets(&mut asset_cmds, &old_map_data);
     anim_store.animations.clear();
-    // Queue the loads directly rather than triggering AddTextureRequested/AddFontRequested:
-    // reset_editor_map below installs the full, already-populated MapData, so the
-    // add_texture_observer/add_font_observer "skip if MapData already has this key" dedup
-    // guard would always short-circuit and the RenderAssetCmd would never be queued.
-    for tex in &map.textures {
-        queue_texture_load(
-            &mut asset_cmds,
-            &tex.key,
-            tex.path.clone(),
-            tex.filter.as_deref(),
-        );
-    }
-    for font in &map.fonts {
-        queue_font_load(
-            &mut asset_cmds,
-            &font.key,
-            font.path.clone(),
-            font.font_size,
-            false,
-        );
-    }
+    // Texture/font/animation loads come from the engine's `spawn_map_observer`, triggered by
+    // `SpawnMapRequested` below. Its `RenderAssetCmd`s are written after the removals above,
+    // so a key shared by the old and new map is removed and then reloaded.
     reset_editor_map(
         &mut commands,
         &map_entities,
@@ -703,7 +683,7 @@ pub fn add_font_observer(
     if find_font(&map_data, key).is_some() {
         return;
     }
-    queue_font_load(&mut asset_cmds, key, path.clone(), font_size, true);
+    queue_font_load(&mut asset_cmds, key, path.clone(), font_size);
     map_data.fonts.push(FontEntry {
         key: key.clone(),
         path: path.clone(),
@@ -823,7 +803,7 @@ pub fn update_animation_resource_observer(
     if let Some(entry) = map_data.animations.iter_mut().find(|e| e.key == *key) {
         *entry = resource_to_entry(key, res);
     }
-    info!("update_animation_resource_observer: updated '{}'", key);
+    debug!("update_animation_resource_observer: updated '{}'", key);
 }
 
 pub fn rename_animation_key_observer(
@@ -864,14 +844,11 @@ mod tests {
     use super::*;
     use aberredengine::bevy_ecs::message::Messages;
     use aberredengine::bevy_ecs::world::World;
+    use aberredengine::core::systems::mapspawn::spawn_map_observer;
 
-    /// Regression test for the fix to a bug where `load_map_observer` installed the
-    /// fully-populated new `MapData` (via `reset_editor_map`) before triggering
-    /// `AddTextureRequested`/`AddFontRequested`, so `add_texture_observer`/
-    /// `add_font_observer`'s `MapData`-based dedup guard always short-circuited and
-    /// `RenderAssetCmd::Texture`/`Font` was never queued for a loaded map's assets.
-    /// `load_map_observer` now queues loads directly via `queue_texture_load`/
-    /// `queue_font_load`, bypassing that dedup path entirely.
+    /// Loading a map must queue exactly one `RenderAssetCmd::Texture` per map texture.
+    /// The load comes from the engine's `spawn_map_observer` (via `SpawnMapRequested`);
+    /// `load_map_observer` used to queue its own copy as well, loading every texture twice.
     #[test]
     fn load_map_queues_texture_render_asset_cmd() {
         let mut map = MapData::default();
@@ -892,21 +869,24 @@ mod tests {
         world.insert_resource(GameConfig::default());
 
         world.add_observer(load_map_observer);
+        world.add_observer(spawn_map_observer);
         world.trigger(LoadMapRequested {
             path: tmp_path.to_str().unwrap().to_string(),
         });
         world.flush();
 
         let messages = world.resource::<Messages<RenderAssetCmd>>();
-        let found = messages
+        let loads = messages
             .iter_current_update_messages()
-            .any(|cmd| matches!(cmd, RenderAssetCmd::Texture { key, .. } if key == "iso"));
+            .filter(|cmd| matches!(cmd, RenderAssetCmd::Texture { key, .. } if key == "iso"))
+            .count();
 
         std::fs::remove_file(&tmp_path).ok();
 
-        assert!(
-            found,
-            "expected RenderAssetCmd::Texture(\"iso\") to be queued after loading a map \
+        assert_eq!(
+            loads,
+            1,
+            "expected exactly one RenderAssetCmd::Texture(\"iso\") after loading a map \
              with a texture entry — got: {:?}",
             messages.iter_current_update_messages().collect::<Vec<_>>()
         );
