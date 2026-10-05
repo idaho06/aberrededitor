@@ -1,6 +1,7 @@
 //! aberrededitor — 2D map editor built on aberredengine (Bevy ECS + Raylib).
 //!
-//! Entry point: [`main`] wires all observers, per-frame systems, and scene descriptors via
+//! Entry point: [`main`] wires all observers, per-frame systems, and scenes (enter/exit observers,
+//! scene systems, GUI and world-draw callbacks) via
 //! [`aberredengine::engine_app::EngineBuilder`]. See `docs/architecture.md` for the
 //! two-layer ECS/GUI model, and `docs/patterns.md` for the recurring design patterns.
 mod components;
@@ -10,7 +11,6 @@ mod signals;
 mod systems;
 
 use aberredengine::engine_app::EngineBuilder;
-use aberredengine::engine_app::SceneDescriptor;
 
 fn main() -> Result<(), aberredengine::EngineError> {
     env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info")).init();
@@ -37,26 +37,16 @@ fn main() -> Result<(), aberredengine::EngineError> {
     systems::tilemap_load::register(b)
         .add_system(systems::template_selector::update_template_cache)
         .add_system(scenes::editor::entity_editor_selection_change_system)
-        .add_scene(
-            "intro",
-            SceneDescriptor {
-                on_enter: scenes::intro::intro_enter,
-                on_update: Some(scenes::intro::intro_update),
-                on_exit: Some(scenes::intro::intro_exit),
-                gui_callback: None,
-                world_draw_callback: None,
-            },
-        )
-        .add_scene(
-            "editor",
-            SceneDescriptor {
-                on_enter: scenes::editor::editor_enter,
-                on_update: Some(scenes::editor::editor_update),
-                on_exit: Some(scenes::editor::editor_exit),
-                gui_callback: Some(scenes::editor::editor_gui),
-                world_draw_callback: Some(scenes::editor::draw_world_overlays),
-            },
-        )
+        .add_scene("intro")
+        .on_scene_enter("intro", scenes::intro::intro_enter)
+        .add_scene_system("intro", scenes::intro::intro_update)
+        .on_scene_exit("intro", scenes::intro::intro_exit)
+        .add_scene("editor")
+        .on_scene_enter("editor", scenes::editor::editor_enter)
+        .add_scene_system("editor", scenes::editor::editor_update)
+        .on_scene_exit("editor", scenes::editor::editor_exit)
+        .add_scene_gui("editor", scenes::editor::editor_gui)
+        .add_scene_world_draw("editor", scenes::editor::draw_world_overlays)
         .initial_scene("intro")
         .try_run()
 }

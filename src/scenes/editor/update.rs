@@ -59,6 +59,7 @@ use crate::systems::map_ops::{
     UpdateMapMetadataRequested,
 };
 use crate::systems::render_prefs::TogglePixelSnapCameraRequested;
+use aberredengine::bevy_ecs::prelude::Res;
 use aberredengine::core::events::input::InputAction;
 use aberredengine::core::events::switchdebug::SwitchDebugEvent;
 use aberredengine::core::resources::input::InputState;
@@ -67,7 +68,9 @@ use aberredengine::core::resources::worldsignals::{SignalSnapshot, WorldSignals}
 use aberredengine::imgui;
 use aberredengine::render::GuiCtx;
 
-pub fn editor_update(ctx: &mut EditorCtx, _dt: f32, input: &InputState) {
+pub fn editor_update(mut ctx: EditorCtx, input: Res<InputState>) {
+    let ctx = &mut ctx;
+    let input = &*input;
     let wants_mouse = ctx.world_signals.has_flag(sig::IMGUI_WANTS_MOUSE);
 
     // Cancel any active placement mode on Escape (suppressed when ImGui owns the keyboard).

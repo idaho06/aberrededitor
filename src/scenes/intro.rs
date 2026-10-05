@@ -6,7 +6,7 @@
 //!
 //! This scene demonstrates the canonical scene lifecycle pattern: enter spawns entities and
 //! sets up shaders; update drives the phase machine; exit cleans up shaders and despawns assets.
-use aberredengine::bevy_ecs::prelude::Entity;
+use aberredengine::bevy_ecs::prelude::{Commands, Entity, On, Res, ResMut};
 use aberredengine::core::components::mapposition::MapPosition;
 use aberredengine::core::components::phase::{Phase, PhaseCallbackFns};
 use aberredengine::core::components::signals::Signals;
@@ -14,10 +14,14 @@ use aberredengine::core::components::sprite::Sprite;
 use aberredengine::core::components::tween::{Easing, Tween};
 use aberredengine::core::components::zindex::ZIndex;
 use aberredengine::core::events::input::InputAction;
+use aberredengine::core::events::scene::{SceneEntered, SceneExited};
 use aberredengine::core::math::Vec2;
 use aberredengine::core::resources::camera2d::{Camera2D, Camera2DRes};
+use aberredengine::core::resources::gameconfig::GameConfig;
 use aberredengine::core::resources::input::InputState;
+use aberredengine::core::resources::postprocessshader::PostProcessShader;
 use aberredengine::core::resources::uniformvalue::UniformValue;
+use aberredengine::core::resources::worldsignals::WorldSignals;
 use aberredengine::core::systems::GameCtx;
 use log::info;
 use rustc_hash::FxHashMap;
@@ -66,31 +70,34 @@ fn shader_control_signals() -> Signals {
     signals
 }
 
-pub fn intro_enter(ctx: &mut GameCtx) {
+pub fn intro_enter(
+    _: On<SceneEntered>,
+    mut commands: Commands,
+    config: Res<GameConfig>,
+    mut post_process: ResMut<PostProcessShader>,
+) {
     info!("intro_enter: entering intro scene");
-    let start_position = MapPosition::new(0.0, ctx.config.render_height as f32);
+    let start_position = MapPosition::new(0.0, config.render_height as f32);
     let end_position = MapPosition::new(0.0, 0.0);
     let phases = shader_control_phases();
 
     // spawn an entity with a sprite component to display the intro image
-    ctx.commands.spawn_empty().insert((
+    commands.spawn_empty().insert((
         Sprite::new("aberred_engine_isometric_alpha", 807.0, 970.0)
             .with_origin(Vec2::new(403.0, 242.0)),
         start_position,
         Tween::new(start_position, end_position, 2.0).with_easing(Easing::CubicOut),
         ZIndex(0.0),
     ));
-    ctx.commands.insert_resource(Camera2DRes(Camera2D::new(
+    commands.insert_resource(Camera2DRes(Camera2D::new(
         Vec2::ZERO,
         Vec2::new(
-            ctx.config.render_width as f32 / 2.0,
-            ctx.config.render_height as f32 / 2.0,
+            config.render_width as f32 / 2.0,
+            config.render_height as f32 / 2.0,
         ),
     )));
-    ctx.post_process
-        .set_shader_chain(Some(vec!["glitch".to_string(), "fade".to_string()]));
-    ctx.commands
-        .spawn((Phase::new("start", phases), shader_control_signals()));
+    post_process.set_shader_chain(Some(vec!["glitch".to_string(), "fade".to_string()]));
+    commands.spawn((Phase::new("start", phases), shader_control_signals()));
 }
 
 pub fn shader_control_start(
@@ -162,7 +169,7 @@ pub fn shader_control_fadeout(
     None
 }
 
-pub fn intro_update(ctx: &mut GameCtx, _dt: f32, input: &InputState) {
+pub fn intro_update(input: Res<InputState>, mut world_signals: ResMut<WorldSignals>) {
     // if the user presses any action button, switch to the editor scene
     if [
         InputAction::Action1,
@@ -174,15 +181,19 @@ pub fn intro_update(ctx: &mut GameCtx, _dt: f32, input: &InputState) {
     .any(|action| input.action(action).active)
     {
         info!("intro_update: action button pressed, switching to editor scene");
-        ctx.world_signals.set_string("scene", "editor");
-        ctx.world_signals.set_flag("switch_scene");
+        world_signals.set_string("scene", "editor");
+        world_signals.set_flag("switch_scene");
     }
 }
 
-pub fn intro_exit(ctx: &mut GameCtx) {
+pub fn intro_exit(
+    _: On<SceneExited>,
+    mut commands: Commands,
+    mut post_process: ResMut<PostProcessShader>,
+) {
     info!("intro_exit: clearing post-process shader chain");
-    ctx.post_process.set_shader_chain(None);
-    ctx.commands.trigger(RemoveTextureRequested {
+    post_process.set_shader_chain(None);
+    commands.trigger(RemoveTextureRequested {
         key: "aberred_engine_isometric_alpha".into(),
     });
 }
