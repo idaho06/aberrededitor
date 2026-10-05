@@ -117,7 +117,7 @@ If your panel triggers ECS work via signals, handle it in `src/scenes/editor/upd
 `handle_view_actions` (or a new `handle_my_panel_actions` function):
 
 ```rust
-fn handle_my_panel_actions(ctx: &mut GameCtx) {
+fn handle_my_panel_actions(ctx: &mut EditorCtx) {
     if ctx.world_signals.take_flag(sig::ACTION_MY_PANEL_DO_THING) {
         ctx.commands.trigger(MyPanelDoThingRequested { ... });
     }

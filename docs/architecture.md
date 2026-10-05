@@ -243,33 +243,41 @@ frame, use a system. If it should happen once in response to a user action, use 
 ```text
 main()
   └─ EngineBuilder
-       ├── on_setup: load_assets        (one-shot setup)
-       ├── add_observer(...)            (all observers, registered once)
-       ├── add_system(...)              (all per-frame systems)
-       ├── add_scene("intro", ...)      → splash with glitch/fade shaders
-       └── add_scene("editor", ...)     → main editing interface
+       ├── on_setup(load_assets)               (one-shot setup)
+       ├── add_observer(...) / add_system(...) (global: run in every scene)
+       ├── add_scene("intro")                  → splash with glitch/fade shaders
+       │     ├── on_scene_enter / on_scene_exit → intro_enter / intro_exit
+       │     └── add_scene_system               → intro_update, intro_shader_system
+       └── add_scene("editor")                 → main editing interface
+             ├── on_scene_enter / on_scene_exit → editor_enter / editor_exit
+             ├── add_scene_system               → editor_update
+             ├── add_scene_gui                  → editor_gui
+             └── add_scene_world_draw           → draw_world_overlays
 ```
 
-The intro scene transitions to the editor via:
+There are no scene callback structs. Enter/exit hooks are observers of the engine's
+`SceneEntered`/`SceneExited` events (first param `_: On<SceneEntered>`), and the per-frame
+update is a scene system that only runs while its scene is active. Both are ordinary Bevy
+systems with params **by value**. The editor's enter/exit/update take the
+`EditorCtx` `SystemParam` bundle (`src/scenes/editor/ctx.rs`); see patterns §9.
 
-```rust
-ctx.world_signals.set_string("scene", "editor".to_string());
-ctx.world_signals.set_flag("switch_scene");
-```
+The intro transitions to the editor via `world_signals.request_scene("editor")`, either from
+`intro_update` (skip input) or from `intro_shader_system` when the fade-out completes. The
+intro's timing is a data `Phase` component advanced by the engine; see patterns §10.
 
 On scene transition, all non-`Persistent` entities are despawned by the engine. Editor state
 persists because it lives in ECS resources (`WorldSignals`, `AppState`, `MapData`, stores), not in
-ephemeral entities.
-
-Scene callbacks use `&mut GameCtx` (by-ref), whereas observers and systems receive params by value.
-Do not mix the two patterns — `GameCtx` is a `SystemParam` bundle that only works when borrowed in
-a scene context.
+ephemeral entities. Nothing switches out of the editor scene today, so `editor_exit` only runs
+if a future scene switch is added.
 
 ## Map data round-trip
 
-**Load:** `.map` JSON file → `load_map_observer` → inserts ECS components + populates `MapData`,
-`AnimationStore` (logic-owned) and queues `RenderAssetCmd::Texture`/`Font` per asset (render-owned
-stores are populated asynchronously as the commands are processed).
+**Load:** `.map` JSON file → `load_map_observer` → queues `RemoveTexture`/`RemoveFont` for the
+outgoing map's assets, installs the new `MapData` and triggers `SpawnMapRequested` → the engine's
+`spawn_map_observer` spawns the entities, fills `AnimationStore` (logic-owned) and queues
+`RenderAssetCmd::Texture`/`Font` per asset (render-owned stores are populated asynchronously as
+the commands are processed). The editor must not queue those loads itself: each asset would load
+twice.
 
 **Edit:** GUI panels write into the per-component sub-structs inside `PendingEditState` →
 `consume_entity_editor_commits` clones the aggregate and delegates to

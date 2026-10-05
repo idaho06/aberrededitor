@@ -71,9 +71,8 @@ exception because it groups several smaller draw helpers under one pending struc
 ```rust
 use crate::editor_types::ComponentSnapshot;
 use crate::systems::entity_edit::{RemoveMyComponentRequested, UpdateMyComponentRequested};
-use aberredengine::bevy_ecs::prelude::Entity;
+use aberredengine::bevy_ecs::prelude::{Commands, Entity};
 use aberredengine::imgui;
-use aberredengine::systems::GameCtx;
 use log::warn;
 use super::super::widgets::draw_float_input;
 
@@ -109,16 +108,16 @@ pub(crate) fn draw_section(
 }
 
 pub(crate) fn commit(
-    ctx: &mut GameCtx,
+    commands: &mut Commands,
     entity: Entity,
     snap: &ComponentSnapshot,
     p: &PendingMyComponent,
 ) {
     if p.remove {
-        ctx.commands.trigger(RemoveMyComponentRequested { entity });
+        commands.trigger(RemoveMyComponentRequested { entity });
     } else if p.commit {
         if let Some(ref my_snap) = snap.my_component {
-            ctx.commands.trigger(UpdateMyComponentRequested {
+            commands.trigger(UpdateMyComponentRequested {
                 entity,
                 value: p.value.unwrap_or(my_snap.value),
                 label: p.label.clone().unwrap_or_else(|| my_snap.label.clone()),
@@ -231,10 +230,11 @@ In `src/scenes/editor/entity_editor_panel.rs` (inside the scroll area):
 components::my_component::draw_section(ui, &snap, &mut p.my_component);
 ```
 
-In `src/scenes/editor/commit.rs` (in `consume_entity_editor_commits`):
+In `src/scenes/editor/commit.rs` (in `consume_entity_editor_commits`, next to the other
+component calls that share `let commands = &mut ctx.commands;`):
 
 ```rust
-components::my_component::commit(ctx, entity, &snapshot, &p.my_component);
+components::my_component::commit(commands, entity, &snapshot, &p.my_component);
 ```
 
 That central dispatcher is the only path from GUI pending state into ECS mutation events. Keep

@@ -74,7 +74,7 @@ pub fn my_feature_observer(
 In `src/scenes/editor/update.rs`, in the appropriate `handle_*_actions` function (or a new one):
 
 ```rust
-fn handle_my_actions(ctx: &mut GameCtx) {
+fn handle_my_actions(ctx: &mut EditorCtx) {
     if ctx.world_signals.take_flag(sig::ACTION_MY_FEATURE) {
         ctx.commands.trigger(MyFeatureRequested { ... });
     }

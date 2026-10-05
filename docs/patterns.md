@@ -1,6 +1,6 @@
 # Design Patterns
 
-Eight recurring patterns appear throughout the codebase. Recognising them makes the code
+Ten recurring patterns appear throughout the codebase. Recognising them makes the code
 predictable; using them correctly when extending keeps the codebase coherent.
 
 ---
@@ -176,7 +176,8 @@ delegates to `is_dirty()` on each sub-struct plus a handful of entity-level acti
 **How to recognise it:** `PendingEditState` contains fields like `transform: PendingTransform`
 and `sprite: PendingSprite` in `pending_state.rs`; each component module defines its own
 `PendingMyComponent`; `commit.rs` delegates with calls like
-`components::transform::commit(ctx, entity, &snapshot, &p.transform)`.
+`components::transform::commit(commands, entity, &snapshot, &p.transform)`, where
+`commands` is `&mut ctx.commands`.
 
 **How to use in new code** (adding a new editable component):
 
@@ -212,10 +213,11 @@ In `entity_editor_panel.rs`, pass the sub-struct to the component-local draw hel
 components::my_component::draw_section(ui, &snap, &mut p.my_component);
 ```
 
-In `commit.rs`, delegate to the component-local commit helper:
+In `commit.rs`, delegate to the component-local commit helper (`commands` is
+`&mut ctx.commands`):
 
 ```rust
-components::my_component::commit(ctx, entity, &snapshot, &p.my_component);
+components::my_component::commit(commands, entity, &snapshot, &p.my_component);
 ```
 
 **Key rule:** Reset with `*self = Self::default()` after every commit and on selection change.
@@ -381,3 +383,65 @@ the same ECS events the old synchronous flow used.
 - Convert absolute paths to relative paths in the completion path before triggering observers.
 - Treat cancel as a no-op.
 - Assume only one native dialog may be open at a time unless the bridge design changes.
+
+---
+
+## 9. `EditorCtx` SystemParam bundle
+
+**Problem:** the editor's scene systems and enter/exit observers, and every helper they call
+(`handle_*_actions`, `consume_entity_editor_commits`, the drag handlers), need the same three
+things: `Commands`, `WorldSignals` and `AppState`. Passing three params through every helper is
+noisy.
+
+**Solution:** `EditorCtx` (`src/scenes/editor/ctx.rs`) is a `#[derive(SystemParam)]` bundle of
+exactly those three. Systems take it **by value**; helpers take `&mut EditorCtx`.
+
+```rust
+pub fn editor_update(mut ctx: EditorCtx, input: Res<InputState>) {
+    let ctx = &mut ctx;
+    handle_file_actions(ctx);
+    // ...
+}
+
+fn handle_file_actions(ctx: &mut EditorCtx) {
+    if ctx.world_signals.take_flag(sig::ACTION_FILE_OPEN_MAP) { /* ... */ }
+}
+```
+
+**Key rules:**
+
+- Keep it small. Anything else (`GameConfig`, `InputBindings`, `CameraFollowConfig`, `InputState`)
+  is a separate param on the system that needs it.
+- A system taking `EditorCtx` must not also take `Res`/`ResMut<WorldSignals>` or `AppState`
+  (B0002 panic at startup, see gotchas §8).
+- Observers in `src/systems/` don't use it; they take exactly the resources they touch.
+
+---
+
+## 10. Phase as data + a scene system
+
+**Problem:** timed sequences (the intro's `start` → `medium` → `fadeout`) used to be engine
+phase callbacks. The engine now treats `Phase` as plain data.
+
+**Solution:** spawn a `Phase` component with a marker, and add a scene system that queries
+it. The engine's phase system (`SimSet::Phases`) applies `phase.next` and advances
+`time_in_phase` (reset on each transition) before scene systems run. The scene system reads
+`current`/`time_in_phase`, drives its effects, and sets `phase.next` to transition.
+
+```rust
+commands.spawn((Phase::new("start"), IntroShaderControl));
+
+pub fn intro_shader_system(mut query: Query<&mut Phase, With<IntroShaderControl>>, /* ... */) {
+    for mut phase in &mut query {
+        if phase.current == "start" && phase.time_in_phase > PHASE_DURATION {
+            phase.next = Some("medium".into());
+        }
+    }
+}
+```
+
+**Key rules:**
+
+- Derive amounts from `time_in_phase`; don't accumulate your own timers.
+- A `next` set in tick N takes effect in tick N+1.
+- Filter the query by a marker so other `Phase` entities don't get driven by your system.

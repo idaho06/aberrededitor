@@ -139,16 +139,17 @@ The engine auto-inserts these stores render-side. The editor never inserts them.
 
 ## 8. EngineBuilder callback styles
 
-Two callback styles exist and **must not be mixed**:
-
 | Registration method | Signature | Example |
 | --- | --- | --- |
-| `on_setup`, `add_observer`, `add_system` | Bevy system — params **by value** | `fn f(ctx: GameCtx)` |
-| Scene `on_enter/update/exit` | Plain fn pointer — params **by ref** | `fn f(ctx: &mut GameCtx)` |
-| `gui_callback` / `world_draw_callback` | Fixed signature, one context struct | `fn f(ctx: &mut GuiCtx)` / `fn f(ctx: &mut WorldDrawCtx)` |
+| `on_setup`, `add_observer`, `add_system`, `add_scene_system` | Bevy system — params **by value** | `fn f(ctx: EditorCtx, input: Res<InputState>)` |
+| `on_scene_enter` / `on_scene_exit` | Bevy observer — event first, params **by value** | `fn f(_: On<SceneEntered>, ctx: EditorCtx)` |
+| `add_scene_gui` / `add_scene_world_draw` | Fixed signature, one context struct | `fn f(ctx: &mut GuiCtx)` / `fn f(ctx: &mut WorldDrawCtx)` |
 
-Using a by-value system function where a by-ref scene callback is expected (or vice versa) is
-the most common compile error when adding new scenes or setup functions.
+Helpers called from a system take `&mut EditorCtx`; the system itself takes `EditorCtx` by value.
+
+**B0002 conflicting access.** `EditorCtx` already holds `ResMut<WorldSignals>` and
+`ResMut<AppState>`. A system or observer that takes `EditorCtx` plus `Res`/`ResMut` of either
+of those panics at schedule init. `cargo check` and `cargo clippy` don't catch it; only `cargo run` does.
 
 ---
 
@@ -163,8 +164,8 @@ The correct split is:
 3. `poll_async_dialogs()` converts the completed selection into the existing domain event.
 4. The observer for that domain event performs the real load/save/mutation.
 
-This matters because `GameCtx` still does not expose `RaylibAccess`, `FontStore`/`TextureStore`
-are still render-thread-only (see gotcha #3), and the relative-path invariant still has to be
+This matters because logic-side code has no `RaylibAccess`, `FontStore`/`TextureStore`
+are render-thread-only (see gotcha #3), and the relative-path invariant has to be
 enforced in one place.
 
 Also note that the bridge currently allows only one in-flight dialog. A second request while a
