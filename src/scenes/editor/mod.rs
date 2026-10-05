@@ -13,6 +13,7 @@
 mod animation_panel;
 mod commit;
 pub(crate) mod components;
+mod ctx;
 mod editor_tool;
 mod entity_editor_panel;
 mod entity_registry_panel;

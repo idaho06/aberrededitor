@@ -16,6 +16,7 @@
 //! `handle_view_actions` to keep `editor_update` readable.
 use super::animation_panel::{draw_animation_modals, draw_animation_store};
 use super::commit::consume_entity_editor_commits;
+use super::ctx::EditorCtx;
 use super::entity_editor_panel::{draw_entity_delete_modal, draw_entity_editor};
 use super::entity_registry_panel::draw_entity_registry;
 use super::entity_selector_panel::draw_entity_selector;
@@ -63,11 +64,10 @@ use aberredengine::core::events::switchdebug::SwitchDebugEvent;
 use aberredengine::core::resources::input::InputState;
 use aberredengine::core::resources::signal_intents::SignalIntents;
 use aberredengine::core::resources::worldsignals::{SignalSnapshot, WorldSignals};
-use aberredengine::core::systems::GameCtx;
 use aberredengine::imgui;
 use aberredengine::render::GuiCtx;
 
-pub fn editor_update(ctx: &mut GameCtx, _dt: f32, input: &InputState) {
+pub fn editor_update(ctx: &mut EditorCtx, _dt: f32, input: &InputState) {
     let wants_mouse = ctx.world_signals.has_flag(sig::IMGUI_WANTS_MOUSE);
 
     // Cancel any active placement mode on Escape (suppressed when ImGui owns the keyboard).
@@ -235,7 +235,7 @@ pub(super) fn toggle_flag(signals: &SignalSnapshot, intents: &mut SignalIntents,
     }
 }
 
-fn consume_multi_entity_commits(ctx: &mut GameCtx) {
+fn consume_multi_entity_commits(ctx: &mut EditorCtx) {
     let (move_request, z_request) = {
         let Some(mutex) = ctx.app_state.get::<MultiEntitySelectionMutex>() else {
             return;
@@ -259,10 +259,10 @@ fn consume_multi_entity_commits(ctx: &mut GameCtx) {
 }
 
 fn handle_drag(
-    ctx: &mut GameCtx,
+    ctx: &mut EditorCtx,
     input: &InputState,
     wants_mouse: bool,
-    on_finish: impl FnOnce(&mut GameCtx, SelectionDragRect),
+    on_finish: impl FnOnce(&mut EditorCtx, SelectionDragRect),
 ) {
     let current_point = [input.mouse_x, input.mouse_y];
     let action_1 = input.action(InputAction::Action1);
@@ -279,11 +279,11 @@ fn handle_drag(
     }
 }
 
-fn handle_rectangle_drag(ctx: &mut GameCtx, input: &InputState, wants_mouse: bool) {
+fn handle_rectangle_drag(ctx: &mut EditorCtx, input: &InputState, wants_mouse: bool) {
     handle_drag(ctx, input, wants_mouse, dispatch_rectangle_pick);
 }
 
-fn dispatch_rectangle_pick(ctx: &mut GameCtx, drag_rect: SelectionDragRect) {
+fn dispatch_rectangle_pick(ctx: &mut EditorCtx, drag_rect: SelectionDragRect) {
     let (min_x, max_x, min_y, max_y) = drag_rect_to_world_aabb(&ctx.world_signals, drag_rect);
     ctx.commands.trigger(PickEntitiesInRectRequested {
         min_x,
@@ -293,7 +293,7 @@ fn dispatch_rectangle_pick(ctx: &mut GameCtx, drag_rect: SelectionDragRect) {
     });
 }
 
-fn handle_add_entity_click(ctx: &mut GameCtx, input: &InputState, wants_mouse: bool) {
+fn handle_add_entity_click(ctx: &mut EditorCtx, input: &InputState, wants_mouse: bool) {
     if input.action(InputAction::Action1).just_pressed && !wants_mouse {
         ctx.commands.trigger(CreateBlankEntityRequested {
             x: input.mouse_world_x,
@@ -303,7 +303,7 @@ fn handle_add_entity_click(ctx: &mut GameCtx, input: &InputState, wants_mouse: b
     }
 }
 
-fn handle_add_collider_drag(ctx: &mut GameCtx, input: &InputState, wants_mouse: bool) {
+fn handle_add_collider_drag(ctx: &mut EditorCtx, input: &InputState, wants_mouse: bool) {
     handle_drag(ctx, input, wants_mouse, |ctx, drag_rect| {
         dispatch_collider_creation(ctx, drag_rect);
     });
@@ -312,7 +312,7 @@ fn handle_add_collider_drag(ctx: &mut GameCtx, input: &InputState, wants_mouse: 
     }
 }
 
-fn dispatch_collider_creation(ctx: &mut GameCtx, drag_rect: SelectionDragRect) {
+fn dispatch_collider_creation(ctx: &mut EditorCtx, drag_rect: SelectionDragRect) {
     let (min_x, max_x, min_y, max_y) = drag_rect_to_world_aabb(&ctx.world_signals, drag_rect);
     let width = max_x - min_x;
     let height = max_y - min_y;
@@ -341,7 +341,7 @@ fn drag_rect_to_world_aabb(
     corners_aabb(corners)
 }
 
-fn handle_file_actions(ctx: &mut GameCtx) {
+fn handle_file_actions(ctx: &mut EditorCtx) {
     if ctx.world_signals.take_flag(sig::ACTION_FILE_NEW_MAP) {
         ctx.commands.trigger(NewMapRequested);
     }
@@ -412,7 +412,7 @@ fn handle_file_actions(ctx: &mut GameCtx) {
     }
 }
 
-fn handle_entity_actions(ctx: &mut GameCtx) {
+fn handle_entity_actions(ctx: &mut EditorCtx) {
     if ctx.world_signals.take_flag(sig::ACTION_ENTITY_ADD) {
         enter_placement_mode(&ctx.app_state, EditorTool::AddEntity);
     }
@@ -421,7 +421,7 @@ fn handle_entity_actions(ctx: &mut GameCtx) {
     }
 }
 
-fn handle_texture_actions(ctx: &mut GameCtx) {
+fn handle_texture_actions(ctx: &mut EditorCtx) {
     if ctx.world_signals.take_flag(sig::ACTION_TEXTURE_RENAME) {
         let old_key = ctx
             .world_signals
@@ -476,7 +476,7 @@ fn handle_texture_actions(ctx: &mut GameCtx) {
     }
 }
 
-fn handle_font_actions(ctx: &mut GameCtx) {
+fn handle_font_actions(ctx: &mut EditorCtx) {
     use crate::systems::map_ops::{RemoveFontRequested, RenameFontKeyRequested};
 
     if ctx.world_signals.take_flag(sig::ACTION_FONT_RENAME) {
@@ -522,7 +522,7 @@ fn handle_font_actions(ctx: &mut GameCtx) {
     }
 }
 
-fn handle_view_actions(ctx: &mut GameCtx) {
+fn handle_view_actions(ctx: &mut EditorCtx) {
     if ctx.world_signals.take_flag(sig::ACTION_VIEW_TOGGLE_DEBUG) {
         ctx.commands.trigger(SwitchDebugEvent {});
     }
@@ -542,7 +542,7 @@ fn handle_view_actions(ctx: &mut GameCtx) {
     }
 }
 
-fn handle_animation_actions(ctx: &mut GameCtx) {
+fn handle_animation_actions(ctx: &mut EditorCtx) {
     if ctx.world_signals.take_flag(sig::ACTION_ANIM_ADD)
         && let Some(key) = ctx
             .world_signals

@@ -6,6 +6,7 @@
 //! 3. For each dirty component group, delegates to `components::<name>::commit`.
 //! 4. Clears the pending state via `clear_entity_editor_pending`.
 use super::components;
+use super::ctx::EditorCtx;
 use super::pending_state::PendingMutex;
 use super::state::clear_entity_editor_pending;
 use crate::editor_types::ComponentSnapshot;
@@ -18,9 +19,8 @@ use crate::systems::entity_inspector::InspectEntityRequested;
 use aberredengine::bevy_ecs::prelude::Entity;
 use aberredengine::core::resources::appstate::AppState;
 use aberredengine::core::resources::worldsignals::WorldSignals;
-use aberredengine::core::systems::GameCtx;
 
-pub(super) fn consume_entity_editor_commits(ctx: &mut GameCtx) {
+pub(super) fn consume_entity_editor_commits(ctx: &mut EditorCtx) {
     // Clone pending state out of the mutex before any mutable borrow of ctx.
     let p = {
         let Some(mutex) = ctx.app_state.get::<PendingMutex>() else {
