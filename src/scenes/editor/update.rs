@@ -60,9 +60,8 @@ use crate::systems::map_ops::{
 };
 use crate::systems::render_prefs::TogglePixelSnapCameraRequested;
 use aberredengine::bevy_ecs::prelude::Res;
-use aberredengine::core::resources::input::InputAction;
 use aberredengine::core::events::debug_toggled::DebugToggled;
-use aberredengine::core::resources::input::InputState;
+use aberredengine::core::resources::input::{InputAction, InputState};
 use aberredengine::core::resources::signal_intents::SignalIntents;
 use aberredengine::core::resources::world_signals::{SignalSnapshot, WorldSignals};
 use aberredengine::imgui;
@@ -124,7 +123,10 @@ pub fn editor_update(mut ctx: EditorCtx, input: Res<InputState>) {
             .trigger(SelectRegisteredEntityRequested { key });
     }
 
-    if let Some(entity) = ctx.world_signals.unregister_entity(sig::TEMPLATE_SELECT_ENTITY) {
+    if let Some(entity) = ctx
+        .world_signals
+        .unregister_entity(sig::TEMPLATE_SELECT_ENTITY)
+    {
         ctx.world_signals
             .register_entity(sig::ES_SELECTED_ENTITY, entity);
         ctx.commands.trigger(InspectEntityRequested { entity });

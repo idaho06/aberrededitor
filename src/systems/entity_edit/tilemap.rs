@@ -7,11 +7,11 @@ use aberredengine::bevy_ecs::hierarchy::{ChildOf, Children};
 use aberredengine::bevy_ecs::prelude::{Commands, MessageWriter, On, Query, ResMut};
 use aberredengine::core::components::global_transform2d::GlobalTransform2D;
 use aberredengine::core::components::group::Group;
-use aberredengine::core::components::world_position::WorldPosition;
 use aberredengine::core::components::rotation::Rotation;
 use aberredengine::core::components::scale::Scale;
 use aberredengine::core::components::sprite::Sprite;
 use aberredengine::core::components::tilemap::Tilemap;
+use aberredengine::core::components::world_position::WorldPosition;
 use aberredengine::core::components::z_index::ZIndex;
 use aberredengine::core::protocol::render_assets::RenderAssetCmd;
 use aberredengine::core::resources::app_state::AppState;
@@ -45,7 +45,7 @@ pub fn remove_tilemap_observer(
         asset_cmds.write(RenderAssetCmd::RemoveTexture { key: atlas_key });
     }
 
-    super::remove_entity_registrations(&mut world_signals, entity);
+    world_signals.unregister_entity_everywhere(entity);
     commands.entity(entity).despawn();
     clear_selector_state(&mut world_signals, &mut app_state);
 }
@@ -88,7 +88,7 @@ pub fn bake_tilemap_observer(
 
             let is_tiles_group = group.map(|g| g.name() == GROUP_TILES).unwrap_or(false);
             if !is_tiles_group {
-                super::remove_entity_registrations(&mut world_signals, child);
+                world_signals.unregister_entity_everywhere(child);
                 commands.entity(child).despawn();
                 continue;
             }
@@ -133,7 +133,7 @@ pub fn bake_tilemap_observer(
         });
     }
 
-    super::remove_entity_registrations(&mut world_signals, root);
+    world_signals.unregister_entity_everywhere(root);
     commands.entity(root).despawn();
     clear_selector_state(&mut world_signals, &mut app_state);
     info!("bake_tilemap_observer: baked tilemap '{}'", atlas_key);

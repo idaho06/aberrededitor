@@ -3,7 +3,7 @@
 //! **Map lifecycle:**
 //! - [`NewMapRequested`] / [`new_map_observer`] — clears all stores and despawns all `MapEntity` entities.
 //! - [`LoadMapRequested`] / [`load_map_observer`] — deserialises a `.map` JSON file and
-//!   spawns entities + populates stores. Uses [`aberredengine::events::map_spawn::SpawnMapRequested`]
+//!   spawns entities + populates stores. Uses [`aberredengine::core::events::map_spawn::SpawnMapRequested`]
 //!   for the actual entity instantiation and asset loads (the engine's `spawn_map` queues the
 //!   `RenderAssetCmd::Texture`/`Font` for every map asset).
 //! - [`SaveMapRequested`] / [`save_map_observer`] — serialises all `MapEntity` components to
@@ -30,13 +30,13 @@ use aberredengine::core::components::box_collider::BoxCollider;
 use aberredengine::core::components::dynamic_text::DynamicText;
 use aberredengine::core::components::emitted_particle::EmittedParticle;
 use aberredengine::core::components::group::Group;
-use aberredengine::core::components::world_position::WorldPosition;
 use aberredengine::core::components::particle_emitter::{EmitterShape, ParticleEmitter, TtlSpec};
 use aberredengine::core::components::rotation::Rotation;
 use aberredengine::core::components::scale::Scale;
 use aberredengine::core::components::sprite::Sprite;
 use aberredengine::core::components::tilemap::Tilemap;
 use aberredengine::core::components::tint::Tint;
+use aberredengine::core::components::world_position::WorldPosition;
 use aberredengine::core::components::z_index::ZIndex;
 use aberredengine::core::events::map_spawn::SpawnMapRequested;
 use aberredengine::core::math::Color;

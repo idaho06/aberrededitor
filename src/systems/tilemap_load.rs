@@ -18,8 +18,8 @@ use aberredengine::bevy_ecs::prelude::{
 };
 use aberredengine::core::components::camera_target::CameraTarget;
 use aberredengine::core::components::group::Group;
-use aberredengine::core::components::world_position::WorldPosition;
 use aberredengine::core::components::tilemap::Tilemap;
+use aberredengine::core::components::world_position::WorldPosition;
 use aberredengine::core::resources::app_state::AppState;
 use aberredengine::core::resources::map_data::{EntityDef, MapData};
 use aberredengine::engine_app::EngineBuilder;
@@ -124,7 +124,7 @@ pub fn tilemap_load_observer(
 /// Tags plain entities (no Tilemap, no ChildOf) that just gained WorldPosition —
 /// these are baked tile entities being re-spawned from a saved map file.
 /// The engine's spawn_entity has no way to insert MapEntity directly.
-type PlainMapPositionQuery<'w, 's> = Query<
+type PlainWorldPositionQuery<'w, 's> = Query<
     'w,
     's,
     Entity,
@@ -137,7 +137,7 @@ type PlainMapPositionQuery<'w, 's> = Query<
 >;
 
 pub fn tag_plain_map_entities(
-    query: PlainMapPositionQuery,
+    query: PlainWorldPositionQuery,
     mut commands: Commands,
     app_state: Res<AppState>,
 ) {

@@ -22,14 +22,14 @@ use aberredengine::core::resources::world_signals::WorldSignals;
 /// direct ECS access.
 pub fn editor_camera_sync_system(
     camera: Res<MainCamera>,
-    screen: Res<RenderSize>,
+    render_size: Res<RenderSize>,
     window: Res<WindowSize>,
     config: Res<GameConfig>,
     app_state: Res<AppState>,
     mut signals: ResMut<WorldSignals>,
 ) {
-    let lb = window.calculate_letterbox(screen.w as u32, screen.h as u32);
-    let lb_scale = lb.width / screen.w as f32;
+    let lb = window.calculate_letterbox(render_size.w as u32, render_size.h as u32);
+    let lb_scale = lb.width / render_size.w as f32;
 
     signals.set_scalar(sig::CAM_TARGET_X, camera.0.target.x);
     signals.set_scalar(sig::CAM_TARGET_Y, camera.0.target.y);
@@ -37,8 +37,8 @@ pub fn editor_camera_sync_system(
     signals.set_scalar(sig::CAM_ROTATION, camera.0.rotation);
     signals.set_scalar(sig::CAM_OFFSET_X, camera.0.offset.x);
     signals.set_scalar(sig::CAM_OFFSET_Y, camera.0.offset.y);
-    signals.set_scalar(sig::RENDER_WIDTH, screen.w as f32);
-    signals.set_scalar(sig::RENDER_HEIGHT, screen.h as f32);
+    signals.set_scalar(sig::RENDER_WIDTH, render_size.w as f32);
+    signals.set_scalar(sig::RENDER_HEIGHT, render_size.h as f32);
     signals.set_scalar(sig::WIN_SCALE, lb_scale);
     signals.set_scalar(sig::WIN_OFFSET_X, lb.x);
     signals.set_scalar(sig::WIN_OFFSET_Y, lb.y);

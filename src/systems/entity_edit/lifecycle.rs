@@ -12,7 +12,6 @@ use aberredengine::core::components::animation::Animation;
 use aberredengine::core::components::box_collider::BoxCollider;
 use aberredengine::core::components::dynamic_text::DynamicText;
 use aberredengine::core::components::group::Group;
-use aberredengine::core::components::world_position::WorldPosition;
 use aberredengine::core::components::particle_emitter::ParticleEmitter;
 use aberredengine::core::components::persistent::Persistent;
 use aberredengine::core::components::rotation::Rotation;
@@ -20,6 +19,7 @@ use aberredengine::core::components::scale::Scale;
 use aberredengine::core::components::sprite::Sprite;
 use aberredengine::core::components::tint::Tint;
 use aberredengine::core::components::ttl::Ttl;
+use aberredengine::core::components::world_position::WorldPosition;
 use aberredengine::core::components::z_index::ZIndex;
 use aberredengine::core::math::Color;
 use aberredengine::core::resources::app_state::AppState;
@@ -123,7 +123,7 @@ pub fn remove_entity_observer(
         "remove_entity_observer: despawning entity {}",
         entity.to_bits()
     );
-    super::remove_entity_registrations(&mut world_signals, entity);
+    world_signals.unregister_entity_everywhere(entity);
     commands.entity(entity).despawn();
     clear_selector_state(&mut world_signals, &mut app_state);
 }

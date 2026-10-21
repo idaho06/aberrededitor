@@ -12,12 +12,12 @@ use crate::systems::file_dialogs::clear_async_dialog;
 use aberredengine::bevy_ecs::prelude::{On, Res, ResMut};
 use aberredengine::core::components::camera_target::CameraTarget;
 use aberredengine::core::components::world_position::WorldPosition;
-use aberredengine::core::resources::input::InputAction;
 use aberredengine::core::events::scene::{SceneEntered, SceneExited};
 use aberredengine::core::math::Vec2;
-use aberredengine::core::resources::camera2d::{Camera2D, MainCamera};
 use aberredengine::core::resources::camera_follow_config::{CameraFollowConfig, FollowMode};
+use aberredengine::core::resources::camera2d::{Camera2D, MainCamera};
 use aberredengine::core::resources::game_config::GameConfig;
+use aberredengine::core::resources::input::InputAction;
 use aberredengine::core::resources::input_bindings::{
     InputBinding, InputBindings, Key, MouseButton,
 };
@@ -44,7 +44,8 @@ pub fn editor_enter(
         .commands
         .spawn((WorldPosition::new(0.0, 0.0), CameraTarget::new(0)))
         .id();
-    ctx.world_signals.register_entity(sig::EDITOR_CAMERA, entity);
+    ctx.world_signals
+        .register_entity(sig::EDITOR_CAMERA, entity);
 
     follow.enabled = true;
     follow.mode = FollowMode::Instant;

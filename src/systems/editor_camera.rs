@@ -9,8 +9,7 @@ use crate::signals as sig;
 use aberredengine::bevy_ecs::prelude::{Query, Res, ResMut};
 use aberredengine::core::components::camera_target::CameraTarget;
 use aberredengine::core::components::world_position::WorldPosition;
-use aberredengine::core::resources::input::InputAction;
-use aberredengine::core::resources::input::InputState;
+use aberredengine::core::resources::input::{InputAction, InputState};
 use aberredengine::core::resources::world_signals::WorldSignals;
 use aberredengine::core::resources::world_time::WorldTime;
 

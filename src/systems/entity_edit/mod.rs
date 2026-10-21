@@ -23,8 +23,7 @@ pub mod visual;
 
 use super::entity_inspector::InspectEntityRequested;
 use aberredengine::bevy_ecs::prelude::{Commands, Entity};
-use aberredengine::core::resources::world_signals::WorldSignals;
-use log::{debug, warn};
+use log::warn;
 
 // ── Events ──────────────────────────────────────────────────────────────────
 
@@ -286,25 +285,6 @@ pub struct CloneEntityRequested {
 
 pub(super) fn refresh_inspector(commands: &mut Commands, entity: Entity) {
     commands.trigger(InspectEntityRequested { entity });
-}
-
-pub(super) fn remove_entity_registrations(world_signals: &mut WorldSignals, entity: Entity) {
-    let keys_to_remove: Vec<String> = world_signals
-        .entities
-        .iter()
-        .filter(|(_, e)| **e == entity)
-        .map(|(k, _)| k.clone())
-        .collect();
-    for key in &keys_to_remove {
-        world_signals.unregister_entity(key);
-    }
-    if !keys_to_remove.is_empty() {
-        debug!(
-            "remove_entity_registrations: removed keys [{}] for entity {}",
-            keys_to_remove.join(", "),
-            entity.to_bits()
-        );
-    }
 }
 
 pub(super) fn warn_missing_component(observer: &str, entity: Entity, component: &str) {
