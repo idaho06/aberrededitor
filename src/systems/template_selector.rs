@@ -1,16 +1,16 @@
 //! Per-frame template entity cache for the template browser panel.
 //!
-//! Template entities are `MapEntity` entities that have neither `MapPosition` nor `ZIndex` —
+//! Template entities are `MapEntity` entities that have neither `WorldPosition` nor `ZIndex` —
 //! they serve as data-only archetypes for cloning into the map. `update_template_cache` scans
 //! for these entities every frame when the template browser window is open.
 use super::utils::entity_label;
 use aberredengine::bevy_ecs::prelude::{Entity, Or, Query, Res, ResMut, Without};
 use aberredengine::core::components::group::Group;
-use aberredengine::core::components::mapposition::MapPosition;
+use aberredengine::core::components::world_position::WorldPosition;
 use aberredengine::core::components::persistent::Persistent;
-use aberredengine::core::components::zindex::ZIndex;
-use aberredengine::core::resources::appstate::AppState;
-use aberredengine::core::resources::worldsignals::WorldSignals;
+use aberredengine::core::components::z_index::ZIndex;
+use aberredengine::core::resources::app_state::AppState;
+use aberredengine::core::resources::world_signals::WorldSignals;
 
 use crate::signals as sig;
 
@@ -34,7 +34,7 @@ type TemplateQuery<'w, 's> = Query<
     'w,
     's,
     (Entity, Option<&'static Group>, Option<&'static Persistent>),
-    Or<(Without<MapPosition>, Without<ZIndex>)>,
+    Or<(Without<WorldPosition>, Without<ZIndex>)>,
 >;
 
 pub fn update_template_cache(

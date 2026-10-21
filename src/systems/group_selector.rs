@@ -8,8 +8,8 @@
 use crate::signals as sig;
 use aberredengine::bevy_ecs::prelude::{Added, Changed, Or, Query, RemovedComponents, Res, ResMut};
 use aberredengine::core::components::group::Group;
-use aberredengine::core::resources::appstate::AppState;
-use aberredengine::core::resources::worldsignals::WorldSignals;
+use aberredengine::core::resources::app_state::AppState;
+use aberredengine::core::resources::world_signals::WorldSignals;
 use std::collections::HashMap;
 
 use super::utils::display_group_name;

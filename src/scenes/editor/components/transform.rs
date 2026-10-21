@@ -11,7 +11,7 @@ use log::warn;
 
 #[derive(Default, Clone)]
 pub(crate) struct PendingTransform {
-    // MapPosition
+    // WorldPosition
     pub pos_x: Option<f32>,
     pub pos_y: Option<f32>,
     pub commit_position: bool,
@@ -58,7 +58,7 @@ pub(crate) fn draw_map_position(
     let Some([pos_x, pos_y]) = snap.map_position else {
         return;
     };
-    ui.text("MapPosition");
+    ui.text("WorldPosition");
     ui.same_line();
     if ui.button("Del##map_position") {
         p.remove_map_position = true;
@@ -169,7 +169,7 @@ pub(crate) fn commit(
             });
         } else {
             warn!(
-                "consume_position_commit: snapshot missing MapPosition for entity {}",
+                "consume_position_commit: snapshot missing WorldPosition for entity {}",
                 entity.to_bits()
             );
         }

@@ -1,6 +1,6 @@
 //! Window resize handler.
 //!
-//! `on_window_resized` is a logic-thread observer for [`WindowResizedEvent`], which the
+//! `on_window_resized` is a logic-thread observer for [`WindowResized`], which the
 //! engine triggers whenever the render thread's window-size sample changes (see
 //! `aberredengine::events::window`). It writes the new size into `GameConfig` (which rides
 //! the `DrawableSnapshot`/`RenderGameConfig` mirror to the render thread and triggers
@@ -10,18 +10,18 @@
 //! Registered globally via `EngineBuilder::add_observer`, so it also applies during the
 //! intro scene — a resize while the window title/logo is showing is picked up immediately,
 //! with nothing left to reconcile once the editor scene is entered (the engine itself
-//! inserts `Camera2DRes`/`WindowSize` in sync with `GameConfig`'s initial render size at
+//! inserts `MainCamera`/`WindowSize` in sync with `GameConfig`'s initial render size at
 //! startup, so there is no separate "initial size" case to handle here).
 use aberredengine::bevy_ecs::prelude::*;
-use aberredengine::core::events::window::WindowResizedEvent;
-use aberredengine::core::resources::camera2d::Camera2DRes;
-use aberredengine::core::resources::gameconfig::GameConfig;
+use aberredengine::core::events::window::WindowResized;
+use aberredengine::core::resources::camera2d::MainCamera;
+use aberredengine::core::resources::game_config::GameConfig;
 use log::debug;
 
 pub fn on_window_resized(
-    trigger: On<WindowResizedEvent>,
+    trigger: On<WindowResized>,
     mut config: ResMut<GameConfig>,
-    mut camera: ResMut<Camera2DRes>,
+    mut camera: ResMut<MainCamera>,
 ) {
     let event = trigger.event();
     let (w, h) = (event.w, event.h);

@@ -9,20 +9,20 @@
 //! skip input; exit cleans up shaders and despawns assets.
 use aberredengine::bevy_ecs;
 use aberredengine::bevy_ecs::prelude::{Commands, Component, On, Query, Res, ResMut, With};
-use aberredengine::core::components::mapposition::MapPosition;
+use aberredengine::core::components::world_position::WorldPosition;
 use aberredengine::core::components::phase::Phase;
 use aberredengine::core::components::sprite::Sprite;
 use aberredengine::core::components::tween::{Easing, Tween};
-use aberredengine::core::components::zindex::ZIndex;
-use aberredengine::core::events::input::InputAction;
+use aberredengine::core::components::z_index::ZIndex;
+use aberredengine::core::resources::input::InputAction;
 use aberredengine::core::events::scene::{SceneEntered, SceneExited};
 use aberredengine::core::math::Vec2;
-use aberredengine::core::resources::camera2d::{Camera2D, Camera2DRes};
-use aberredengine::core::resources::gameconfig::GameConfig;
+use aberredengine::core::resources::camera2d::{Camera2D, MainCamera};
+use aberredengine::core::resources::game_config::GameConfig;
 use aberredengine::core::resources::input::InputState;
-use aberredengine::core::resources::postprocessshader::PostProcessShader;
-use aberredengine::core::resources::uniformvalue::UniformValue;
-use aberredengine::core::resources::worldsignals::WorldSignals;
+use aberredengine::core::resources::post_process_shader::PostProcessShader;
+use aberredengine::core::resources::uniform_value::UniformValue;
+use aberredengine::core::resources::next_scene::NextScene;
 use log::info;
 
 use crate::systems::map_ops::RemoveTextureRequested;
@@ -43,8 +43,8 @@ pub fn intro_enter(
     mut post_process: ResMut<PostProcessShader>,
 ) {
     info!("intro_enter: entering intro scene");
-    let start_position = MapPosition::new(0.0, config.render_height as f32);
-    let end_position = MapPosition::new(0.0, 0.0);
+    let start_position = WorldPosition::new(0.0, config.render_height as f32);
+    let end_position = WorldPosition::new(0.0, 0.0);
 
     // spawn an entity with a sprite component to display the intro image
     commands.spawn_empty().insert((
@@ -54,7 +54,7 @@ pub fn intro_enter(
         Tween::new(start_position, end_position, 2.0).with_easing(Easing::CubicOut),
         ZIndex(0.0),
     ));
-    commands.insert_resource(Camera2DRes(Camera2D::new(
+    commands.insert_resource(MainCamera(Camera2D::new(
         Vec2::ZERO,
         Vec2::new(
             config.render_width as f32 / 2.0,
@@ -71,7 +71,7 @@ pub fn intro_enter(
 pub fn intro_shader_system(
     mut query: Query<&mut Phase, With<IntroShaderControl>>,
     mut post_process: ResMut<PostProcessShader>,
-    mut world_signals: ResMut<WorldSignals>,
+    mut next_scene: ResMut<NextScene>,
 ) {
     for mut phase in &mut query {
         let t = phase.time_in_phase;
@@ -98,7 +98,7 @@ pub fn intro_shader_system(
                 if fade > FADE_THRESHOLD {
                     // switch to editor scene after fadeout
                     info!("intro_shader_system: fadeout complete, switching to editor scene");
-                    world_signals.request_scene("editor");
+                    next_scene.set("editor");
                 }
             }
             _ => {}
@@ -106,7 +106,7 @@ pub fn intro_shader_system(
     }
 }
 
-pub fn intro_update(input: Res<InputState>, mut world_signals: ResMut<WorldSignals>) {
+pub fn intro_update(input: Res<InputState>, mut next_scene: ResMut<NextScene>) {
     // if the user presses any action button, switch to the editor scene
     if [
         InputAction::Action1,
@@ -118,7 +118,7 @@ pub fn intro_update(input: Res<InputState>, mut world_signals: ResMut<WorldSigna
     .any(|action| input.action(action).active)
     {
         info!("intro_update: action button pressed, switching to editor scene");
-        world_signals.request_scene("editor");
+        next_scene.set("editor");
     }
 }
 

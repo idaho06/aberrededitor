@@ -5,25 +5,25 @@ use crate::systems::map_ops::GROUP_TILES;
 use crate::systems::utils::{find_texture, sprite_to_entry, to_relative};
 use aberredengine::bevy_ecs::hierarchy::{ChildOf, Children};
 use aberredengine::bevy_ecs::prelude::{Commands, MessageWriter, On, Query, ResMut};
-use aberredengine::core::components::globaltransform2d::GlobalTransform2D;
+use aberredengine::core::components::global_transform2d::GlobalTransform2D;
 use aberredengine::core::components::group::Group;
-use aberredengine::core::components::mapposition::MapPosition;
+use aberredengine::core::components::world_position::WorldPosition;
 use aberredengine::core::components::rotation::Rotation;
 use aberredengine::core::components::scale::Scale;
 use aberredengine::core::components::sprite::Sprite;
-use aberredengine::core::components::tilemap::TileMap;
-use aberredengine::core::components::zindex::ZIndex;
+use aberredengine::core::components::tilemap::Tilemap;
+use aberredengine::core::components::z_index::ZIndex;
 use aberredengine::core::protocol::render_assets::RenderAssetCmd;
-use aberredengine::core::resources::appstate::AppState;
-use aberredengine::core::resources::mapdata::{EntityDef, MapData, TextureEntry};
-use aberredengine::core::resources::worldsignals::WorldSignals;
+use aberredengine::core::resources::app_state::AppState;
+use aberredengine::core::resources::map_data::{EntityDef, MapData, TextureEntry};
+use aberredengine::core::resources::world_signals::WorldSignals;
 use aberredengine::core::systems::tilemap::{tilemap_png_path, tilemap_texture_key};
 use log::{debug, info, warn};
 
 pub fn remove_tilemap_observer(
     trigger: On<RemoveTileMapRequested>,
     mut commands: Commands,
-    tilemap_query: Query<&TileMap>,
+    tilemap_query: Query<&Tilemap>,
     mut map_data: ResMut<MapData>,
     mut asset_cmds: MessageWriter<RenderAssetCmd>,
     mut world_signals: ResMut<WorldSignals>,
@@ -64,7 +64,7 @@ type TileChildQuery<'w, 's> = Query<
 pub fn bake_tilemap_observer(
     trigger: On<BakeTilemapRequested>,
     mut commands: Commands,
-    root_query: Query<(&TileMap, Option<&Children>)>,
+    root_query: Query<(&Tilemap, Option<&Children>)>,
     child_query: TileChildQuery,
     mut map_data: ResMut<MapData>,
     mut world_signals: ResMut<WorldSignals>,
@@ -72,7 +72,7 @@ pub fn bake_tilemap_observer(
 ) {
     let root = trigger.event().entity;
     let Ok((tilemap, maybe_children)) = root_query.get(root) else {
-        warn!("bake_tilemap_observer: root entity has no TileMap");
+        warn!("bake_tilemap_observer: root entity has no Tilemap");
         return;
     };
     let tilemap_path = to_relative(&tilemap.path);
@@ -111,7 +111,7 @@ pub fn bake_tilemap_observer(
             commands
                 .entity(child)
                 .insert(MapEntity)
-                .insert(MapPosition::new(gt.position.x, gt.position.y))
+                .insert(WorldPosition::new(gt.position.x, gt.position.y))
                 .insert(Rotation {
                     degrees: gt.rotation_degrees,
                 })
@@ -154,7 +154,7 @@ mod tests {
         world.insert_resource(MapData::default());
         world.insert_resource(WorldSignals::default());
         world.insert_resource(AppState::default());
-        let root = world.spawn(TileMap::new(TILEMAP_DIR)).id();
+        let root = world.spawn(Tilemap::new(TILEMAP_DIR)).id();
         // A tile as the engine's `tilemap_spawn_system` spawns it: its sprite uses the atlas key.
         world.spawn((
             ChildOf(root),

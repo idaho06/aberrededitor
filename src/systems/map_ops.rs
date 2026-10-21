@@ -3,7 +3,7 @@
 //! **Map lifecycle:**
 //! - [`NewMapRequested`] / [`new_map_observer`] — clears all stores and despawns all `MapEntity` entities.
 //! - [`LoadMapRequested`] / [`load_map_observer`] — deserialises a `.map` JSON file and
-//!   spawns entities + populates stores. Uses [`aberredengine::events::spawnmap::SpawnMapRequested`]
+//!   spawns entities + populates stores. Uses [`aberredengine::events::map_spawn::SpawnMapRequested`]
 //!   for the actual entity instantiation and asset loads (the engine's `spawn_map` queues the
 //!   `RenderAssetCmd::Texture`/`Font` for every map asset).
 //! - [`SaveMapRequested`] / [`save_map_observer`] — serialises all `MapEntity` components to
@@ -26,30 +26,30 @@ use aberredengine::bevy_ecs::prelude::{
 };
 use aberredengine::bevy_ecs::query::Without;
 use aberredengine::core::components::animation::Animation;
-use aberredengine::core::components::boxcollider::BoxCollider;
-use aberredengine::core::components::dynamictext::DynamicText;
-use aberredengine::core::components::emittedparticle::EmittedParticle;
+use aberredengine::core::components::box_collider::BoxCollider;
+use aberredengine::core::components::dynamic_text::DynamicText;
+use aberredengine::core::components::emitted_particle::EmittedParticle;
 use aberredengine::core::components::group::Group;
-use aberredengine::core::components::mapposition::MapPosition;
-use aberredengine::core::components::particleemitter::{EmitterShape, ParticleEmitter, TtlSpec};
+use aberredengine::core::components::world_position::WorldPosition;
+use aberredengine::core::components::particle_emitter::{EmitterShape, ParticleEmitter, TtlSpec};
 use aberredengine::core::components::rotation::Rotation;
 use aberredengine::core::components::scale::Scale;
 use aberredengine::core::components::sprite::Sprite;
-use aberredengine::core::components::tilemap::TileMap;
+use aberredengine::core::components::tilemap::Tilemap;
 use aberredengine::core::components::tint::Tint;
-use aberredengine::core::components::zindex::ZIndex;
-use aberredengine::core::events::spawnmap::SpawnMapRequested;
+use aberredengine::core::components::z_index::ZIndex;
+use aberredengine::core::events::map_spawn::SpawnMapRequested;
 use aberredengine::core::math::Color;
 use aberredengine::core::protocol::render_assets::RenderAssetCmd;
-use aberredengine::core::resources::animationstore::{AnimationResource, AnimationStore};
-use aberredengine::core::resources::appstate::AppState;
-use aberredengine::core::resources::gameconfig::{GameConfig, GameConfigDefaults};
-use aberredengine::core::resources::mapdata::{
+use aberredengine::core::resources::animation_store::{AnimationClip, AnimationStore};
+use aberredengine::core::resources::app_state::AppState;
+use aberredengine::core::resources::game_config::{GameConfig, GameConfigDefaults};
+use aberredengine::core::resources::map_data::{
     AnimationEntry, DynamicTextEntry, EntityDef, FontEntry, MapData, ParticleEmitterEntry,
     ParticleEmitterShapeEntry, ParticleEmitterTtlEntry, TextureEntry, load_map, save_map,
 };
-use aberredengine::core::resources::texturefilter::TextureFilter;
-use aberredengine::core::resources::worldsignals::WorldSignals;
+use aberredengine::core::resources::texture_filter::TextureFilter;
+use aberredengine::core::resources::world_signals::WorldSignals;
 use aberredengine::engine_app::EngineBuilder;
 use log::{debug, info, warn};
 
@@ -247,8 +247,8 @@ type MapEntitiesQuery<'w, 's> = Query<
     's,
     (
         Entity,
-        Option<&'static TileMap>,
-        Option<&'static MapPosition>,
+        Option<&'static Tilemap>,
+        Option<&'static WorldPosition>,
         Option<&'static ZIndex>,
         Option<&'static Group>,
         Option<&'static Rotation>,
@@ -646,17 +646,17 @@ pub struct RemoveFontRequested {
 // Animation store CRUD events
 // ---------------------------------------------------------------------------
 
-/// Add a default-valued [`AnimationResource`] under `key` to `AnimationStore`.
+/// Add a default-valued [`AnimationClip`] under `key` to `AnimationStore`.
 #[derive(Event)]
 pub struct AddAnimationRequested {
     pub key: String,
 }
 
-/// Overwrite the [`AnimationResource`] stored under `key` in `AnimationStore`.
+/// Overwrite the [`AnimationClip`] stored under `key` in `AnimationStore`.
 #[derive(Event)]
 pub struct UpdateAnimationResourceRequested {
     pub key: String,
-    pub resource: AnimationResource,
+    pub resource: AnimationClip,
 }
 
 /// Rename an animation key in `AnimationStore` and `MapData.animations`.
@@ -764,7 +764,7 @@ pub fn preview_mapdata_observer(
 // Animation store CRUD observers
 // ---------------------------------------------------------------------------
 
-fn resource_to_entry(key: &str, res: &AnimationResource) -> AnimationEntry {
+fn resource_to_entry(key: &str, res: &AnimationClip) -> AnimationEntry {
     AnimationEntry {
         key: key.to_owned(),
         texture_key: res.tex_key.as_ref().to_owned(),
@@ -786,7 +786,7 @@ pub fn add_animation_observer(
     if anim_store.animations.contains_key(key.as_str()) {
         return;
     }
-    let resource = AnimationResource::new("", 16.0, 1, 12.0);
+    let resource = AnimationClip::new("", 16.0, 1, 12.0);
     map_data.animations.push(resource_to_entry(key, &resource));
     anim_store.insert(key.clone(), resource);
     info!("add_animation_observer: added '{}'", key);
@@ -844,7 +844,7 @@ mod tests {
     use super::*;
     use aberredengine::bevy_ecs::message::Messages;
     use aberredengine::bevy_ecs::world::World;
-    use aberredengine::core::systems::mapspawn::spawn_map_observer;
+    use aberredengine::core::systems::map_spawn::spawn_map_observer;
 
     /// Loading a map must queue exactly one `RenderAssetCmd::Texture` per map texture.
     /// The load comes from the engine's `spawn_map_observer` (via `SpawnMapRequested`);

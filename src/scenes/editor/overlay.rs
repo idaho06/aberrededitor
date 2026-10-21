@@ -10,11 +10,11 @@ use crate::signals as sig;
 use crate::systems::entity_selector::MultiEntitySelectionMutex;
 use crate::systems::render_prefs::RenderPrefsMutex;
 use aberredengine::core::math::{Color, Vec2};
-use aberredengine::core::resources::appstate::AppState;
+use aberredengine::core::resources::app_state::AppState;
 use aberredengine::core::resources::camera2d::Camera2D;
-use aberredengine::core::resources::screensize::ScreenSize;
+use aberredengine::core::resources::render_size::RenderSize;
 use aberredengine::core::resources::signal_intents::SignalIntents;
-use aberredengine::core::resources::worldsignals::{SignalSnapshot, WorldSignals};
+use aberredengine::core::resources::world_signals::{SignalSnapshot, WorldSignals};
 use aberredengine::core::systems::scene_dispatch::{WorldDraw, WorldDrawCtx};
 use aberredengine::imgui;
 use log::trace;
@@ -156,7 +156,7 @@ pub(crate) fn draw_world_overlays(ctx: &mut WorldDrawCtx) {
     draw_multi_entity_outlines(d, signals, app_state);
 }
 
-fn world_bounds_from_camera(camera: &Camera2D, screen: &ScreenSize) -> (f32, f32, f32, f32) {
+fn world_bounds_from_camera(camera: &Camera2D, screen: &RenderSize) -> (f32, f32, f32, f32) {
     let w = screen.w as f32;
     let h = screen.h as f32;
     let rotation_rad = camera.rotation.to_radians();

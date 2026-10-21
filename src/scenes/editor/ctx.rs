@@ -5,8 +5,8 @@
 //! must not also take `Res`/`ResMut` of `WorldSignals` or `AppState`: Bevy panics at startup
 //! (B0002 conflicting access), which `cargo check` cannot catch.
 use aberredengine::bevy_ecs;
-use aberredengine::core::resources::appstate::AppState;
-use aberredengine::core::resources::worldsignals::WorldSignals;
+use aberredengine::core::resources::app_state::AppState;
+use aberredengine::core::resources::world_signals::WorldSignals;
 use aberredengine::prelude::{Commands, ResMut, SystemParam};
 
 #[derive(SystemParam)]

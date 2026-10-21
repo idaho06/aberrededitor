@@ -19,19 +19,19 @@ use crate::editor_types::{ComponentSnapshot, SelectionCorners};
 use crate::signals as sig;
 use aberredengine::bevy_ecs;
 use aberredengine::bevy_ecs::prelude::{Commands, Entity, Event, On, Query, ResMut, With};
-use aberredengine::core::components::boxcollider::BoxCollider;
-use aberredengine::core::components::dynamictext::DynamicText;
-use aberredengine::core::components::globaltransform2d::GlobalTransform2D;
+use aberredengine::core::components::box_collider::BoxCollider;
+use aberredengine::core::components::dynamic_text::DynamicText;
+use aberredengine::core::components::global_transform2d::GlobalTransform2D;
 use aberredengine::core::components::group::Group;
-use aberredengine::core::components::mapposition::MapPosition;
+use aberredengine::core::components::world_position::WorldPosition;
 use aberredengine::core::components::persistent::Persistent;
 use aberredengine::core::components::rotation::Rotation;
 use aberredengine::core::components::scale::Scale;
 use aberredengine::core::components::sprite::Sprite;
-use aberredengine::core::components::zindex::ZIndex;
+use aberredengine::core::components::z_index::ZIndex;
 use aberredengine::core::math::Vec2;
-use aberredengine::core::resources::appstate::AppState;
-use aberredengine::core::resources::worldsignals::WorldSignals;
+use aberredengine::core::resources::app_state::AppState;
+use aberredengine::core::resources::world_signals::WorldSignals;
 use aberredengine::core::systems::sprite_geometry::{
     compute_sprite_geometry, resolve_world_transform,
 };
@@ -192,7 +192,7 @@ pub fn entity_pick_observer(
     query: Query<
         (
             Entity,
-            &MapPosition,
+            &WorldPosition,
             Option<&BoxCollider>,
             Option<&Sprite>,
             Option<&DynamicText>,
@@ -317,7 +317,7 @@ pub fn entity_rect_pick_observer(
     query: Query<
         (
             Entity,
-            &MapPosition,
+            &WorldPosition,
             Option<&BoxCollider>,
             Option<&Sprite>,
             Option<&DynamicText>,
@@ -411,7 +411,7 @@ pub fn select_group_observer(
     trigger: On<SelectGroupRequested>,
     query: Query<(
         Entity,
-        Option<&MapPosition>,
+        Option<&WorldPosition>,
         Option<&BoxCollider>,
         Option<&Sprite>,
         Option<&DynamicText>,
@@ -485,7 +485,7 @@ pub fn select_group_observer(
 pub fn select_registered_entity_observer(
     trigger: On<SelectRegisteredEntityRequested>,
     query: Query<(
-        Option<&MapPosition>,
+        Option<&WorldPosition>,
         Option<&BoxCollider>,
         Option<&Sprite>,
         Option<&DynamicText>,
@@ -522,7 +522,7 @@ pub fn select_registered_entity_observer(
         maybe_persistent,
     )) = query.get(entity)
     else {
-        world_signals.remove_entity(key);
+        world_signals.unregister_entity(key);
         warn!(
             "select_registered_entity_observer: entity {} for key '{}' is unavailable; removed stale registration",
             entity.to_bits(),
@@ -618,7 +618,7 @@ pub fn select_entity_observer(
 /// - Sprite only: rotated quad using the same anchor/origin math as the renderer.
 /// - Neither: degenerate zero-size quad at the entity's world position.
 fn compute_corners(
-    pos: &MapPosition,
+    pos: &WorldPosition,
     maybe_collider: Option<&BoxCollider>,
     maybe_sprite: Option<&Sprite>,
     maybe_dynamic_text: Option<&DynamicText>,
@@ -675,7 +675,7 @@ fn compute_corners(
 /// for scale and rotation (same transform math as the renderer).
 fn point_in_sprite(
     click: Vec2,
-    pos: &MapPosition,
+    pos: &WorldPosition,
     sprite: &Sprite,
     scale: Option<&Scale>,
     rot: Option<&Rotation>,
@@ -706,7 +706,7 @@ fn point_in_sprite(
     }
 }
 
-fn point_in_dynamic_text(click: Vec2, pos: &MapPosition, dynamic_text: &DynamicText) -> bool {
+fn point_in_dynamic_text(click: Vec2, pos: &WorldPosition, dynamic_text: &DynamicText) -> bool {
     let size = dynamic_text.size();
     click.x >= pos.pos.x
         && click.x <= pos.pos.x + size.x
@@ -715,7 +715,7 @@ fn point_in_dynamic_text(click: Vec2, pos: &MapPosition, dynamic_text: &DynamicT
 }
 
 fn compute_group_corners(
-    maybe_pos: Option<&MapPosition>,
+    maybe_pos: Option<&WorldPosition>,
     maybe_collider: Option<&BoxCollider>,
     maybe_sprite: Option<&Sprite>,
     maybe_dynamic_text: Option<&DynamicText>,
@@ -850,7 +850,7 @@ fn clear_multi_selection_state(world_signals: &mut WorldSignals, app_state: &mut
 
 fn clear_active_selection(world_signals: &mut WorldSignals, app_state: &mut AppState) {
     clear_multi_selection_state(world_signals, app_state);
-    world_signals.remove_entity(sig::ES_SELECTED_ENTITY);
+    world_signals.unregister_entity(sig::ES_SELECTED_ENTITY);
     world_signals.remove_string(sig::ES_SELECTED_LABEL);
     world_signals.remove_flag(sig::UI_ENTITY_EDITOR_OPEN);
     app_state.remove::<SelectionCorners>();
@@ -871,7 +871,7 @@ pub(crate) fn apply_selection(
         label
     );
     clear_multi_selection_state(world_signals, app_state);
-    world_signals.set_entity(sig::ES_SELECTED_ENTITY, entity);
+    world_signals.register_entity(sig::ES_SELECTED_ENTITY, entity);
     world_signals.set_string(sig::ES_SELECTED_LABEL, label);
     app_state.remove::<ComponentSnapshot>();
     if let Some(corners) = corners {

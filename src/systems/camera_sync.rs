@@ -10,19 +10,19 @@ use crate::signals as sig;
 use crate::systems::render_prefs::RenderPrefsMutex;
 use aberredengine::bevy_ecs::change_detection::DetectChanges;
 use aberredengine::bevy_ecs::prelude::{Res, ResMut};
-use aberredengine::core::resources::appstate::AppState;
-use aberredengine::core::resources::camera2d::Camera2DRes;
-use aberredengine::core::resources::gameconfig::GameConfig;
-use aberredengine::core::resources::screensize::ScreenSize;
-use aberredengine::core::resources::windowsize::WindowSize;
-use aberredengine::core::resources::worldsignals::WorldSignals;
+use aberredengine::core::resources::app_state::AppState;
+use aberredengine::core::resources::camera2d::MainCamera;
+use aberredengine::core::resources::game_config::GameConfig;
+use aberredengine::core::resources::render_size::RenderSize;
+use aberredengine::core::resources::window_size::WindowSize;
+use aberredengine::core::resources::world_signals::WorldSignals;
 
 /// Per-frame system that writes the active camera, render target, and letterbox parameters to
 /// `WorldSignals` so editor systems and GUI overlays can convert coordinates without needing
 /// direct ECS access.
 pub fn editor_camera_sync_system(
-    camera: Res<Camera2DRes>,
-    screen: Res<ScreenSize>,
+    camera: Res<MainCamera>,
+    screen: Res<RenderSize>,
     window: Res<WindowSize>,
     config: Res<GameConfig>,
     app_state: Res<AppState>,

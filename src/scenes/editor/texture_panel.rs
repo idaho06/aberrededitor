@@ -8,8 +8,8 @@
 use super::texture_viewer_panel::open_texture_viewer;
 use crate::signals as sig;
 use aberredengine::core::resources::signal_intents::SignalIntents;
-use aberredengine::core::resources::texturefilter::TextureFilter;
-use aberredengine::core::resources::worldsignals::SignalSnapshot;
+use aberredengine::core::resources::texture_filter::TextureFilter;
+use aberredengine::core::resources::world_signals::SignalSnapshot;
 use aberredengine::imgui;
 use aberredengine::render::TextureStore;
 

@@ -1,7 +1,7 @@
-//! Tilemap loading: spawns a `TileMap` entity from a folder path and tags children.
+//! Tilemap loading: spawns a `Tilemap` entity from a folder path and tags children.
 //!
 //! `tilemap_load_observer` handles `LoadTilemapRequested`: it records the tilemap in
-//! `MapData` and spawns the `TileMap` component; the engine's own `tilemap_spawn_system`
+//! `MapData` and spawns the `Tilemap` component; the engine's own `tilemap_spawn_system`
 //! queues the atlas texture load via `RenderAssetCmd::TilemapTexture`.
 //!
 //! `tag_plain_map_entities` and `on_tilemap_added` are per-frame systems that run after
@@ -16,12 +16,12 @@ use aberredengine::bevy_ecs::hierarchy::ChildOf;
 use aberredengine::bevy_ecs::prelude::{
     Added, Commands, Entity, Event, On, Query, Res, ResMut, Without,
 };
-use aberredengine::core::components::cameratarget::CameraTarget;
+use aberredengine::core::components::camera_target::CameraTarget;
 use aberredengine::core::components::group::Group;
-use aberredengine::core::components::mapposition::MapPosition;
-use aberredengine::core::components::tilemap::TileMap;
-use aberredengine::core::resources::appstate::AppState;
-use aberredengine::core::resources::mapdata::{EntityDef, MapData};
+use aberredengine::core::components::world_position::WorldPosition;
+use aberredengine::core::components::tilemap::Tilemap;
+use aberredengine::core::resources::app_state::AppState;
+use aberredengine::core::resources::map_data::{EntityDef, MapData};
 use aberredengine::engine_app::EngineBuilder;
 use log::{info, warn};
 use std::collections::{HashMap, VecDeque};
@@ -101,7 +101,7 @@ pub fn tilemap_load_observer(
     let rel = to_relative(dir_path);
     let id = tilemap_stem(&rel).to_owned();
 
-    commands.spawn((TileMap::new(rel.as_str()), Group::new(GROUP_TILEMAP_ROOTS)));
+    commands.spawn((Tilemap::new(rel.as_str()), Group::new(GROUP_TILEMAP_ROOTS)));
 
     if !map_data
         .entities
@@ -121,7 +121,7 @@ pub fn tilemap_load_observer(
     );
 }
 
-/// Tags plain entities (no TileMap, no ChildOf) that just gained MapPosition —
+/// Tags plain entities (no Tilemap, no ChildOf) that just gained WorldPosition —
 /// these are baked tile entities being re-spawned from a saved map file.
 /// The engine's spawn_entity has no way to insert MapEntity directly.
 type PlainMapPositionQuery<'w, 's> = Query<
@@ -129,8 +129,8 @@ type PlainMapPositionQuery<'w, 's> = Query<
     's,
     Entity,
     (
-        Added<MapPosition>,
-        Without<TileMap>,
+        Added<WorldPosition>,
+        Without<Tilemap>,
         Without<ChildOf>,
         Without<CameraTarget>,
     ),
@@ -153,13 +153,13 @@ pub fn tag_plain_map_entities(
     }
 }
 
-/// Runs on `Added<TileMap>` — covers both the UI-trigger path and the engine's
+/// Runs on `Added<Tilemap>` — covers both the UI-trigger path and the engine's
 /// load-from-file spawn path. `TextureStore.paths` for the tilemap atlas is populated
 /// render-side by the engine's own `tilemap_spawn_system` (it queues
 /// `RenderAssetCmd::TilemapTexture`); this system only tags entities and restores the
 /// serialized Lua setup callback.
 pub fn on_tilemap_added(
-    query: Query<(Entity, &TileMap), Added<TileMap>>,
+    query: Query<(Entity, &Tilemap), Added<Tilemap>>,
     mut commands: Commands,
     app_state: Res<AppState>,
 ) {

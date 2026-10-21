@@ -6,8 +6,8 @@ use super::{
 };
 use crate::components::serialized_lua_setup::SerializedLuaSetup;
 use aberredengine::core::components::animation::Animation;
-use aberredengine::core::components::boxcollider::BoxCollider;
-use aberredengine::core::components::dynamictext::DynamicText;
+use aberredengine::core::components::box_collider::BoxCollider;
+use aberredengine::core::components::dynamic_text::DynamicText;
 use aberredengine::core::components::sprite::Sprite;
 use aberredengine::core::components::tint::Tint;
 use aberredengine::core::math::{Color, Vec2};

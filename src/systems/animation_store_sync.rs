@@ -6,14 +6,14 @@
 //! then reads via `app_state.get::<AnimationStoreMutex>()`.
 use aberredengine::bevy_ecs::change_detection::DetectChanges;
 use aberredengine::bevy_ecs::prelude::{Res, ResMut};
-use aberredengine::core::resources::animationstore::{AnimationResource, AnimationStore};
-use aberredengine::core::resources::appstate::AppState;
+use aberredengine::core::resources::animation_store::{AnimationClip, AnimationStore};
+use aberredengine::core::resources::app_state::AppState;
 use rustc_hash::FxHashMap;
 
 /// `AppState` key for the animation store mirror. Keyed by animation name, value is the full
-/// `AnimationResource`. Populated by `animation_store_sync_system` on every change to `AnimationStore`.
+/// `AnimationClip`. Populated by `animation_store_sync_system` on every change to `AnimationStore`.
 pub type AnimationStoreMutex =
-    std::sync::Arc<std::sync::Mutex<FxHashMap<String, AnimationResource>>>;
+    std::sync::Arc<std::sync::Mutex<FxHashMap<String, AnimationClip>>>;
 
 pub fn animation_store_sync_system(anim_store: Res<AnimationStore>, app_state: ResMut<AppState>) {
     if !anim_store.is_changed() {

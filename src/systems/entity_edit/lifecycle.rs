@@ -9,22 +9,22 @@ use crate::systems::entity_selector::{apply_selection, clear_selector_state};
 use crate::systems::utils::{default_font_key, default_texture_key, entity_label};
 use aberredengine::bevy_ecs::prelude::{Commands, On, Query, Res, ResMut};
 use aberredengine::core::components::animation::Animation;
-use aberredengine::core::components::boxcollider::BoxCollider;
-use aberredengine::core::components::dynamictext::DynamicText;
+use aberredengine::core::components::box_collider::BoxCollider;
+use aberredengine::core::components::dynamic_text::DynamicText;
 use aberredengine::core::components::group::Group;
-use aberredengine::core::components::mapposition::MapPosition;
-use aberredengine::core::components::particleemitter::ParticleEmitter;
+use aberredengine::core::components::world_position::WorldPosition;
+use aberredengine::core::components::particle_emitter::ParticleEmitter;
 use aberredengine::core::components::persistent::Persistent;
 use aberredengine::core::components::rotation::Rotation;
 use aberredengine::core::components::scale::Scale;
 use aberredengine::core::components::sprite::Sprite;
 use aberredengine::core::components::tint::Tint;
 use aberredengine::core::components::ttl::Ttl;
-use aberredengine::core::components::zindex::ZIndex;
+use aberredengine::core::components::z_index::ZIndex;
 use aberredengine::core::math::Color;
-use aberredengine::core::resources::appstate::AppState;
-use aberredengine::core::resources::mapdata::MapData;
-use aberredengine::core::resources::worldsignals::WorldSignals;
+use aberredengine::core::resources::app_state::AppState;
+use aberredengine::core::resources::map_data::MapData;
+use aberredengine::core::resources::world_signals::WorldSignals;
 use log::debug;
 use std::sync::Arc;
 
@@ -36,7 +36,7 @@ pub fn create_blank_entity_observer(
 ) {
     let event = trigger.event();
     let entity = commands
-        .spawn((MapEntity, MapPosition::new(event.x, event.y)))
+        .spawn((MapEntity, WorldPosition::new(event.x, event.y)))
         .id();
     apply_selection(
         entity,
@@ -64,7 +64,7 @@ pub fn create_collider_entity_observer(
     let entity = commands
         .spawn((
             MapEntity,
-            MapPosition::new(event.x, event.y),
+            WorldPosition::new(event.x, event.y),
             BoxCollider::new(event.width, event.height),
         ))
         .id();
@@ -92,7 +92,7 @@ pub fn clone_entity_observer(
     let event = trigger.event();
     let mut src = commands.entity(event.entity);
     let mut ec = src.clone_and_spawn();
-    ec.insert(MapPosition::new(event.x, event.y));
+    ec.insert(WorldPosition::new(event.x, event.y));
     let cloned = ec.id();
     let (group, persistent) = source_query.get(event.entity).unwrap_or((None, None));
     apply_selection(
@@ -137,8 +137,8 @@ pub fn add_component_observer(
     let entity = event.entity;
     let mut ec = commands.entity(entity);
     match event.kind {
-        ComponentKind::MapPosition => {
-            ec.insert(MapPosition::new(0.0, 0.0));
+        ComponentKind::WorldPosition => {
+            ec.insert(WorldPosition::new(0.0, 0.0));
         }
         ComponentKind::ZIndex => {
             ec.insert(ZIndex(0.0));

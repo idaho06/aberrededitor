@@ -10,8 +10,8 @@ use super::pending_state::{PendingEditState, PendingMutex};
 use crate::signals as sig;
 use aberredengine::bevy_ecs;
 use aberredengine::bevy_ecs::prelude::{Entity, Res, ResMut, Resource};
-use aberredengine::core::resources::appstate::AppState;
-use aberredengine::core::resources::worldsignals::WorldSignals;
+use aberredengine::core::resources::app_state::AppState;
+use aberredengine::core::resources::world_signals::WorldSignals;
 
 /// Canonical owner of ECS-only transient editor state.
 ///

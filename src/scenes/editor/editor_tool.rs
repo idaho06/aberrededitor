@@ -2,7 +2,7 @@
 //!
 //! The active tool lives in `AppState` rather than a Bevy resource because both the GUI
 //! callback and the scene update path need direct access to it.
-use aberredengine::core::resources::appstate::AppState;
+use aberredengine::core::resources::app_state::AppState;
 use aberredengine::raylib::ffi::{MouseCursor, SetMouseCursor};
 
 /// Active editor tool (selection modes and entity-placement modes).

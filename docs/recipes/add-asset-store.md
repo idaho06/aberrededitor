@@ -26,7 +26,7 @@ The editor never queries the engine's store directly from the GUI callback — i
 In a new file `src/systems/my_store_sync.rs`:
 
 ```rust
-use aberredengine::resources::appstate::AppState;
+use aberredengine::core::resources::app_state::AppState;
 use aberredengine::bevy_ecs::change_detection::DetectChanges;
 use aberredengine::bevy_ecs::prelude::{Res, ResMut};
 use std::sync::{Arc, Mutex};

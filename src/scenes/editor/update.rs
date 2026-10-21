@@ -60,11 +60,11 @@ use crate::systems::map_ops::{
 };
 use crate::systems::render_prefs::TogglePixelSnapCameraRequested;
 use aberredengine::bevy_ecs::prelude::Res;
-use aberredengine::core::events::input::InputAction;
-use aberredengine::core::events::switchdebug::SwitchDebugEvent;
+use aberredengine::core::resources::input::InputAction;
+use aberredengine::core::events::debug_toggled::DebugToggled;
 use aberredengine::core::resources::input::InputState;
 use aberredengine::core::resources::signal_intents::SignalIntents;
-use aberredengine::core::resources::worldsignals::{SignalSnapshot, WorldSignals};
+use aberredengine::core::resources::world_signals::{SignalSnapshot, WorldSignals};
 use aberredengine::imgui;
 use aberredengine::render::GuiCtx;
 
@@ -124,9 +124,9 @@ pub fn editor_update(mut ctx: EditorCtx, input: Res<InputState>) {
             .trigger(SelectRegisteredEntityRequested { key });
     }
 
-    if let Some(entity) = ctx.world_signals.remove_entity(sig::TEMPLATE_SELECT_ENTITY) {
+    if let Some(entity) = ctx.world_signals.unregister_entity(sig::TEMPLATE_SELECT_ENTITY) {
         ctx.world_signals
-            .set_entity(sig::ES_SELECTED_ENTITY, entity);
+            .register_entity(sig::ES_SELECTED_ENTITY, entity);
         ctx.commands.trigger(InspectEntityRequested { entity });
     }
 
@@ -527,7 +527,7 @@ fn handle_font_actions(ctx: &mut EditorCtx) {
 
 fn handle_view_actions(ctx: &mut EditorCtx) {
     if ctx.world_signals.take_flag(sig::ACTION_VIEW_TOGGLE_DEBUG) {
-        ctx.commands.trigger(SwitchDebugEvent {});
+        ctx.commands.trigger(DebugToggled {});
     }
 
     if ctx

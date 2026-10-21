@@ -9,10 +9,10 @@
 //! `editor_update` to consume.
 use std::sync::Arc;
 
-use aberredengine::core::resources::animationstore::AnimationResource;
-use aberredengine::core::resources::appstate::AppState;
+use aberredengine::core::resources::animation_store::AnimationClip;
+use aberredengine::core::resources::app_state::AppState;
 use aberredengine::core::resources::signal_intents::SignalIntents;
-use aberredengine::core::resources::worldsignals::SignalSnapshot;
+use aberredengine::core::resources::world_signals::SignalSnapshot;
 use aberredengine::imgui;
 use aberredengine::render::TextureStore;
 
@@ -42,7 +42,7 @@ pub(super) fn draw_animation_store(
 
     // Collect a snapshot of keys+resources outside the window closure to avoid
     // holding the lock across imgui calls.
-    let entries: Vec<(String, AnimationResource)> = {
+    let entries: Vec<(String, AnimationClip)> = {
         let cache = mutex.lock().unwrap();
         let mut v: Vec<_> = cache.iter().map(|(k, r)| (k.clone(), r.clone())).collect();
         v.sort_by(|a, b| a.0.cmp(&b.0));
@@ -88,7 +88,7 @@ pub(super) fn draw_animation_store(
                     ui.same_line();
 
                     // --- Editable fields ---
-                    let mut changed_resource: Option<AnimationResource> = None;
+                    let mut changed_resource: Option<AnimationClip> = None;
 
                     ui.group(|| {
                         // Key + Rename / Remove

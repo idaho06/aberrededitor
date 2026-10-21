@@ -1,7 +1,7 @@
 //! ECS observers for all entity component mutations.
 //!
 //! Organized by concern:
-//! - `transform`  — MapPosition, ZIndex, Rotation, Scale, multi-selection bulk moves.
+//! - `transform`  — WorldPosition, ZIndex, Rotation, Scale, multi-selection bulk moves.
 //! - `visual`     — Sprite, BoxCollider, Tint, DynamicText, Animation, LuaSetup.
 //! - `metadata`   — Group, ParticleEmitter, Ttl/Timer/Phase/Persistent removes.
 //! - `lifecycle`  — create, clone, remove entity, add-component.
@@ -23,7 +23,7 @@ pub mod visual;
 
 use super::entity_inspector::InspectEntityRequested;
 use aberredengine::bevy_ecs::prelude::{Commands, Entity};
-use aberredengine::core::resources::worldsignals::WorldSignals;
+use aberredengine::core::resources::world_signals::WorldSignals;
 use log::{debug, warn};
 
 // ── Events ──────────────────────────────────────────────────────────────────
@@ -149,7 +149,7 @@ pub struct RemovePhaseRequested {
 pub struct RemovePersistentRequested {
     pub entity: Entity,
 }
-/// Removes `TileMap`, cleans up `MapData`/`TextureStore` entries, despawns the entity,
+/// Removes `Tilemap`, cleans up `MapData`/`TextureStore` entries, despawns the entity,
 /// and clears all its `WorldSignals` registrations.
 #[derive(Event)]
 pub struct RemoveTileMapRequested {
@@ -258,14 +258,14 @@ pub struct AddComponentRequested {
     pub kind: crate::editor_types::ComponentKind,
 }
 
-/// Spawn a bare `MapEntity` with `MapPosition` at `(x, y)` and select it.
+/// Spawn a bare `MapEntity` with `WorldPosition` at `(x, y)` and select it.
 #[derive(Event)]
 pub struct CreateBlankEntityRequested {
     pub x: f32,
     pub y: f32,
 }
 
-/// Spawn a `MapEntity` with `MapPosition` at `(x, y)` and `BoxCollider` of `(width, height)` and select it.
+/// Spawn a `MapEntity` with `WorldPosition` at `(x, y)` and `BoxCollider` of `(width, height)` and select it.
 #[derive(Event)]
 pub struct CreateColliderEntityRequested {
     pub x: f32,
@@ -296,7 +296,7 @@ pub(super) fn remove_entity_registrations(world_signals: &mut WorldSignals, enti
         .map(|(k, _)| k.clone())
         .collect();
     for key in &keys_to_remove {
-        world_signals.remove_entity(key);
+        world_signals.unregister_entity(key);
     }
     if !keys_to_remove.is_empty() {
         debug!(

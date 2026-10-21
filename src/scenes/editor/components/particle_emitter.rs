@@ -3,7 +3,7 @@ use crate::editor_types::{ComponentSnapshot, EmitterShapeKind, TtlKind};
 use crate::signals as sig;
 use crate::systems::entity_edit::{RemoveParticleEmitterRequested, UpdateParticleEmitterRequested};
 use aberredengine::bevy_ecs::prelude::{Commands, Entity};
-use aberredengine::core::resources::worldsignals::SignalSnapshot;
+use aberredengine::core::resources::world_signals::SignalSnapshot;
 use aberredengine::imgui;
 use log::warn;
 

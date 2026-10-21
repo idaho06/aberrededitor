@@ -1,6 +1,6 @@
 use super::{RegisterEntityRequested, UnregisterEntityRequested};
 use aberredengine::bevy_ecs::prelude::{Commands, On, ResMut};
-use aberredengine::core::resources::worldsignals::WorldSignals;
+use aberredengine::core::resources::world_signals::WorldSignals;
 use log::debug;
 
 pub fn register_entity_observer(
@@ -13,9 +13,9 @@ pub fn register_entity_observer(
         return;
     }
     if let Some(ref old) = ev.old_key {
-        world_signals.remove_entity(old.as_str());
+        world_signals.unregister_entity(old.as_str());
     }
-    world_signals.set_entity(ev.key.clone(), ev.entity);
+    world_signals.register_entity(ev.key.clone(), ev.entity);
     debug!(
         "register_entity_observer: registered entity {} as '{}'",
         ev.entity.to_bits(),
@@ -30,7 +30,7 @@ pub fn unregister_entity_observer(
     mut commands: Commands,
 ) {
     let ev = trigger.event();
-    world_signals.remove_entity(ev.key.as_str());
+    world_signals.unregister_entity(ev.key.as_str());
     debug!("unregister_entity_observer: removed key '{}'", ev.key);
     super::refresh_inspector(&mut commands, ev.entity);
 }

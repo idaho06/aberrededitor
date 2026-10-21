@@ -1,7 +1,7 @@
 //! Template browser panel — pick a template entity to clone at the camera centre.
 //!
 //! Reads `TemplateSelectorMutex` from `AppState` (maintained by `update_template_cache`).
-//! Template entities are those without `MapPosition` or `ZIndex` — they act as data-only
+//! Template entities are those without `WorldPosition` or `ZIndex` — they act as data-only
 //! archetypes that can be cloned into the map.
 //!
 //! On selection, sets `TEMPLATE_SELECT_ENTITY` in `WorldSignals`; `editor_update` reads that
@@ -9,9 +9,9 @@
 use crate::signals as sig;
 use crate::systems::template_selector::TemplateSelectorMutex;
 use aberredengine::bevy_ecs::prelude::Entity;
-use aberredengine::core::resources::appstate::AppState;
+use aberredengine::core::resources::app_state::AppState;
 use aberredengine::core::resources::signal_intents::SignalIntents;
-use aberredengine::core::resources::worldsignals::SignalSnapshot;
+use aberredengine::core::resources::world_signals::SignalSnapshot;
 use aberredengine::imgui;
 
 pub(super) fn draw_template_browser(
@@ -58,7 +58,7 @@ pub(super) fn draw_template_browser(
         });
 
     if let Some(entity) = entity_to_select {
-        intents.set_entity(sig::TEMPLATE_SELECT_ENTITY, entity);
+        intents.register_entity(sig::TEMPLATE_SELECT_ENTITY, entity);
     }
     if !window_open {
         intents.remove_flag(sig::UI_TEMPLATE_BROWSER_OPEN);

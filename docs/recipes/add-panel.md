@@ -33,9 +33,9 @@ Create `src/scenes/editor/my_panel.rs`:
 
 use crate::signals as sig;
 use aberredengine::imgui;
-use aberredengine::resources::appstate::AppState;
+use aberredengine::core::resources::app_state::AppState;
 use aberredengine::resources::signal_intents::SignalIntents;
-use aberredengine::resources::worldsignals::SignalSnapshot;
+use aberredengine::core::resources::world_signals::SignalSnapshot;
 
 pub fn draw_my_panel(
     ui: &imgui::Ui,
@@ -62,7 +62,7 @@ pub fn draw_my_panel(
 
     // Close the panel if the user clicked X on the window title bar.
     if !window_open {
-        intents.clear_flag(sig::UI_MY_PANEL_OPEN);
+        intents.remove_flag(sig::UI_MY_PANEL_OPEN);
     }
 }
 ```

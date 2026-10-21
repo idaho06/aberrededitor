@@ -9,7 +9,7 @@
 //! raw `.id` field. See `docs/architecture.md` for the full explanation.
 use crate::signals as sig;
 use aberredengine::core::resources::signal_intents::SignalIntents;
-use aberredengine::core::resources::worldsignals::SignalSnapshot;
+use aberredengine::core::resources::world_signals::SignalSnapshot;
 use aberredengine::imgui;
 use aberredengine::render::FontStore;
 use aberredengine::render::TextureStore;

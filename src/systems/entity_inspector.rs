@@ -17,23 +17,23 @@ use aberredengine::bevy_ecs;
 use aberredengine::bevy_ecs::hierarchy::ChildOf;
 use aberredengine::bevy_ecs::prelude::{Entity, Event, On, Query, ResMut, With};
 use aberredengine::core::components::animation::Animation;
-use aberredengine::core::components::boxcollider::BoxCollider;
-use aberredengine::core::components::dynamictext::DynamicText;
+use aberredengine::core::components::box_collider::BoxCollider;
+use aberredengine::core::components::dynamic_text::DynamicText;
 use aberredengine::core::components::group::Group;
-use aberredengine::core::components::mapposition::MapPosition;
-use aberredengine::core::components::particleemitter::{EmitterShape, ParticleEmitter, TtlSpec};
+use aberredengine::core::components::world_position::WorldPosition;
+use aberredengine::core::components::particle_emitter::{EmitterShape, ParticleEmitter, TtlSpec};
 use aberredengine::core::components::persistent::Persistent;
 use aberredengine::core::components::phase::Phase;
 use aberredengine::core::components::rotation::Rotation;
 use aberredengine::core::components::scale::Scale;
 use aberredengine::core::components::sprite::Sprite;
-use aberredengine::core::components::tilemap::TileMap;
+use aberredengine::core::components::tilemap::Tilemap;
 use aberredengine::core::components::timer::Timer;
 use aberredengine::core::components::tint::Tint;
 use aberredengine::core::components::ttl::Ttl;
-use aberredengine::core::components::zindex::ZIndex;
-use aberredengine::core::resources::appstate::AppState;
-use aberredengine::core::resources::worldsignals::WorldSignals;
+use aberredengine::core::components::z_index::ZIndex;
+use aberredengine::core::resources::app_state::AppState;
+use aberredengine::core::resources::world_signals::WorldSignals;
 use log::debug;
 
 // ---------------------------------------------------------------------------
@@ -59,7 +59,7 @@ pub fn entity_inspect_observer(
     trigger: On<InspectEntityRequested>,
     query: Query<(
         (
-            Option<&MapPosition>,
+            Option<&WorldPosition>,
             Option<&ZIndex>,
             Option<&Sprite>,
             Option<&BoxCollider>,
@@ -73,7 +73,7 @@ pub fn entity_inspect_observer(
             Option<&Timer>,
             Option<&Phase>,
             Option<&Persistent>,
-            Option<&TileMap>,
+            Option<&Tilemap>,
             Option<&ChildOf>,
             Option<&Tint>,
             Option<&SerializedLuaSetup>,
@@ -81,7 +81,7 @@ pub fn entity_inspect_observer(
             Option<&ParticleEmitter>,
         ),
     )>,
-    tilemap_roots: Query<(), With<TileMap>>,
+    tilemap_roots: Query<(), With<Tilemap>>,
     mut signals: ResMut<WorldSignals>,
     mut app_state: ResMut<AppState>,
 ) {
@@ -227,6 +227,6 @@ pub fn entity_inspect_observer(
     };
 
     app_state.insert(snapshot);
-    signals.set_entity(sig::ES_SELECTED_ENTITY, entity);
+    signals.register_entity(sig::ES_SELECTED_ENTITY, entity);
     signals.set_flag(sig::UI_ENTITY_EDITOR_OPEN);
 }

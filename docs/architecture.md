@@ -43,7 +43,7 @@ boundary, and how, is the key to working with this codebase.
 │    app_state: &AppState,         ← cloned snap  │
 │  )                                              │
 └─────────────────┬───────────────────────────────┘
-                  │  LogicMsg (channel): ScreenSize, TextureLoaded,
+                  │  LogicMsg (channel): RenderSize, TextureLoaded,
                   │  FontLoaded, TextureRemoved, FontRemoved,
                   │  SignalIntents, Shutdown
                   ▼
@@ -261,9 +261,11 @@ update is a scene system that only runs while its scene is active. Both are ordi
 systems with params **by value**. The editor's enter/exit/update take the
 `EditorCtx` `SystemParam` bundle (`src/scenes/editor/ctx.rs`); see patterns §9.
 
-The intro transitions to the editor via `world_signals.request_scene("editor")`, either from
+The intro transitions to the editor via `next_scene.set("editor")` (`ResMut<NextScene>`), either from
 `intro_update` (skip input) or from `intro_shader_system` when the fade-out completes. The
-intro's timing is a data `Phase` component advanced by the engine; see patterns §10.
+intro's timing is a data `Phase` component advanced by the engine; see patterns §10. The switch
+runs at the end of the tick (`scene_switch_poll`, `SimSet::Lifecycle`); the editor scene's systems
+start on the next tick.
 
 On scene transition, all non-`Persistent` entities are despawned by the engine. Editor state
 persists because it lives in ECS resources (`WorldSignals`, `AppState`, `MapData`, stores), not in
@@ -323,6 +325,6 @@ pattern is unchanged — import it as `aberredengine::render::TextureStore`.
 5. Every frame: all systems run (including `poll_async_dialogs()`) → `editor_update()` processes
    signals → render thread's `editor_gui()` draws ImGui from the latest `DrawableSnapshot`
 6. Window resizes: render thread samples the window size every frame → mirrored into logic-side
-   `WindowSize` → on change, the engine triggers `WindowResizedEvent`, handled by
+   `WindowSize` → on change, the engine triggers `WindowResized`, handled by
    `systems::window_resize::on_window_resized` (`GameConfig::set_render_size` + camera offset) →
    rides the next `DrawableSnapshot` back to the render thread, which recreates the render target

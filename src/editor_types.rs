@@ -14,7 +14,7 @@
 /// editable component; the rest of the wiring is described in `docs/recipes/add-component.md`.
 #[derive(Clone, Copy, PartialEq, Debug)]
 pub enum ComponentKind {
-    MapPosition,
+    WorldPosition,
     ZIndex,
     Group,
     Rotation,

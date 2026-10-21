@@ -11,9 +11,9 @@ use super::widgets::draw_text_buffer_input;
 use crate::editor_types::{ComponentKind, ComponentSnapshot};
 use crate::signals as sig;
 use crate::systems::animation_store_sync::AnimationStoreMutex;
-use aberredengine::core::resources::appstate::AppState;
+use aberredengine::core::resources::app_state::AppState;
 use aberredengine::core::resources::signal_intents::SignalIntents;
-use aberredengine::core::resources::worldsignals::SignalSnapshot;
+use aberredengine::core::resources::world_signals::SignalSnapshot;
 use aberredengine::imgui;
 use aberredengine::render::FontStore;
 use aberredengine::render::TextureStore;
@@ -103,9 +103,9 @@ pub(super) fn draw_entity_editor(
             }
             ui.separator();
 
-            // If this entity is a tile child of a TileMap root, show a navigation button.
+            // If this entity is a tile child of a Tilemap root, show a navigation button.
             if snap.tilemap_parent.is_some() {
-                if ui.button("Select parent entity (TileMap root)") {
+                if ui.button("Select parent entity (Tilemap root)") {
                     p.select_tilemap_parent = true;
                 }
                 ui.text_disabled("Changes to the components of");
@@ -116,8 +116,8 @@ pub(super) fn draw_entity_editor(
             let addable: Vec<(&str, ComponentKind)> = [
                 (
                     snap.map_position.is_none(),
-                    "MapPosition",
-                    ComponentKind::MapPosition,
+                    "WorldPosition",
+                    ComponentKind::WorldPosition,
                 ),
                 (snap.z_index.is_none(), "ZIndex", ComponentKind::ZIndex),
                 (snap.group.is_none(), "Group", ComponentKind::Group),
@@ -197,7 +197,7 @@ pub(super) fn draw_entity_editor(
 
                     if let Some(ref path) = snap.tilemap_path {
                         ui.separator();
-                        ui.text("TileMap");
+                        ui.text("Tilemap");
                         ui.same_line();
                         if ui.button("Bake##tilemap") {
                             p.bake_tilemap = true;

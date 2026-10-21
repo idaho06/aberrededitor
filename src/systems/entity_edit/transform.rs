@@ -6,19 +6,19 @@ use super::{
 };
 use crate::systems::entity_selector::MultiEntitySelectionMutex;
 use aberredengine::bevy_ecs::prelude::{Commands, On, Query, Res};
-use aberredengine::core::components::mapposition::MapPosition;
+use aberredengine::core::components::world_position::WorldPosition;
 use aberredengine::core::components::rotation::Rotation;
 use aberredengine::core::components::scale::Scale;
-use aberredengine::core::components::zindex::ZIndex;
+use aberredengine::core::components::z_index::ZIndex;
 use aberredengine::core::math::Vec2;
-use aberredengine::core::resources::appstate::AppState;
+use aberredengine::core::resources::app_state::AppState;
 use log::debug;
 
 component_edit_observer!(
     update_map_position_observer,
     UpdateMapPositionRequested,
-    MapPosition,
-    "MapPosition",
+    WorldPosition,
+    "WorldPosition",
     |map_position, event, entity| {
         map_position.pos = Vec2::new(event.x, event.y);
         debug!(
@@ -79,8 +79,8 @@ component_edit_observer!(
 component_remove_observer!(
     remove_map_position_observer,
     RemoveMapPositionRequested,
-    MapPosition,
-    "MapPosition"
+    WorldPosition,
+    "WorldPosition"
 );
 component_remove_observer!(
     remove_z_index_observer,
@@ -98,7 +98,7 @@ component_remove_observer!(remove_scale_observer, RemoveScaleRequested, Scale, "
 
 pub fn move_multi_selection_observer(
     trigger: On<MoveMultiSelectionRequested>,
-    mut positions: Query<&mut MapPosition>,
+    mut positions: Query<&mut WorldPosition>,
     app_state: Res<AppState>,
 ) {
     let Some(mutex) = app_state.get::<MultiEntitySelectionMutex>() else {
@@ -111,7 +111,7 @@ pub fn move_multi_selection_observer(
 
     for &entity in &cache.hits {
         let Ok(mut position) = positions.get_mut(entity) else {
-            super::warn_missing_component("move_multi_selection_observer", entity, "MapPosition");
+            super::warn_missing_component("move_multi_selection_observer", entity, "WorldPosition");
             continue;
         };
         position.pos.x += event.dx;

@@ -322,7 +322,7 @@ in `entity_inspector.rs`; `app_state.get::<ComponentSnapshot>()` in GUI panels.
 When spawning a user-placed entity:
 
 ```rust
-commands.spawn((MapEntity, MapPosition::new(x, y), ...));
+commands.spawn((MapEntity, WorldPosition::new(x, y), ...));
 ```
 
 When querying only map entities:
