@@ -146,7 +146,7 @@ pub fn register(builder: EngineBuilder) -> EngineBuilder {
         .add_observer(remove_font_observer)
         .add_observer(preview_mapdata_observer)
         .add_observer(add_animation_observer)
-        .add_observer(update_animation_resource_observer)
+        .add_observer(update_animation_clip_observer)
         .add_observer(rename_animation_key_observer)
         .add_observer(remove_animation_observer)
 }
@@ -638,9 +638,9 @@ pub struct AddAnimationRequested {
 
 /// Overwrite the [`AnimationClip`] stored under `key` in `AnimationStore`.
 #[derive(Event)]
-pub struct UpdateAnimationResourceRequested {
+pub struct UpdateAnimationClipRequested {
     pub key: String,
-    pub resource: AnimationClip,
+    pub clip: AnimationClip,
 }
 
 /// Rename an animation key in `AnimationStore` and `MapData.animations`.
@@ -748,16 +748,16 @@ pub fn preview_mapdata_observer(
 // Animation store CRUD observers
 // ---------------------------------------------------------------------------
 
-fn resource_to_entry(key: &str, res: &AnimationClip) -> AnimationEntry {
+fn clip_to_entry(key: &str, clip: &AnimationClip) -> AnimationEntry {
     AnimationEntry {
         key: key.to_owned(),
-        texture_key: res.tex_key.as_ref().to_owned(),
-        position: [res.position.x, res.position.y],
-        horizontal_displacement: res.horizontal_displacement,
-        vertical_displacement: res.vertical_displacement,
-        frame_count: res.frame_count as u32,
-        fps: res.fps,
-        looping: res.looped,
+        texture_key: clip.tex_key.as_ref().to_owned(),
+        position: [clip.position.x, clip.position.y],
+        horizontal_displacement: clip.horizontal_displacement,
+        vertical_displacement: clip.vertical_displacement,
+        frame_count: clip.frame_count as u32,
+        fps: clip.fps,
+        looping: clip.looped,
     }
 }
 
@@ -770,24 +770,24 @@ pub fn add_animation_observer(
     if anim_store.animations.contains_key(key.as_str()) {
         return;
     }
-    let resource = AnimationClip::new("", 16.0, 1, 12.0);
-    map_data.animations.push(resource_to_entry(key, &resource));
-    anim_store.insert(key.clone(), resource);
+    let clip = AnimationClip::new("", 16.0, 1, 12.0);
+    map_data.animations.push(clip_to_entry(key, &clip));
+    anim_store.insert(key.clone(), clip);
     info!("add_animation_observer: added '{}'", key);
 }
 
-pub fn update_animation_resource_observer(
-    trigger: On<UpdateAnimationResourceRequested>,
+pub fn update_animation_clip_observer(
+    trigger: On<UpdateAnimationClipRequested>,
     mut anim_store: ResMut<AnimationStore>,
     mut map_data: ResMut<MapData>,
 ) {
     let key = &trigger.event().key;
-    let res = &trigger.event().resource;
-    anim_store.insert(key.clone(), res.clone());
+    let clip = &trigger.event().clip;
+    anim_store.insert(key.clone(), clip.clone());
     if let Some(entry) = map_data.animations.iter_mut().find(|e| e.key == *key) {
-        *entry = resource_to_entry(key, res);
+        *entry = clip_to_entry(key, clip);
     }
-    debug!("update_animation_resource_observer: updated '{}'", key);
+    debug!("update_animation_clip_observer: updated '{}'", key);
 }
 
 pub fn rename_animation_key_observer(
@@ -800,8 +800,8 @@ pub fn rename_animation_key_observer(
     if old_key == new_key || anim_store.animations.contains_key(new_key.as_str()) {
         return;
     }
-    if let Some(resource) = anim_store.animations.remove(old_key.as_str()) {
-        anim_store.insert(new_key.clone(), resource);
+    if let Some(clip) = anim_store.animations.remove(old_key.as_str()) {
+        anim_store.insert(new_key.clone(), clip);
     }
     if let Some(entry) = map_data.animations.iter_mut().find(|e| e.key == *old_key) {
         entry.key = new_key.clone();

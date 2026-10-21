@@ -37,7 +37,7 @@ pub(super) fn draw_animation_store(
     let mut open_remove_popup = false;
     let mut window_open = true;
 
-    // Collect a snapshot of keys+resources outside the window closure to avoid
+    // Collect a snapshot of keys+clips outside the window closure to avoid
     // holding the lock across imgui calls.
     let entries: Vec<(String, AnimationClip)> = {
         let cache = mutex.lock().unwrap();
@@ -59,11 +59,11 @@ pub(super) fn draw_animation_store(
                     ui.text_disabled("No animations defined.");
                 }
 
-                for (key, resource) in &entries {
+                for (key, clip) in &entries {
                     let _id = ui.push_id(key.as_str());
 
                     // --- Texture thumbnail ---
-                    let tex_lookup = textures.map.get(resource.tex_key.as_ref());
+                    let tex_lookup = textures.map.get(clip.tex_key.as_ref());
                     if let Some(texture) = tex_lookup {
                         let tex = texture.as_ref();
                         let tex_id = imgui::TextureId::from(tex as *const _ as usize);
@@ -72,7 +72,7 @@ pub(super) fn draw_animation_store(
                             open_texture_viewer(
                                 intents,
                                 sig::TEXTURE_VIEWER_SOURCE_ANIMATION,
-                                resource.tex_key.as_ref(),
+                                clip.tex_key.as_ref(),
                             );
                         }
                     } else {
@@ -85,7 +85,7 @@ pub(super) fn draw_animation_store(
                     ui.same_line();
 
                     // --- Editable fields ---
-                    let mut changed_resource: Option<AnimationClip> = None;
+                    let mut changed_clip: Option<AnimationClip> = None;
 
                     ui.group(|| {
                         // Key + Rename / Remove
@@ -108,7 +108,7 @@ pub(super) fn draw_animation_store(
                         } else {
                             let mut current_tex = tex_key_strs
                                 .iter()
-                                .position(|k| *k == resource.tex_key.as_ref())
+                                .position(|k| *k == clip.tex_key.as_ref())
                                 .unwrap_or(0);
                             ui.set_next_item_width(200.0);
                             if ui.combo_simple_string(
@@ -116,70 +116,66 @@ pub(super) fn draw_animation_store(
                                 &mut current_tex,
                                 &tex_key_strs,
                             ) {
-                                let mut r = resource.clone();
+                                let mut r = clip.clone();
                                 r.tex_key = Arc::from(tex_key_strs[current_tex]);
-                                changed_resource = Some(r);
+                                changed_clip = Some(r);
                             }
                         }
 
                         // Numeric fields
-                        if let Some(v) =
-                            draw_float_input(ui, "pos x##anim", resource.position.x, 1.0)
-                        {
-                            let mut r = changed_resource.take().unwrap_or_else(|| resource.clone());
+                        if let Some(v) = draw_float_input(ui, "pos x##anim", clip.position.x, 1.0) {
+                            let mut r = changed_clip.take().unwrap_or_else(|| clip.clone());
                             r.position.x = v;
-                            changed_resource = Some(r);
+                            changed_clip = Some(r);
                         }
-                        if let Some(v) =
-                            draw_float_input(ui, "pos y##anim", resource.position.y, 1.0)
-                        {
-                            let mut r = changed_resource.take().unwrap_or_else(|| resource.clone());
+                        if let Some(v) = draw_float_input(ui, "pos y##anim", clip.position.y, 1.0) {
+                            let mut r = changed_clip.take().unwrap_or_else(|| clip.clone());
                             r.position.y = v;
-                            changed_resource = Some(r);
+                            changed_clip = Some(r);
                         }
                         if let Some(v) = draw_float_input(
                             ui,
                             "h_displacement##anim",
-                            resource.horizontal_displacement,
+                            clip.horizontal_displacement,
                             1.0,
                         ) {
-                            let mut r = changed_resource.take().unwrap_or_else(|| resource.clone());
+                            let mut r = changed_clip.take().unwrap_or_else(|| clip.clone());
                             r.horizontal_displacement = v;
-                            changed_resource = Some(r);
+                            changed_clip = Some(r);
                         }
                         if let Some(v) = draw_float_input(
                             ui,
                             "v_displacement##anim",
-                            resource.vertical_displacement,
+                            clip.vertical_displacement,
                             1.0,
                         ) {
-                            let mut r = changed_resource.take().unwrap_or_else(|| resource.clone());
+                            let mut r = changed_clip.take().unwrap_or_else(|| clip.clone());
                             r.vertical_displacement = v;
-                            changed_resource = Some(r);
+                            changed_clip = Some(r);
                         }
                         if let Some(v) =
-                            draw_int_input(ui, "frame_count##anim", resource.frame_count as i32)
+                            draw_int_input(ui, "frame_count##anim", clip.frame_count as i32)
                         {
-                            let mut r = changed_resource.take().unwrap_or_else(|| resource.clone());
+                            let mut r = changed_clip.take().unwrap_or_else(|| clip.clone());
                             r.frame_count = v.max(1) as usize;
-                            changed_resource = Some(r);
+                            changed_clip = Some(r);
                         }
-                        if let Some(v) = draw_float_input(ui, "fps##anim", resource.fps, 1.0) {
-                            let mut r = changed_resource.take().unwrap_or_else(|| resource.clone());
+                        if let Some(v) = draw_float_input(ui, "fps##anim", clip.fps, 1.0) {
+                            let mut r = changed_clip.take().unwrap_or_else(|| clip.clone());
                             r.fps = v.max(0.0);
-                            changed_resource = Some(r);
+                            changed_clip = Some(r);
                         }
 
-                        let mut looped = resource.looped;
+                        let mut looped = clip.looped;
                         if ui.checkbox("looped##anim", &mut looped) {
-                            let mut r = changed_resource.take().unwrap_or_else(|| resource.clone());
+                            let mut r = changed_clip.take().unwrap_or_else(|| clip.clone());
                             r.looped = looped;
-                            changed_resource = Some(r);
+                            changed_clip = Some(r);
                         }
                     });
 
                     // Commit any field change: write back to cache and set action flag.
-                    if let Some(updated) = changed_resource {
+                    if let Some(updated) = changed_clip {
                         mutex.lock().unwrap().insert(key.clone(), updated);
                         intents.set_string(sig::ANIM_UPDATE_KEY, key.as_str());
                         intents.set_flag(sig::ACTION_ANIM_UPDATE);

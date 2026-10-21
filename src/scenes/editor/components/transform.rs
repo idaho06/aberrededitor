@@ -1,9 +1,10 @@
 use super::super::widgets::{draw_drag_float_input, draw_float_input, draw_text_buffer_input};
 use crate::editor_types::ComponentSnapshot;
 use crate::systems::entity_edit::{
-    RemoveGroupRequested, RemoveMapPositionRequested, RemoveRotationRequested,
-    RemoveScaleRequested, RemoveZIndexRequested, UpdateGroupRequested, UpdateMapPositionRequested,
-    UpdateRotationRequested, UpdateScaleRequested, UpdateZIndexRequested,
+    RemoveGroupRequested, RemoveRotationRequested, RemoveScaleRequested,
+    RemoveWorldPositionRequested, RemoveZIndexRequested, UpdateGroupRequested,
+    UpdateRotationRequested, UpdateScaleRequested, UpdateWorldPositionRequested,
+    UpdateZIndexRequested,
 };
 use aberredengine::prelude::{Commands, Entity, imgui};
 use log::warn;
@@ -14,7 +15,7 @@ pub(crate) struct PendingTransform {
     pub pos_x: Option<f32>,
     pub pos_y: Option<f32>,
     pub commit_position: bool,
-    pub remove_map_position: bool,
+    pub remove_world_position: bool,
     // ZIndex
     pub z_index: Option<f32>,
     pub commit_z: bool,
@@ -37,7 +38,7 @@ pub(crate) struct PendingTransform {
 impl PendingTransform {
     pub(crate) fn is_dirty(&self) -> bool {
         self.commit_position
-            || self.remove_map_position
+            || self.remove_world_position
             || self.commit_z
             || self.remove_z
             || self.commit_group
@@ -49,27 +50,27 @@ impl PendingTransform {
     }
 }
 
-pub(crate) fn draw_map_position(
+pub(crate) fn draw_world_position(
     ui: &imgui::Ui,
     snap: &ComponentSnapshot,
     p: &mut PendingTransform,
 ) {
-    let Some([pos_x, pos_y]) = snap.map_position else {
+    let Some([pos_x, pos_y]) = snap.world_position else {
         return;
     };
     ui.text("WorldPosition");
     ui.same_line();
-    if ui.button("Del##map_position") {
-        p.remove_map_position = true;
+    if ui.button("Del##world_position") {
+        p.remove_world_position = true;
     }
     if let Some(v) =
-        draw_drag_float_input(ui, "x##map_position", p.pos_x.unwrap_or(pos_x), 1.0, 0.1)
+        draw_drag_float_input(ui, "x##world_position", p.pos_x.unwrap_or(pos_x), 1.0, 0.1)
     {
         p.pos_x = Some(v);
         p.commit_position = true;
     }
     if let Some(v) =
-        draw_drag_float_input(ui, "y##map_position", p.pos_y.unwrap_or(pos_y), 1.0, 0.1)
+        draw_drag_float_input(ui, "y##world_position", p.pos_y.unwrap_or(pos_y), 1.0, 0.1)
     {
         p.pos_y = Some(v);
         p.commit_position = true;
@@ -157,11 +158,11 @@ pub(crate) fn commit(
     snap: &ComponentSnapshot,
     p: &PendingTransform,
 ) {
-    if p.remove_map_position {
-        commands.trigger(RemoveMapPositionRequested { entity });
+    if p.remove_world_position {
+        commands.trigger(RemoveWorldPositionRequested { entity });
     } else if p.commit_position {
-        if let Some([snap_x, snap_y]) = snap.map_position {
-            commands.trigger(UpdateMapPositionRequested {
+        if let Some([snap_x, snap_y]) = snap.world_position {
+            commands.trigger(UpdateWorldPositionRequested {
                 entity,
                 x: p.pos_x.unwrap_or(snap_x),
                 y: p.pos_y.unwrap_or(snap_y),

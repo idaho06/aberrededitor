@@ -1,7 +1,7 @@
 use super::{
-    AdjustMultiSelectionZRequested, MoveMultiSelectionRequested, RemoveMapPositionRequested,
-    RemoveRotationRequested, RemoveScaleRequested, RemoveZIndexRequested,
-    UpdateMapPositionRequested, UpdateRotationRequested, UpdateScaleRequested,
+    AdjustMultiSelectionZRequested, MoveMultiSelectionRequested, RemoveRotationRequested,
+    RemoveScaleRequested, RemoveWorldPositionRequested, RemoveZIndexRequested,
+    UpdateRotationRequested, UpdateScaleRequested, UpdateWorldPositionRequested,
     UpdateZIndexRequested,
 };
 use crate::systems::entity_selector::MultiEntitySelectionMutex;
@@ -11,14 +11,14 @@ use aberredengine::prelude::{
 use log::debug;
 
 component_edit_observer!(
-    update_map_position_observer,
-    UpdateMapPositionRequested,
+    update_world_position_observer,
+    UpdateWorldPositionRequested,
     WorldPosition,
     "WorldPosition",
-    |map_position, event, entity| {
-        map_position.pos = Vec2::new(event.x, event.y);
+    |world_position, event, entity| {
+        world_position.pos = Vec2::new(event.x, event.y);
         debug!(
-            "update_map_position_observer: updated entity {} -> ({:.3}, {:.3})",
+            "update_world_position_observer: updated entity {} -> ({:.3}, {:.3})",
             entity.to_bits(),
             event.x,
             event.y
@@ -73,8 +73,8 @@ component_edit_observer!(
 );
 
 component_remove_observer!(
-    remove_map_position_observer,
-    RemoveMapPositionRequested,
+    remove_world_position_observer,
+    RemoveWorldPositionRequested,
     WorldPosition,
     "WorldPosition"
 );

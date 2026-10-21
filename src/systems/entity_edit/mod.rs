@@ -28,7 +28,7 @@ use log::warn;
 // ── Events ──────────────────────────────────────────────────────────────────
 
 #[derive(Event)]
-pub struct UpdateMapPositionRequested {
+pub struct UpdateWorldPositionRequested {
     pub entity: Entity,
     pub x: f32,
     pub y: f32,
@@ -98,7 +98,7 @@ pub struct UpdateAnimationRequested {
 }
 
 #[derive(Event)]
-pub struct RemoveMapPositionRequested {
+pub struct RemoveWorldPositionRequested {
     pub entity: Entity,
 }
 #[derive(Event)]
@@ -297,13 +297,13 @@ pub(super) fn warn_missing_component(observer: &str, entity: Entity, component: 
 
 pub fn register(builder: EngineBuilder) -> EngineBuilder {
     builder
-        .add_observer(transform::update_map_position_observer)
+        .add_observer(transform::update_world_position_observer)
         .add_observer(transform::update_z_index_observer)
         .add_observer(transform::move_multi_selection_observer)
         .add_observer(transform::adjust_multi_selection_z_observer)
         .add_observer(transform::update_rotation_observer)
         .add_observer(transform::update_scale_observer)
-        .add_observer(transform::remove_map_position_observer)
+        .add_observer(transform::remove_world_position_observer)
         .add_observer(transform::remove_z_index_observer)
         .add_observer(transform::remove_rotation_observer)
         .add_observer(transform::remove_scale_observer)

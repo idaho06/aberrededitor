@@ -112,7 +112,7 @@ pub(super) fn draw_entity_editor(
 
             let addable: Vec<(&str, ComponentKind)> = [
                 (
-                    snap.map_position.is_none(),
+                    snap.world_position.is_none(),
                     "WorldPosition",
                     ComponentKind::WorldPosition,
                 ),
@@ -182,7 +182,7 @@ pub(super) fn draw_entity_editor(
             ui.child_window("##components_scroll")
                 .size([0.0, 0.0])
                 .build(|| {
-                    components::transform::draw_map_position(ui, &snap, &mut p.transform);
+                    components::transform::draw_world_position(ui, &snap, &mut p.transform);
                     components::transform::draw_z_index(ui, &snap, &mut p.transform);
                     components::transform::draw_group(ui, &snap, &mut p.transform);
                     components::sprite::draw_section(ui, &snap, &mut p.sprite, textures);

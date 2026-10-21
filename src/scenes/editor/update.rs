@@ -55,7 +55,7 @@ use crate::systems::file_dialogs::{AsyncFileDialogRequest, request_async_dialog}
 use crate::systems::map_ops::{
     AddAnimationRequested, ChangeTextureFilterRequested, NewMapRequested, PreviewMapDataRequested,
     RemoveAnimationRequested, RemoveTextureRequested, RenameAnimationKeyRequested,
-    RenameTextureKeyRequested, SaveMapRequested, UpdateAnimationResourceRequested,
+    RenameTextureKeyRequested, SaveMapRequested, UpdateAnimationClipRequested,
     UpdateMapMetadataRequested,
 };
 use crate::systems::render_prefs::TogglePixelSnapCameraRequested;
@@ -585,10 +585,10 @@ fn handle_animation_actions(ctx: &mut EditorCtx) {
             .get_string(sig::ANIM_UPDATE_KEY)
             .map(|s| s.to_owned())
         && let Some(mutex) = ctx.app_state.get::<AnimationStoreMutex>()
-        && let Some(resource) = mutex.lock().unwrap().get(key.as_str()).cloned()
+        && let Some(clip) = mutex.lock().unwrap().get(key.as_str()).cloned()
     {
         ctx.commands
-            .trigger(UpdateAnimationResourceRequested { key, resource });
+            .trigger(UpdateAnimationClipRequested { key, clip });
     }
 }
 

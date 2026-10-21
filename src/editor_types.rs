@@ -191,7 +191,7 @@ pub struct ComponentSnapshot {
     pub entity_bits: u64,
     /// `WorldSignals.entities` keys whose value equals this entity (user-visible names).
     pub world_signal_keys: Vec<String>,
-    pub map_position: Option<[f32; 2]>,
+    pub world_position: Option<[f32; 2]>,
     pub z_index: Option<f32>,
     pub group: Option<String>,
     pub sprite: Option<SpriteSnapshot>,
