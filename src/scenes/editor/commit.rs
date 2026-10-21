@@ -16,9 +16,7 @@ use crate::systems::entity_edit::{
     RemoveEntityRequested, RemoveTileMapRequested, UnregisterEntityRequested,
 };
 use crate::systems::entity_inspector::InspectEntityRequested;
-use aberredengine::bevy_ecs::prelude::Entity;
-use aberredengine::core::resources::app_state::AppState;
-use aberredengine::core::resources::world_signals::WorldSignals;
+use aberredengine::prelude::{AppState, Entity, WorldSignals};
 
 pub(super) fn consume_entity_editor_commits(ctx: &mut EditorCtx) {
     // Clone pending state out of the mutex before any mutable borrow of ctx.

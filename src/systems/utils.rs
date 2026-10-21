@@ -9,14 +9,10 @@
 //!   `MapData.textures`/`.fonts` lookups. `MapData` is the logic-side source of truth for which
 //!   texture/font keys exist (the render-side `TextureStore`/`FontStore` aren't queryable from
 //!   logic code); use these instead of re-deriving `.iter().find(...)` at each call site.
-use aberredengine::bevy_ecs::prelude::Entity;
-use aberredengine::core::components::box_collider::BoxCollider;
-use aberredengine::core::components::group::Group;
-use aberredengine::core::components::persistent::Persistent;
-use aberredengine::core::components::sprite::Sprite;
 use aberredengine::core::resources::map_data::{
     BoxColliderEntry, FontEntry, MapData, SpriteEntry, TextureEntry,
 };
+use aberredengine::prelude::{BoxCollider, Entity, Group, Persistent, Sprite};
 
 /// Build a display label for an entity: `Entity #<id> [group] [Persistent]`.
 pub fn entity_label(

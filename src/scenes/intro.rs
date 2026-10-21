@@ -7,21 +7,11 @@
 //! This scene demonstrates the canonical scene lifecycle pattern: enter spawns entities and
 //! sets up shaders; `intro_shader_system` drives the phase machine; `intro_update` handles the
 //! skip input; exit cleans up shaders and despawns assets.
-use aberredengine::bevy_ecs;
-use aberredengine::bevy_ecs::prelude::{Commands, Component, On, Query, Res, ResMut, With};
-use aberredengine::core::components::phase::Phase;
-use aberredengine::core::components::sprite::Sprite;
-use aberredengine::core::components::tween::{Easing, Tween};
-use aberredengine::core::components::world_position::WorldPosition;
-use aberredengine::core::components::z_index::ZIndex;
-use aberredengine::core::events::scene::{SceneEntered, SceneExited};
-use aberredengine::core::math::Vec2;
-use aberredengine::core::resources::camera2d::{Camera2D, MainCamera};
-use aberredengine::core::resources::game_config::GameConfig;
-use aberredengine::core::resources::input::{InputAction, InputState};
-use aberredengine::core::resources::next_scene::NextScene;
-use aberredengine::core::resources::post_process_shader::PostProcessShader;
-use aberredengine::core::resources::uniform_value::UniformValue;
+use aberredengine::prelude::{
+    Camera2D, Commands, Component, Easing, GameConfig, InputAction, InputState, MainCamera,
+    NextScene, On, Phase, PostProcessShader, Query, Res, ResMut, SceneEntered, SceneExited, Sprite,
+    Tween, UniformValue, Vec2, With, WorldPosition, ZIndex, bevy_ecs,
+};
 use log::info;
 
 use crate::systems::map_ops::RemoveTextureRequested;

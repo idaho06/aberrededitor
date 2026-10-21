@@ -1,6 +1,5 @@
 //! Editor-side Lua callback storage, decoupled from the engine's `lua` feature.
-use aberredengine::bevy_ecs;
-use aberredengine::bevy_ecs::prelude::Component;
+use aberredengine::prelude::{Component, bevy_ecs};
 
 /// Editor-side representation of `EntityDef.lua_setup`.
 ///

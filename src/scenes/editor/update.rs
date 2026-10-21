@@ -59,13 +59,10 @@ use crate::systems::map_ops::{
     UpdateMapMetadataRequested,
 };
 use crate::systems::render_prefs::TogglePixelSnapCameraRequested;
-use aberredengine::bevy_ecs::prelude::Res;
 use aberredengine::core::events::debug_toggled::DebugToggled;
-use aberredengine::core::resources::input::{InputAction, InputState};
-use aberredengine::core::resources::signal_intents::SignalIntents;
-use aberredengine::core::resources::world_signals::{SignalSnapshot, WorldSignals};
-use aberredengine::imgui;
-use aberredengine::render::GuiCtx;
+use aberredengine::prelude::{
+    GuiCtx, InputAction, InputState, Res, SignalIntents, SignalSnapshot, WorldSignals, imgui,
+};
 
 pub fn editor_update(mut ctx: EditorCtx, input: Res<InputState>) {
     let ctx = &mut ctx;

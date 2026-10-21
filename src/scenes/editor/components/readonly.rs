@@ -2,8 +2,7 @@ use crate::editor_types::ComponentSnapshot;
 use crate::systems::entity_edit::{
     RemovePersistentRequested, RemovePhaseRequested, RemoveTimerRequested, RemoveTtlRequested,
 };
-use aberredengine::bevy_ecs::prelude::{Commands, Entity};
-use aberredengine::imgui;
+use aberredengine::prelude::{Commands, Entity, imgui};
 
 #[derive(Default, Clone)]
 pub(crate) struct PendingReadonlyRemovals {

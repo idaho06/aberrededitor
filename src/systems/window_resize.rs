@@ -14,8 +14,7 @@
 //! startup, so there is no separate "initial size" case to handle here).
 use aberredengine::bevy_ecs::prelude::*;
 use aberredengine::core::events::window::WindowResized;
-use aberredengine::core::resources::camera2d::MainCamera;
-use aberredengine::core::resources::game_config::GameConfig;
+use aberredengine::prelude::{GameConfig, MainCamera};
 use log::debug;
 
 pub fn on_window_resized(

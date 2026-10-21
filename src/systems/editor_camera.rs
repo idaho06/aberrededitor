@@ -6,12 +6,10 @@
 //! `IMGUI_WANTS_MOUSE` is set so scrolling ImGui lists does not move the camera.
 //! Reset zoom on `ACTION_VIEW_RESET_ZOOM` signal.
 use crate::signals as sig;
-use aberredengine::bevy_ecs::prelude::{Query, Res, ResMut};
-use aberredengine::core::components::camera_target::CameraTarget;
-use aberredengine::core::components::world_position::WorldPosition;
-use aberredengine::core::resources::input::{InputAction, InputState};
-use aberredengine::core::resources::world_signals::WorldSignals;
-use aberredengine::core::resources::world_time::WorldTime;
+use aberredengine::prelude::{
+    CameraTarget, InputAction, InputState, Query, Res, ResMut, WorldPosition, WorldSignals,
+    WorldTime,
+};
 
 pub fn editor_camera_system(
     mut world_signals: ResMut<WorldSignals>,

@@ -1,6 +1,5 @@
 use super::{RegisterEntityRequested, UnregisterEntityRequested};
-use aberredengine::bevy_ecs::prelude::{Commands, On, ResMut};
-use aberredengine::core::resources::world_signals::WorldSignals;
+use aberredengine::prelude::{Commands, On, ResMut, WorldSignals};
 use log::debug;
 
 pub fn register_entity_observer(

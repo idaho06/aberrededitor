@@ -3,7 +3,7 @@
 //! All helpers follow the same convention: they take a mutable reference to the value being
 //! edited and return `true` when the value should be committed (input deactivated or button
 //! clicked). Callers set the corresponding `PendingEditState` commit flag on `true`.
-use aberredengine::imgui;
+use aberredengine::prelude::imgui;
 
 pub(super) const BTN_W: f32 = 22.0;
 pub(super) const BTN_SPACING: f32 = 4.0;

@@ -2,9 +2,7 @@ use super::super::widgets::{draw_float_input, draw_int_input};
 use crate::editor_types::{ComponentSnapshot, EmitterShapeKind, TtlKind};
 use crate::signals as sig;
 use crate::systems::entity_edit::{RemoveParticleEmitterRequested, UpdateParticleEmitterRequested};
-use aberredengine::bevy_ecs::prelude::{Commands, Entity};
-use aberredengine::core::resources::world_signals::SignalSnapshot;
-use aberredengine::imgui;
+use aberredengine::prelude::{Commands, Entity, SignalSnapshot, imgui};
 use log::warn;
 
 const WARNING_TEXT_COLOR: [f32; 4] = [1.0, 0.45, 0.3, 1.0];

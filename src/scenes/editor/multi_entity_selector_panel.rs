@@ -4,10 +4,7 @@
 //! also owns the bulk-action buttons and modals for relative move / z-index updates.
 use crate::signals as sig;
 use crate::systems::entity_selector::{MultiEntitySelectionMutex, SelectorSource};
-use aberredengine::core::resources::app_state::AppState;
-use aberredengine::core::resources::signal_intents::SignalIntents;
-use aberredengine::core::resources::world_signals::SignalSnapshot;
-use aberredengine::imgui;
+use aberredengine::prelude::{AppState, SignalIntents, SignalSnapshot, imgui};
 
 pub(super) fn draw_multi_entity_selector(
     ui: &imgui::Ui,

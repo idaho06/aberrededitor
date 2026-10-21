@@ -1,9 +1,7 @@
 use super::super::widgets::draw_float_input;
 use crate::editor_types::ComponentSnapshot;
 use crate::systems::entity_edit::{RemoveSpriteRequested, UpdateSpriteRequested};
-use aberredengine::bevy_ecs::prelude::{Commands, Entity};
-use aberredengine::imgui;
-use aberredengine::render::TextureStore;
+use aberredengine::prelude::{Commands, Entity, TextureStore, imgui};
 use log::warn;
 
 #[derive(Default, Clone)]

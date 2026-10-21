@@ -32,10 +32,7 @@ Create `src/scenes/editor/my_panel.rs`:
 //! My panel — shows [...] and lets the user [...].
 
 use crate::signals as sig;
-use aberredengine::imgui;
-use aberredengine::core::resources::app_state::AppState;
-use aberredengine::resources::signal_intents::SignalIntents;
-use aberredengine::core::resources::world_signals::SignalSnapshot;
+use aberredengine::prelude::{AppState, SignalIntents, SignalSnapshot, imgui};
 
 pub fn draw_my_panel(
     ui: &imgui::Ui,

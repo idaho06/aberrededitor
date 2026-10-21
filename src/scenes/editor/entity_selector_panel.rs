@@ -4,10 +4,7 @@
 //! `WorldSignals`; `editor_update` consumes that to trigger `SelectEntityRequested`.
 use crate::signals as sig;
 use crate::systems::entity_selector::{RenderableSelectorMutex, SelectorSource};
-use aberredengine::core::resources::app_state::AppState;
-use aberredengine::core::resources::signal_intents::SignalIntents;
-use aberredengine::core::resources::world_signals::SignalSnapshot;
-use aberredengine::imgui;
+use aberredengine::prelude::{AppState, SignalIntents, SignalSnapshot, imgui};
 
 pub(super) fn draw_entity_selector(
     ui: &imgui::Ui,

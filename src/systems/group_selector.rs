@@ -6,10 +6,9 @@
 //!
 //! The result is a sorted list of (`raw_name`, entity count) pairs read by `draw_groups_window`.
 use crate::signals as sig;
-use aberredengine::bevy_ecs::prelude::{Added, Changed, Or, Query, RemovedComponents, Res, ResMut};
-use aberredengine::core::components::group::Group;
-use aberredengine::core::resources::app_state::AppState;
-use aberredengine::core::resources::world_signals::WorldSignals;
+use aberredengine::prelude::{
+    Added, AppState, Changed, Group, Or, Query, RemovedComponents, Res, ResMut, WorldSignals,
+};
 use std::collections::HashMap;
 
 use super::utils::display_group_name;

@@ -22,13 +22,10 @@ pub mod transform;
 pub mod visual;
 
 use super::entity_inspector::InspectEntityRequested;
-use aberredengine::bevy_ecs::prelude::{Commands, Entity};
+use aberredengine::prelude::{Commands, EngineBuilder, Entity, Event, bevy_ecs};
 use log::warn;
 
 // ── Events ──────────────────────────────────────────────────────────────────
-
-use aberredengine::bevy_ecs;
-use aberredengine::bevy_ecs::prelude::Event;
 
 #[derive(Event)]
 pub struct UpdateMapPositionRequested {
@@ -297,8 +294,6 @@ pub(super) fn warn_missing_component(observer: &str, entity: Entity, component: 
 }
 
 // ── Per-subsystem register helper (Part C) ───────────────────────────────────
-
-use aberredengine::engine_app::EngineBuilder;
 
 pub fn register(builder: EngineBuilder) -> EngineBuilder {
     builder

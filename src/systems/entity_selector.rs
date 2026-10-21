@@ -17,25 +17,15 @@ use super::utils::{display_group_name, entity_label};
 use crate::components::map_entity::MapEntity;
 use crate::editor_types::{ComponentSnapshot, SelectionCorners};
 use crate::signals as sig;
-use aberredengine::bevy_ecs;
-use aberredengine::bevy_ecs::prelude::{Commands, Entity, Event, On, Query, ResMut, With};
-use aberredengine::core::components::box_collider::BoxCollider;
-use aberredengine::core::components::dynamic_text::DynamicText;
 use aberredengine::core::components::global_transform2d::GlobalTransform2D;
-use aberredengine::core::components::group::Group;
-use aberredengine::core::components::persistent::Persistent;
-use aberredengine::core::components::rotation::Rotation;
-use aberredengine::core::components::scale::Scale;
-use aberredengine::core::components::sprite::Sprite;
-use aberredengine::core::components::world_position::WorldPosition;
-use aberredengine::core::components::z_index::ZIndex;
-use aberredengine::core::math::Vec2;
-use aberredengine::core::resources::app_state::AppState;
-use aberredengine::core::resources::world_signals::WorldSignals;
 use aberredengine::core::systems::sprite_geometry::{
     compute_sprite_geometry, resolve_world_transform,
 };
-use aberredengine::engine_app::EngineBuilder;
+use aberredengine::prelude::{
+    AppState, BoxCollider, Commands, DynamicText, EngineBuilder, Entity, Event, Group, On,
+    Persistent, Query, ResMut, Rotation, Scale, Sprite, Vec2, With, WorldPosition, WorldSignals,
+    ZIndex, bevy_ecs,
+};
 use log::{debug, warn};
 
 // ---------------------------------------------------------------------------

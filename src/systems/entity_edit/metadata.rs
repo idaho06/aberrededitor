@@ -4,15 +4,11 @@ use super::{
     UpdateParticleEmitterRequested,
 };
 use crate::editor_types::{EmitterShapeKind, TtlKind};
-use aberredengine::bevy_ecs::prelude::{Commands, On, Query, Res};
-use aberredengine::core::components::group::Group;
-use aberredengine::core::components::particle_emitter::{EmitterShape, ParticleEmitter, TtlSpec};
-use aberredengine::core::components::persistent::Persistent;
-use aberredengine::core::components::phase::Phase;
-use aberredengine::core::components::timer::Timer;
 use aberredengine::core::components::ttl::Ttl;
-use aberredengine::core::math::Vec2;
-use aberredengine::core::resources::world_signals::WorldSignals;
+use aberredengine::prelude::{
+    Commands, EmitterShape, Group, On, ParticleEmitter, Persistent, Phase, Query, Res, Timer,
+    TtlSpec, Vec2, WorldSignals,
+};
 use log::{debug, warn};
 
 component_edit_observer!(

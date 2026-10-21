@@ -13,27 +13,14 @@ use crate::editor_types::{
     TtlSnapshot,
 };
 use crate::signals as sig;
-use aberredengine::bevy_ecs;
 use aberredengine::bevy_ecs::hierarchy::ChildOf;
-use aberredengine::bevy_ecs::prelude::{Entity, Event, On, Query, ResMut, With};
-use aberredengine::core::components::animation::Animation;
-use aberredengine::core::components::box_collider::BoxCollider;
-use aberredengine::core::components::dynamic_text::DynamicText;
-use aberredengine::core::components::group::Group;
-use aberredengine::core::components::particle_emitter::{EmitterShape, ParticleEmitter, TtlSpec};
-use aberredengine::core::components::persistent::Persistent;
-use aberredengine::core::components::phase::Phase;
-use aberredengine::core::components::rotation::Rotation;
-use aberredengine::core::components::scale::Scale;
-use aberredengine::core::components::sprite::Sprite;
-use aberredengine::core::components::tilemap::Tilemap;
-use aberredengine::core::components::timer::Timer;
 use aberredengine::core::components::tint::Tint;
 use aberredengine::core::components::ttl::Ttl;
-use aberredengine::core::components::world_position::WorldPosition;
-use aberredengine::core::components::z_index::ZIndex;
-use aberredengine::core::resources::app_state::AppState;
-use aberredengine::core::resources::world_signals::WorldSignals;
+use aberredengine::prelude::{
+    Animation, AppState, BoxCollider, DynamicText, EmitterShape, Entity, Event, Group, On,
+    ParticleEmitter, Persistent, Phase, Query, ResMut, Rotation, Scale, Sprite, Tilemap, Timer,
+    TtlSpec, With, WorldPosition, WorldSignals, ZIndex, bevy_ecs,
+};
 use log::debug;
 
 // ---------------------------------------------------------------------------

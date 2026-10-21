@@ -9,17 +9,12 @@ use super::{exit_placement_mode, reset_tool, state::clear_entity_editor_pending}
 use crate::signals as sig;
 use crate::systems::entity_selector::clear_selector_state;
 use crate::systems::file_dialogs::clear_async_dialog;
-use aberredengine::bevy_ecs::prelude::{On, Res, ResMut};
-use aberredengine::core::components::camera_target::CameraTarget;
-use aberredengine::core::components::world_position::WorldPosition;
-use aberredengine::core::events::scene::{SceneEntered, SceneExited};
-use aberredengine::core::math::Vec2;
-use aberredengine::core::resources::camera_follow_config::{CameraFollowConfig, FollowMode};
-use aberredengine::core::resources::camera2d::{Camera2D, MainCamera};
-use aberredengine::core::resources::game_config::GameConfig;
-use aberredengine::core::resources::input::InputAction;
 use aberredengine::core::resources::input_bindings::{
     InputBinding, InputBindings, Key, MouseButton,
+};
+use aberredengine::prelude::{
+    Camera2D, CameraFollowConfig, CameraTarget, FollowMode, GameConfig, InputAction, MainCamera,
+    On, Res, ResMut, SceneEntered, SceneExited, Vec2, WorldPosition,
 };
 use log::info;
 

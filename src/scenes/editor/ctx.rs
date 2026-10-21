@@ -4,10 +4,7 @@
 //! `CameraFollowConfig` etc. as separate params where needed. A system that takes `EditorCtx`
 //! must not also take `Res`/`ResMut` of `WorldSignals` or `AppState`: Bevy panics at startup
 //! (B0002 conflicting access), which `cargo check` cannot catch.
-use aberredengine::bevy_ecs;
-use aberredengine::core::resources::app_state::AppState;
-use aberredengine::core::resources::world_signals::WorldSignals;
-use aberredengine::prelude::{Commands, ResMut, SystemParam};
+use aberredengine::prelude::{AppState, Commands, ResMut, SystemParam, WorldSignals, bevy_ecs};
 
 #[derive(SystemParam)]
 pub struct EditorCtx<'w, 's> {

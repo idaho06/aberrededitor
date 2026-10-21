@@ -3,10 +3,7 @@
 //! `TogglePixelSnapCameraRequested` flips `GameConfig.pixel_snap_camera`. The current value is
 //! mirrored to `WorldSignals` every frame by `camera_sync::editor_camera_sync_system` so the
 //! "Render Preferences" modal can display it without direct `GameConfig` access.
-use aberredengine::bevy_ecs;
-use aberredengine::bevy_ecs::prelude::{Event, On, ResMut};
-use aberredengine::core::resources::game_config::GameConfig;
-use aberredengine::engine_app::EngineBuilder;
+use aberredengine::prelude::{EngineBuilder, Event, GameConfig, On, ResMut, bevy_ecs};
 use log::debug;
 
 /// Toggle `GameConfig.pixel_snap_camera`.

@@ -6,10 +6,7 @@
 use crate::signals as sig;
 use crate::systems::group_selector::GroupListMutex;
 use crate::systems::utils::display_group_name;
-use aberredengine::core::resources::app_state::AppState;
-use aberredengine::core::resources::signal_intents::SignalIntents;
-use aberredengine::core::resources::world_signals::SignalSnapshot;
-use aberredengine::imgui;
+use aberredengine::prelude::{AppState, SignalIntents, SignalSnapshot, imgui};
 
 pub(super) fn draw_groups_window(
     ui: &imgui::Ui,

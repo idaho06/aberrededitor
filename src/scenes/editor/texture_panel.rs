@@ -7,11 +7,7 @@
 //! Reads `TextureStore` directly (passed as `&TextureStore` in `GuiCallback`).
 use super::texture_viewer_panel::open_texture_viewer;
 use crate::signals as sig;
-use aberredengine::core::resources::signal_intents::SignalIntents;
-use aberredengine::core::resources::texture_filter::TextureFilter;
-use aberredengine::core::resources::world_signals::SignalSnapshot;
-use aberredengine::imgui;
-use aberredengine::render::TextureStore;
+use aberredengine::prelude::{SignalIntents, SignalSnapshot, TextureFilter, TextureStore, imgui};
 
 pub(super) fn draw_texture_editor(
     ui: &imgui::Ui,

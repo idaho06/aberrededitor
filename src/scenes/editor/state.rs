@@ -8,10 +8,7 @@
 //! selection leaking into the new one.
 use super::pending_state::{PendingEditState, PendingMutex};
 use crate::signals as sig;
-use aberredengine::bevy_ecs;
-use aberredengine::bevy_ecs::prelude::{Entity, Res, ResMut, Resource};
-use aberredengine::core::resources::app_state::AppState;
-use aberredengine::core::resources::world_signals::WorldSignals;
+use aberredengine::prelude::{AppState, Entity, Res, ResMut, Resource, WorldSignals, bevy_ecs};
 
 /// Canonical owner of ECS-only transient editor state.
 ///

@@ -8,11 +8,7 @@
 //! flag and triggers `InspectEntityRequested` to show the entity in the editor.
 use crate::signals as sig;
 use crate::systems::template_selector::TemplateSelectorMutex;
-use aberredengine::bevy_ecs::prelude::Entity;
-use aberredengine::core::resources::app_state::AppState;
-use aberredengine::core::resources::signal_intents::SignalIntents;
-use aberredengine::core::resources::world_signals::SignalSnapshot;
-use aberredengine::imgui;
+use aberredengine::prelude::{AppState, Entity, SignalIntents, SignalSnapshot, imgui};
 
 pub(super) fn draw_template_browser(
     ui: &imgui::Ui,

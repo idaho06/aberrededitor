@@ -5,9 +5,7 @@
 //! and copies the full animation map into `AnimationStoreMutex`, which the animation panel
 //! then reads via `app_state.get::<AnimationStoreMutex>()`.
 use aberredengine::bevy_ecs::change_detection::DetectChanges;
-use aberredengine::bevy_ecs::prelude::{Res, ResMut};
-use aberredengine::core::resources::animation_store::{AnimationClip, AnimationStore};
-use aberredengine::core::resources::app_state::AppState;
+use aberredengine::prelude::{AnimationClip, AnimationStore, AppState, Res, ResMut};
 use rustc_hash::FxHashMap;
 
 /// `AppState` key for the animation store mirror. Keyed by animation name, value is the full

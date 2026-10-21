@@ -1,8 +1,7 @@
 use crate::editor_types::ComponentSnapshot;
 use crate::systems::animation_store_sync::AnimationStoreMutex;
 use crate::systems::entity_edit::{RemoveAnimationRequested, UpdateAnimationRequested};
-use aberredengine::bevy_ecs::prelude::{Commands, Entity};
-use aberredengine::imgui;
+use aberredengine::prelude::{Commands, Entity, imgui};
 use log::warn;
 
 #[derive(Default, Clone)]

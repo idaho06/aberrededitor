@@ -89,10 +89,11 @@ will panic with a confusing message. Always insert in `load_assets`.
 Do **not** add `bevy_ecs` as a direct dependency in `Cargo.toml`. The engine re-exports it
 and must be the single source of truth for the ECS version.
 
-To use `#[derive(Event)]`, `#[derive(Component)]`, etc., add this at the top of the file:
+To use `#[derive(Event)]`, `#[derive(Component)]`, etc., bring `bevy_ecs` into scope through the
+engine prelude (or `use aberredengine::bevy_ecs;`):
 
 ```rust
-use aberredengine::bevy_ecs;
+use aberredengine::prelude::{Component, bevy_ecs};
 ```
 
 This brings the `bevy_ecs` identifier into scope so the derive macros can find it. Without

@@ -19,13 +19,10 @@ use crate::systems::group_selector::GroupListMutex;
 use crate::systems::render_prefs::RenderPrefsMutex;
 use crate::systems::template_selector::TemplateSelectorMutex;
 use crate::systems::tilemap_load::PendingLuaSetupLoadMutex;
-use aberredengine::bevy_ecs::prelude::{Commands, MessageWriter, ResMut};
-use aberredengine::core::math::Color;
-use aberredengine::core::protocol::render_assets::RenderAssetCmd;
-use aberredengine::core::resources::app_state::AppState;
-use aberredengine::core::resources::game_config::GameConfig;
 use aberredengine::core::resources::map_data::MapData;
-use aberredengine::core::resources::texture_filter::TextureFilter;
+use aberredengine::prelude::{
+    AppState, Color, Commands, GameConfig, MessageWriter, RenderAssetCmd, ResMut, TextureFilter,
+};
 use log::info;
 
 const SHADER_GLITCH_SRC: &str = include_str!("../../assets/shaders/glitch.fs");

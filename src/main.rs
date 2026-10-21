@@ -10,7 +10,7 @@ mod scenes;
 mod signals;
 mod systems;
 
-use aberredengine::engine_app::EngineBuilder;
+use aberredengine::prelude::EngineBuilder;
 
 fn main() -> Result<(), aberredengine::EngineError> {
     env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info")).init();

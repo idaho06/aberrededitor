@@ -7,24 +7,13 @@ use crate::components::serialized_lua_setup::SerializedLuaSetup;
 use crate::editor_types::ComponentKind;
 use crate::systems::entity_selector::{apply_selection, clear_selector_state};
 use crate::systems::utils::{default_font_key, default_texture_key, entity_label};
-use aberredengine::bevy_ecs::prelude::{Commands, On, Query, Res, ResMut};
-use aberredengine::core::components::animation::Animation;
-use aberredengine::core::components::box_collider::BoxCollider;
-use aberredengine::core::components::dynamic_text::DynamicText;
-use aberredengine::core::components::group::Group;
-use aberredengine::core::components::particle_emitter::ParticleEmitter;
-use aberredengine::core::components::persistent::Persistent;
-use aberredengine::core::components::rotation::Rotation;
-use aberredengine::core::components::scale::Scale;
-use aberredengine::core::components::sprite::Sprite;
 use aberredengine::core::components::tint::Tint;
 use aberredengine::core::components::ttl::Ttl;
-use aberredengine::core::components::world_position::WorldPosition;
-use aberredengine::core::components::z_index::ZIndex;
-use aberredengine::core::math::Color;
-use aberredengine::core::resources::app_state::AppState;
 use aberredengine::core::resources::map_data::MapData;
-use aberredengine::core::resources::world_signals::WorldSignals;
+use aberredengine::prelude::{
+    Animation, AppState, BoxCollider, Color, Commands, DynamicText, Group, On, ParticleEmitter,
+    Persistent, Query, Res, ResMut, Rotation, Scale, Sprite, WorldPosition, WorldSignals, ZIndex,
+};
 use log::debug;
 use std::sync::Arc;
 

@@ -5,13 +5,9 @@ use super::{
     UpdateZIndexRequested,
 };
 use crate::systems::entity_selector::MultiEntitySelectionMutex;
-use aberredengine::bevy_ecs::prelude::{Commands, On, Query, Res};
-use aberredengine::core::components::rotation::Rotation;
-use aberredengine::core::components::scale::Scale;
-use aberredengine::core::components::world_position::WorldPosition;
-use aberredengine::core::components::z_index::ZIndex;
-use aberredengine::core::math::Vec2;
-use aberredengine::core::resources::app_state::AppState;
+use aberredengine::prelude::{
+    AppState, Commands, On, Query, Res, Rotation, Scale, Vec2, WorldPosition, ZIndex,
+};
 use log::debug;
 
 component_edit_observer!(

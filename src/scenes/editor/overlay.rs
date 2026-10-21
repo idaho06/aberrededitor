@@ -9,14 +9,10 @@ use crate::editor_types::SelectionCorners;
 use crate::signals as sig;
 use crate::systems::entity_selector::MultiEntitySelectionMutex;
 use crate::systems::render_prefs::RenderPrefsMutex;
-use aberredengine::core::math::{Color, Vec2};
-use aberredengine::core::resources::app_state::AppState;
-use aberredengine::core::resources::camera2d::Camera2D;
-use aberredengine::core::resources::render_size::RenderSize;
-use aberredengine::core::resources::signal_intents::SignalIntents;
-use aberredengine::core::resources::world_signals::{SignalSnapshot, WorldSignals};
-use aberredengine::core::systems::scene_dispatch::{WorldDraw, WorldDrawCtx};
-use aberredengine::imgui;
+use aberredengine::prelude::{
+    AppState, Camera2D, Color, RenderSize, SignalIntents, SignalSnapshot, Vec2, WorldDraw,
+    WorldDrawCtx, WorldSignals, imgui,
+};
 use log::trace;
 
 pub(super) const GRID_PREFERENCES_POPUP_ID: &str = "Grid Preferences##overlay";

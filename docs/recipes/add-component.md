@@ -71,8 +71,7 @@ exception because it groups several smaller draw helpers under one pending struc
 ```rust
 use crate::editor_types::ComponentSnapshot;
 use crate::systems::entity_edit::{RemoveMyComponentRequested, UpdateMyComponentRequested};
-use aberredengine::bevy_ecs::prelude::{Commands, Entity};
-use aberredengine::imgui;
+use aberredengine::prelude::{Commands, Entity, imgui};
 use log::warn;
 use super::super::widgets::draw_float_input;
 

@@ -4,13 +4,10 @@
 //! they serve as data-only archetypes for cloning into the map. `update_template_cache` scans
 //! for these entities every frame when the template browser window is open.
 use super::utils::entity_label;
-use aberredengine::bevy_ecs::prelude::{Entity, Or, Query, Res, ResMut, Without};
-use aberredengine::core::components::group::Group;
-use aberredengine::core::components::persistent::Persistent;
-use aberredengine::core::components::world_position::WorldPosition;
-use aberredengine::core::components::z_index::ZIndex;
-use aberredengine::core::resources::app_state::AppState;
-use aberredengine::core::resources::world_signals::WorldSignals;
+use aberredengine::prelude::{
+    AppState, Entity, Group, Or, Persistent, Query, Res, ResMut, Without, WorldPosition,
+    WorldSignals, ZIndex,
+};
 
 use crate::signals as sig;
 

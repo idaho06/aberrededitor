@@ -4,20 +4,13 @@ use crate::systems::entity_selector::clear_selector_state;
 use crate::systems::map_ops::GROUP_TILES;
 use crate::systems::utils::{find_texture, sprite_to_entry, to_relative};
 use aberredengine::bevy_ecs::hierarchy::{ChildOf, Children};
-use aberredengine::bevy_ecs::prelude::{Commands, MessageWriter, On, Query, ResMut};
 use aberredengine::core::components::global_transform2d::GlobalTransform2D;
-use aberredengine::core::components::group::Group;
-use aberredengine::core::components::rotation::Rotation;
-use aberredengine::core::components::scale::Scale;
-use aberredengine::core::components::sprite::Sprite;
-use aberredengine::core::components::tilemap::Tilemap;
-use aberredengine::core::components::world_position::WorldPosition;
-use aberredengine::core::components::z_index::ZIndex;
-use aberredengine::core::protocol::render_assets::RenderAssetCmd;
-use aberredengine::core::resources::app_state::AppState;
 use aberredengine::core::resources::map_data::{EntityDef, MapData, TextureEntry};
-use aberredengine::core::resources::world_signals::WorldSignals;
 use aberredengine::core::systems::tilemap::{tilemap_png_path, tilemap_texture_key};
+use aberredengine::prelude::{
+    AppState, Commands, Group, MessageWriter, On, Query, RenderAssetCmd, ResMut, Rotation, Scale,
+    Sprite, Tilemap, WorldPosition, WorldSignals, ZIndex,
+};
 use log::{debug, info, warn};
 
 pub fn remove_tilemap_observer(

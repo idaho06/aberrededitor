@@ -20,37 +20,21 @@
 use crate::components::serialized_lua_setup::SerializedLuaSetup;
 use crate::scenes::editor::map_properties_panel::MapPropertiesMutex;
 use crate::signals as sig;
-use aberredengine::bevy_ecs;
-use aberredengine::bevy_ecs::prelude::{
-    Commands, Entity, Event, MessageWriter, On, Query, Res, ResMut, With,
-};
 use aberredengine::bevy_ecs::query::Without;
-use aberredengine::core::components::animation::Animation;
-use aberredengine::core::components::box_collider::BoxCollider;
-use aberredengine::core::components::dynamic_text::DynamicText;
 use aberredengine::core::components::emitted_particle::EmittedParticle;
-use aberredengine::core::components::group::Group;
-use aberredengine::core::components::particle_emitter::{EmitterShape, ParticleEmitter, TtlSpec};
-use aberredengine::core::components::rotation::Rotation;
-use aberredengine::core::components::scale::Scale;
-use aberredengine::core::components::sprite::Sprite;
-use aberredengine::core::components::tilemap::Tilemap;
 use aberredengine::core::components::tint::Tint;
-use aberredengine::core::components::world_position::WorldPosition;
-use aberredengine::core::components::z_index::ZIndex;
 use aberredengine::core::events::map_spawn::SpawnMapRequested;
-use aberredengine::core::math::Color;
-use aberredengine::core::protocol::render_assets::RenderAssetCmd;
-use aberredengine::core::resources::animation_store::{AnimationClip, AnimationStore};
-use aberredengine::core::resources::app_state::AppState;
-use aberredengine::core::resources::game_config::{GameConfig, GameConfigDefaults};
+use aberredengine::core::resources::game_config::GameConfigDefaults;
 use aberredengine::core::resources::map_data::{
     AnimationEntry, DynamicTextEntry, EntityDef, FontEntry, MapData, ParticleEmitterEntry,
     ParticleEmitterShapeEntry, ParticleEmitterTtlEntry, TextureEntry, load_map, save_map,
 };
-use aberredengine::core::resources::texture_filter::TextureFilter;
-use aberredengine::core::resources::world_signals::WorldSignals;
-use aberredengine::engine_app::EngineBuilder;
+use aberredengine::prelude::{
+    Animation, AnimationClip, AnimationStore, AppState, BoxCollider, Color, Commands, DynamicText,
+    EmitterShape, EngineBuilder, Entity, Event, GameConfig, Group, MessageWriter, On,
+    ParticleEmitter, Query, RenderAssetCmd, Res, ResMut, Rotation, Scale, Sprite, TextureFilter,
+    Tilemap, TtlSpec, With, WorldPosition, WorldSignals, ZIndex, bevy_ecs,
+};
 use log::{debug, info, warn};
 
 use crate::components::map_entity::MapEntity;

@@ -4,7 +4,7 @@ use aberredengine::bevy_ecs::observer::On;
 use aberredengine::bevy_ecs::prelude::*;
 use aberredengine::core::events::debug_toggled::DebugToggled;
 use aberredengine::core::resources::debug_mode::DebugMode;
-use aberredengine::core::resources::world_signals::WorldSignals;
+use aberredengine::prelude::WorldSignals;
 
 /// Mirrors the debug-mode toggle into `WorldSignals` so the GUI can show a
 /// checked state on the "Toggle Debug Mode" menu item.
