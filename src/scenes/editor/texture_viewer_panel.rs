@@ -8,6 +8,7 @@
 //! **Segfault caution:** passes `&ffi::Texture2D` (the full struct pointer) to ImGui — never the
 //! raw `.id` field. See `docs/architecture.md` for the full explanation.
 use crate::signals as sig;
+use aberredengine::core::resources::font_key::DEFAULT_FONT_KEY;
 use aberredengine::prelude::{FontStore, SignalIntents, SignalSnapshot, TextureStore, imgui};
 
 const CHECKER_TILE_SIZE: f32 = 16.0;
@@ -133,13 +134,21 @@ fn resolve_viewer_texture(
             })
         }
         Some(sig::TEXTURE_VIEWER_SOURCE_FONT) => {
-            let font = fonts.get(source_key)?;
-            let meta = fonts.meta.get(source_key)?;
+            // The embedded default font is not a map asset: no `get` entry, no `meta`.
+            let (font, path) = if source_key == DEFAULT_FONT_KEY {
+                let (font, _) = fonts.get_or_default(source_key)?;
+                (font, "(built-in default font)".to_owned())
+            } else {
+                (
+                    fonts.get(source_key)?,
+                    fonts.meta.get(source_key)?.path.clone(),
+                )
+            };
             Some(ResolvedViewerTexture {
                 texture_id: imgui::TextureId::from(&font.texture as *const _ as usize),
                 width: font.texture.width,
                 height: font.texture.height,
-                path: meta.path.clone(),
+                path,
             })
         }
         Some(sig::TEXTURE_VIEWER_SOURCE_ANIMATION) => {

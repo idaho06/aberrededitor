@@ -67,12 +67,16 @@ pub const ACTION_TEXTURE_CHANGE_FILTER: &str = "gui:action:texture:change_filter
 pub const UI_FONT_STORE_OPEN: &str = "ui:font_store:open";
 pub const FONT_ADD_KEY_BUF: &str = "gui:font_store:add_key_buf";
 pub const FONT_ADD_SIZE_BUF: &str = "gui:font_store:add_size_buf";
+pub const FONT_ADD_SPACING_BUF: &str = "gui:font_store:add_spacing_buf";
+pub const FONT_SPACING_CHANGE_KEY: &str = "gui:font_store:spacing_change_key";
+pub const FONT_SPACING_CHANGE_VALUE: &str = "gui:font_store:spacing_change_value";
 pub const FONT_RENAME_SRC: &str = "gui:font_store:rename_src";
 pub const FONT_RENAME_BUF: &str = "gui:font_store:rename_buf";
 pub const FONT_REMOVE_KEY: &str = "gui:font_store:remove_key";
 pub const ACTION_FONT_ADD_BROWSE: &str = "gui:action:font:add_browse";
 pub const ACTION_FONT_RENAME: &str = "gui:action:font:rename";
 pub const ACTION_FONT_REMOVE: &str = "gui:action:font:remove";
+pub const ACTION_FONT_CHANGE_SPACING: &str = "gui:action:font:change_spacing";
 
 // ---- Shared texture viewer ----
 pub const UI_TEXTURE_VIEWER_OPEN: &str = "ui:texture_viewer:open";

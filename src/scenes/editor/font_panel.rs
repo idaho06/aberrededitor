@@ -7,8 +7,30 @@
 //!
 //! Reads `FontStore` directly (passed as `&FontStore` in `GuiCallback`).
 use super::texture_viewer_panel::open_texture_viewer;
+use super::widgets::draw_float_input;
 use crate::signals as sig;
+use aberredengine::core::resources::font_key::{DEFAULT_FONT_KEY, is_reserved_font_key};
+use aberredengine::core::resources::font_metrics::TEXT_SPACING;
 use aberredengine::prelude::{FontStore, SignalIntents, SignalSnapshot, imgui};
+
+/// Fixed, read-only row for the engine's embedded default font (not in `FontStore.meta`).
+fn draw_default_font_row(ui: &imgui::Ui, intents: &mut SignalIntents, fonts: &FontStore) {
+    let Some((font, spacing)) = fonts.get_or_default(DEFAULT_FONT_KEY) else {
+        return;
+    };
+    // rlImGui dereferences the pointer as a full ffi::Texture2D — passing .id crashes.
+    let tex_id = imgui::TextureId::from(&font.texture as *const _ as usize);
+    imgui::Image::new(tex_id, [64.0f32, 64.0]).build(ui);
+    if ui.is_item_clicked() {
+        open_texture_viewer(intents, sig::TEXTURE_VIEWER_SOURCE_FONT, DEFAULT_FONT_KEY);
+    }
+    ui.same_line();
+    ui.group(|| {
+        ui.text(DEFAULT_FONT_KEY);
+        ui.text_disabled("built-in, cannot be changed");
+        ui.text_disabled(format!("spacing: {spacing}"));
+    });
+}
 
 pub(super) fn draw_font_editor(
     ui: &imgui::Ui,
@@ -32,8 +54,11 @@ pub(super) fn draw_font_editor(
                 let mut sorted_keys: Vec<&String> = fonts.meta.keys().collect();
                 sorted_keys.sort();
 
+                draw_default_font_row(ui, intents, fonts);
+                ui.separator();
+
                 if sorted_keys.is_empty() {
-                    ui.text_disabled("No fonts loaded.");
+                    ui.text_disabled("No map fonts.");
                 }
 
                 for key in &sorted_keys {
@@ -64,6 +89,11 @@ pub(super) fn draw_font_editor(
                             ui.tooltip_text(meta.path.as_str());
                         }
                         ui.text_disabled(format!("size: {}", meta.font_size));
+                        if let Some(v) = draw_float_input(ui, "spacing##font", meta.spacing, 0.5) {
+                            intents.set_string(sig::FONT_SPACING_CHANGE_KEY, key.as_str());
+                            intents.set_scalar(sig::FONT_SPACING_CHANGE_VALUE, v);
+                            intents.set_flag(sig::ACTION_FONT_CHANGE_SPACING);
+                        }
                         if ui.small_button("Rename") {
                             intents.set_string(sig::FONT_RENAME_SRC, key.as_str());
                             intents.set_string(sig::FONT_RENAME_BUF, key.as_str());
@@ -92,6 +122,7 @@ pub(super) fn draw_font_editor(
             if ui.input_text("##font_add_key", &mut add_key).build() {
                 intents.set_string(sig::FONT_ADD_KEY_BUF, add_key.as_str());
             }
+            let key_reserved = !add_key.is_empty() && is_reserved_font_key(&add_key);
             ui.same_line();
             if ui.button("Browse...##font_add") {
                 intents.set_flag(sig::ACTION_FONT_ADD_BROWSE);
@@ -111,6 +142,27 @@ pub(super) fn draw_font_editor(
                 .build()
             {
                 intents.set_scalar(sig::FONT_ADD_SIZE_BUF, add_size);
+            }
+
+            ui.text("Spacing:");
+            ui.same_line();
+            let mut add_spacing = signals
+                .scalars
+                .get(sig::FONT_ADD_SPACING_BUF)
+                .copied()
+                .unwrap_or(TEXT_SPACING);
+            ui.set_next_item_width(80.0);
+            if ui
+                .input_float("##font_add_spacing", &mut add_spacing)
+                .step(0.5)
+                .build()
+            {
+                intents.set_scalar(sig::FONT_ADD_SPACING_BUF, add_spacing);
+            }
+            ui.same_line();
+            ui.text_disabled("0 for pixel fonts");
+            if key_reserved {
+                ui.text_disabled("\"default\" is reserved for the built-in font.");
             }
         });
 

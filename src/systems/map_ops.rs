@@ -24,6 +24,8 @@ use aberredengine::bevy_ecs::query::Without;
 use aberredengine::core::components::emitted_particle::EmittedParticle;
 use aberredengine::core::components::tint::Tint;
 use aberredengine::core::events::map_spawn::SpawnMapRequested;
+use aberredengine::core::resources::font_key::is_reserved_font_key;
+use aberredengine::core::resources::font_metrics::TEXT_SPACING;
 use aberredengine::core::resources::game_config::GameConfigDefaults;
 use aberredengine::core::resources::map_data::{
     AnimationEntry, DynamicTextEntry, EntityDef, FontEntry, MapData, ParticleEmitterEntry,
@@ -85,20 +87,30 @@ fn queue_texture_load(
     });
 }
 
-/// Queues `RenderAssetCmd::Font` for `key`/`path`/`font_size`. Used by
-/// `add_font_observer` — see `queue_texture_load`.
+/// Queues `RenderAssetCmd::Font` for `key`/`path`/`font_size`/`spacing`. Used by
+/// `add_font_observer` and `change_font_spacing_observer` — see `queue_texture_load`.
+/// `skip_if_loaded: false` reloads a key that is already loaded (spacing is fixed at load time).
 fn queue_font_load(
     asset_cmds: &mut MessageWriter<RenderAssetCmd>,
     key: &str,
     path: String,
     font_size: f32,
+    spacing: f32,
+    skip_if_loaded: bool,
 ) {
     asset_cmds.write(RenderAssetCmd::Font {
         key: key.to_string(),
         path,
         size: font_size as i32,
-        skip_if_loaded: true,
+        spacing,
+        skip_if_loaded,
     });
+}
+
+/// `FontEntry.spacing` value for `spacing`: `None` for the standard spacing so the saved JSON
+/// stays free of a `"spacing"` key.
+fn spacing_entry(spacing: f32) -> Option<f32> {
+    (spacing != TEXT_SPACING).then_some(spacing)
 }
 
 // ---------------------------------------------------------------------------
@@ -143,6 +155,7 @@ pub fn register(builder: EngineBuilder) -> EngineBuilder {
         .add_observer(change_texture_filter_observer)
         .add_observer(add_font_observer)
         .add_observer(rename_font_key_observer)
+        .add_observer(change_font_spacing_observer)
         .add_observer(remove_font_observer)
         .add_observer(preview_mapdata_observer)
         .add_observer(add_animation_observer)
@@ -603,14 +616,23 @@ pub fn change_texture_filter_observer(
 // Font store events
 // ---------------------------------------------------------------------------
 
-/// Load the font at `path` with `font_size` into `FontStore` under `key`.
-/// No-ops if `key` already exists. `FontStore` is `NonSend`; this observer requests `NonSendMut`.
+/// Load the font at `path` with `font_size` and glyph `spacing` under `key` (queued as a
+/// `RenderAssetCmd`; the render thread owns `FontStore`). No-ops if `key` already exists or is
+/// the reserved default font key.
 #[derive(Event)]
 pub struct AddFontRequested {
     pub key: String,
     /// Relative-to-CWD path.
     pub path: String,
     pub font_size: f32,
+    pub spacing: f32,
+}
+
+/// Change the glyph spacing of the font `key`: updates `MapData.fonts` and reloads the font.
+#[derive(Event)]
+pub struct ChangeFontSpacingRequested {
+    pub key: String,
+    pub spacing: f32,
 }
 
 /// Rename a font key in `FontStore` and `MapData.fonts`.
@@ -664,16 +686,58 @@ pub fn add_font_observer(
     let key = &trigger.event().key;
     let path = &trigger.event().path;
     let font_size = trigger.event().font_size;
+    let spacing = trigger.event().spacing;
+    if is_reserved_font_key(key) {
+        warn!(
+            "add_font_observer: '{}' is a reserved font key, skipping",
+            key
+        );
+        return;
+    }
     if find_font(&map_data, key).is_some() {
         return;
     }
-    queue_font_load(&mut asset_cmds, key, path.clone(), font_size);
+    queue_font_load(&mut asset_cmds, key, path.clone(), font_size, spacing, true);
     map_data.fonts.push(FontEntry {
         key: key.clone(),
         path: path.clone(),
         font_size,
+        spacing: spacing_entry(spacing),
     });
     info!("add_font_observer: queued '{}' from '{}'", key, path);
+}
+
+pub fn change_font_spacing_observer(
+    trigger: On<ChangeFontSpacingRequested>,
+    mut asset_cmds: MessageWriter<RenderAssetCmd>,
+    mut map_data: ResMut<MapData>,
+) {
+    let key = &trigger.event().key;
+    let spacing = trigger.event().spacing;
+    let Some(entry) = find_font_mut(&mut map_data, key) else {
+        warn!(
+            "change_font_spacing_observer: key '{}' not found in MapData",
+            key
+        );
+        return;
+    };
+    let new_entry = spacing_entry(spacing);
+    if new_entry == entry.spacing {
+        return;
+    }
+    entry.spacing = new_entry;
+    queue_font_load(
+        &mut asset_cmds,
+        key,
+        entry.path.clone(),
+        entry.font_size,
+        spacing,
+        false,
+    );
+    info!(
+        "change_font_spacing_observer: set spacing of '{}' to {}",
+        key, spacing
+    );
 }
 
 pub fn rename_font_key_observer(
@@ -684,6 +748,13 @@ pub fn rename_font_key_observer(
     let old_key = &trigger.event().old_key;
     let new_key = &trigger.event().new_key;
     if old_key == new_key {
+        return;
+    }
+    if is_reserved_font_key(new_key) {
+        warn!(
+            "rename_font_key_observer: '{}' is a reserved font key, skipping",
+            new_key
+        );
         return;
     }
     if find_font(&map_data, new_key).is_some() {

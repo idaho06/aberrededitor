@@ -9,6 +9,7 @@ use crate::systems::entity_selector::{apply_selection, clear_selector_state};
 use crate::systems::utils::{default_font_key, default_texture_key, entity_label};
 use aberredengine::core::components::tint::Tint;
 use aberredengine::core::components::ttl::Ttl;
+use aberredengine::core::resources::font_key::DEFAULT_FONT_KEY;
 use aberredengine::core::resources::map_data::MapData;
 use aberredengine::prelude::{
     Animation, AppState, BoxCollider, Color, Commands, DynamicText, Group, On, ParticleEmitter,
@@ -164,7 +165,9 @@ pub fn add_component_observer(
             ec.insert(SerializedLuaSetup::new(""));
         }
         ComponentKind::DynamicText => {
-            let font_key = default_font_key(&map_data).unwrap_or("").to_owned();
+            let font_key = default_font_key(&map_data)
+                .unwrap_or(DEFAULT_FONT_KEY)
+                .to_owned();
             ec.insert(DynamicText::new("", font_key, 16.0, Color::WHITE));
         }
         ComponentKind::ParticleEmitter => {

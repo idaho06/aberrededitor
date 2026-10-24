@@ -52,7 +52,11 @@ pub enum AsyncFileDialogRequest {
     /// Pick an image path for a texture key that was already collected from GUI state.
     AddTexture { key: String },
     /// Pick a font path for a font key and size that were already collected from GUI state.
-    AddFont { key: String, font_size: f32 },
+    AddFont {
+        key: String,
+        font_size: f32,
+        spacing: f32,
+    },
 }
 
 /// Normalized dialog completions consumed by [`poll_async_dialogs`].
@@ -74,6 +78,7 @@ pub enum AsyncFileDialogResult {
         key: String,
         path: String,
         font_size: f32,
+        spacing: f32,
     },
 }
 
@@ -166,11 +171,13 @@ pub fn poll_async_dialogs(mut commands: Commands, app_state: Res<AppState>) {
             key,
             path,
             font_size,
+            spacing,
         } => {
             commands.trigger(AddFontRequested {
                 key,
                 path: to_relative(&path),
                 font_size,
+                spacing,
             });
         }
     }
@@ -247,7 +254,11 @@ fn build_dialog_task(request: AsyncFileDialogRequest) -> DialogTask {
                 })
             })
         }
-        AsyncFileDialogRequest::AddFont { key, font_size } => {
+        AsyncFileDialogRequest::AddFont {
+            key,
+            font_size,
+            spacing,
+        } => {
             let dialog = rfd::AsyncFileDialog::new()
                 .add_filter("Font", &["ttf", "otf"])
                 .pick_file();
@@ -256,6 +267,7 @@ fn build_dialog_task(request: AsyncFileDialogRequest) -> DialogTask {
                     key,
                     path: path_of(file),
                     font_size,
+                    spacing,
                 })
             })
         }

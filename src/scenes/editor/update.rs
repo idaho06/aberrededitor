@@ -479,7 +479,11 @@ fn handle_texture_actions(ctx: &mut EditorCtx) {
 }
 
 fn handle_font_actions(ctx: &mut EditorCtx) {
-    use crate::systems::map_ops::{RemoveFontRequested, RenameFontKeyRequested};
+    use crate::systems::map_ops::{
+        ChangeFontSpacingRequested, RemoveFontRequested, RenameFontKeyRequested,
+    };
+    use aberredengine::core::resources::font_key::is_reserved_font_key;
+    use aberredengine::core::resources::font_metrics::TEXT_SPACING;
 
     if ctx.world_signals.take_flag(sig::ACTION_FONT_RENAME) {
         let old_key = ctx
@@ -505,6 +509,18 @@ fn handle_font_actions(ctx: &mut EditorCtx) {
         ctx.commands.trigger(RemoveFontRequested { key });
     }
 
+    if ctx.world_signals.take_flag(sig::ACTION_FONT_CHANGE_SPACING) {
+        let key = ctx
+            .world_signals
+            .get_string(sig::FONT_SPACING_CHANGE_KEY)
+            .map(|s| s.to_owned());
+        let spacing = ctx.world_signals.get_scalar(sig::FONT_SPACING_CHANGE_VALUE);
+        if let (Some(key), Some(spacing)) = (key, spacing) {
+            ctx.commands
+                .trigger(ChangeFontSpacingRequested { key, spacing });
+        }
+    }
+
     if ctx.world_signals.take_flag(sig::ACTION_FONT_ADD_BROWSE) {
         let key = ctx
             .world_signals
@@ -515,10 +531,18 @@ fn handle_font_actions(ctx: &mut EditorCtx) {
             .world_signals
             .get_scalar(sig::FONT_ADD_SIZE_BUF)
             .unwrap_or(32.0);
-        if !key.is_empty() {
+        let spacing = ctx
+            .world_signals
+            .get_scalar(sig::FONT_ADD_SPACING_BUF)
+            .unwrap_or(TEXT_SPACING);
+        if !is_reserved_font_key(&key) {
             request_async_dialog(
                 &ctx.app_state,
-                AsyncFileDialogRequest::AddFont { key, font_size },
+                AsyncFileDialogRequest::AddFont {
+                    key,
+                    font_size,
+                    spacing,
+                },
             );
         }
     }

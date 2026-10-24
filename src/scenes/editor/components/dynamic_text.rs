@@ -1,6 +1,7 @@
 use super::super::widgets::{draw_float_input, draw_text_buffer_input};
 use crate::editor_types::ComponentSnapshot;
 use crate::systems::entity_edit::{RemoveDynamicTextRequested, UpdateDynamicTextRequested};
+use aberredengine::core::resources::font_key::DEFAULT_FONT_KEY;
 use aberredengine::prelude::{Commands, Entity, FontStore, imgui};
 use log::warn;
 
@@ -42,20 +43,21 @@ pub(crate) fn draw_section(
         p.commit = true;
     }
 
-    let font_key_current: &str = p.font_key.as_deref().unwrap_or(&dt.font_key);
-    let mut font_keys: Vec<&str> = fonts.meta.keys().map(|k| k.as_str()).collect();
-    font_keys.sort_unstable();
-    if font_keys.is_empty() {
-        ui.text_disabled("No fonts loaded.");
-    } else {
-        let mut current_font = font_keys
-            .iter()
-            .position(|k| *k == font_key_current)
-            .unwrap_or(0);
-        if ui.combo_simple_string("font_key##dt", &mut current_font, &font_keys) {
-            p.font_key = Some(font_keys[current_font].to_owned());
-            p.commit = true;
-        }
+    // "" is an alias of the built-in default font; show and commit it as "default".
+    let font_key_current: &str = match p.font_key.as_deref().unwrap_or(&dt.font_key) {
+        "" => DEFAULT_FONT_KEY,
+        k => k,
+    };
+    let mut map_keys: Vec<&str> = fonts.meta.keys().map(|k| k.as_str()).collect();
+    map_keys.sort_unstable();
+    let font_keys: Vec<&str> = std::iter::once(DEFAULT_FONT_KEY).chain(map_keys).collect();
+    let mut current_font = font_keys
+        .iter()
+        .position(|k| *k == font_key_current)
+        .unwrap_or(0);
+    if ui.combo_simple_string("font_key##dt", &mut current_font, &font_keys) {
+        p.font_key = Some(font_keys[current_font].to_owned());
+        p.commit = true;
     }
 
     if let Some(v) = draw_float_input(

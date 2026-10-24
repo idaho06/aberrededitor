@@ -26,6 +26,9 @@ All paths stored in `TextureStore.paths`, `FontStore.meta`, `MapData.textures`,
 `MapData.fonts`, `MapData.tilemaps`, and any other persistent store **must be relative to CWD**.
 Never absolute.
 
+`FontStore.meta` (`path`, `font_size`, `spacing`) is filled by the engine's font load. The embedded default font
+(key `"default"`, alias `""`, reserved) has no `meta` entry; read it with `FontStore::get_or_default`.
+
 `rfd` (the file dialog library) returns absolute paths. Always convert immediately:
 
 ```rust
